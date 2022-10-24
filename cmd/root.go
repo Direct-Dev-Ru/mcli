@@ -23,7 +23,7 @@ var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 // rootCmd represents the base command when cviewed without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "supercli",
-	Short: "Cli for some operations in Linux",
+	Short: "cli for some operations in Linux",
 	Long: `Yes there is an aliases is ...
 But standalone executable module sometimes 
 is more helpful than .bashrc file`,
