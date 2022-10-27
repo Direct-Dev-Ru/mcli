@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type scanHostPort struct {
+type scanItem struct {
 	host   string
 	port   int
 	result bool
@@ -108,17 +108,21 @@ func (sp *scanParams) checkScanParameters() error {
 	return nil
 }
 
-func worker(host string, ports, results chan int) {
-	var timeout int64 = 2
+func worker(ports, results chan scanItem, timeout int64, id int) {
+
 	for p := range ports {
-		address := fmt.Sprintf("%s:%d", host, p)
-		conn, err := net.DialTimeout("tcp", address, time.Duration(timeout*int64(time.Second)))
+		resultItem := scanItem{host: p.host, port: p.port, result: false}
+		address := fmt.Sprintf("%s:%d", p.host, p.port)
+		conn, err := net.DialTimeout("tcp", address, time.Duration(timeout*int64(time.Millisecond)))
 		if err != nil {
-			results <- 0
+			// fmt.Println("wId:", id, "fault:", resultItem)
+			results <- resultItem
 			continue
 		}
 		conn.Close()
-		results <- p
+		resultItem.result = true
+		// fmt.Println("wId:", id, "success:", resultItem)
+		results <- resultItem
 	}
 }
 
@@ -128,13 +132,18 @@ var pscanCmd = &cobra.Command{
 	Short: "Parallel scan port range of given tenwork",
 	Long: `Use it to start parallel scan of given network: -m 192.168.55.1/25 -r 0-1024
 			For one host set /32 mask.`,
+
 	RunE: func(cmd *cobra.Command, args []string) error {
 		nmask, _ := cmd.Flags().GetString("netmask")
 		host, _ := cmd.Flags().GetString("host")
 		prange, _ := cmd.Flags().GetString("portrange")
 
-		scanparams := scanParams{host: host, netMask: nmask,
-			portRange: prange}
+		timeout, _ := cmd.Flags().GetInt64("timeout")
+		if timeout == 0 {
+			timeout = 100
+		}
+
+		scanparams := scanParams{host: host, netMask: nmask, portRange: prange}
 
 		// check params for scan
 		error := scanparams.checkScanParameters()
@@ -143,42 +152,55 @@ var pscanCmd = &cobra.Command{
 		}
 
 		var openports map[string][]int
-		// if host specified it is more prioriteted
+		var numProbes int = 0
+		// if host is specified then it is more prefered
 		if len(scanparams.host) > 0 {
 			openports = make(map[string][]int)
 			openports[scanparams.host] = []int{}
+			numProbes = scanparams.maxPort - scanparams.minPort + 1
 		} else {
 			openports = getHostsFromNet(scanparams.netMask)
 			if scanparams.iNetMask == 32 {
 				openports[scanparams.sNetAddress] = []int{}
 			}
+			numProbes = (scanparams.maxPort - scanparams.minPort + 1) * len(openports)
 		}
 		fmt.Println(scanparams)
-		fmt.Println(openports)
 
-		ports := make(chan int, 100)
-		results := make(chan int)
-		for host, hostPorts := range openports {
-			for i := 0; i < cap(ports); i++ {
-				go worker(host, ports, results)
-			}
+		var workerCount int = 100
+		if numProbes < 100 {
+			workerCount = numProbes
+		}
+		ports := make(chan scanItem, workerCount)
+		results := make(chan scanItem)
 
+		// opening workers for testing ports
+		for i := 0; i < workerCount; i++ {
+			go worker(ports, results, timeout, i)
+		}
+
+		// iteration through map of hosts
+		for host, _ := range openports {
+
+			// Sending to workers in chanel ports
 			go func() {
 				for i := scanparams.minPort; i <= scanparams.maxPort; i++ {
-					ports <- i
+					sItem := scanItem{host: host, port: i, result: false}
+					ports <- sItem
 				}
 			}()
 
 			for i := scanparams.minPort; i <= scanparams.maxPort; i++ {
-				port := <-results
-				if port != 0 {
-					openports[host] = append(hostPorts, port)
-					fmt.Println(host, port)
+				sItem := <-results
+				if sItem.result {
+					openports[host] = append(openports[host], sItem.port)
+					fmt.Println(sItem)
 				}
 			}
 		}
 		close(ports)
 		close(results)
+		fmt.Println(openports)
 		return nil
 	},
 }

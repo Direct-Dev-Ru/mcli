@@ -59,7 +59,7 @@ supercli tcp --host 1.1.1.1 --port 80`,
 		}
 		// fmt.Println("timeout", timeout)
 
-		_, errDial := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", host, port), time.Duration(timeout*int64(time.Second)))
+		_, errDial := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", host, port), time.Duration(timeout*int64(time.Millisecond)))
 		if errDial != nil {
 			fmt.Println(fmt.Sprintf("%s:%s# Error occured: %s", host, port, errDial))
 			return nil
@@ -76,7 +76,7 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	tcpCmd.PersistentFlags().Int64("timeout", 2, "set timeout for dial")
+	tcpCmd.PersistentFlags().Int64("timeout", 100, "set timeout for dial in miliseconds")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
