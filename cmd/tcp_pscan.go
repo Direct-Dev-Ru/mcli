@@ -17,7 +17,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type scanHostPort struct {
+	host   string
+	port   int
+	result bool
+}
+
 type scanParams struct {
+	host        string
 	netMask     string
 	sNetAddress string
 	sNetMask    string
@@ -34,13 +41,10 @@ func getHostsFromNet(netmask string) (result map[string][]int) {
 	if err != nil {
 		return
 	}
-
 	// convert IPNet struct mask and address to uint32
 	// network is BigEndian
 	mask := binary.BigEndian.Uint32(ipv4Net.Mask)
 	start := binary.BigEndian.Uint32(ipv4Net.IP)
-	// fmt.Println(mask)
-	// fmt.Println(start)
 	// find the final address
 	finish := (start & mask) | (mask ^ 0xffffffff)
 	// loop through addresses as uint32
@@ -55,37 +59,41 @@ func getHostsFromNet(netmask string) (result map[string][]int) {
 }
 
 func (sp *scanParams) checkScanParameters() error {
-	rexpAddr, _ := regexp.Compile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])/`)
-	rexpMask, _ := regexp.Compile(`/[0-9]+$`)
-	rexpIpPort := `^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])/[0-9]+$`
+	if len(sp.host) == 0 && len(sp.netMask) > 0 {
+		rexpAddr, _ := regexp.Compile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])/`)
+		rexpMask, _ := regexp.Compile(`/[0-9]+$`)
+		rexpIpPort := `^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])/[0-9]+$`
 
-	matched, err := regexp.MatchString(rexpIpPort, sp.netMask)
-	if err != nil {
-		return err
-	}
-
-	if matched {
-		net_addr_slice := rexpAddr.FindAllString(sp.netMask, -1)
-		net_mask_slice := rexpMask.FindAllString(sp.netMask, -1)
-		error_net_mask := false
-		if len(net_addr_slice) > 0 && len(net_mask_slice) > 0 {
-			sp.sNetAddress = strings.Trim(net_addr_slice[0], "/")
-			sp.sNetMask = strings.Trim(net_mask_slice[0], "/")
-			sp.iNetMask, _ = strconv.Atoi(sp.sNetMask)
-			error_net_mask = sp.iNetMask > 32
-
-		} else {
-			error_net_mask = true
+		matched, err := regexp.MatchString(rexpIpPort, sp.netMask)
+		if err != nil {
+			return err
 		}
-		if error_net_mask {
+
+		if matched {
+			net_addr_slice := rexpAddr.FindAllString(sp.netMask, -1)
+			net_mask_slice := rexpMask.FindAllString(sp.netMask, -1)
+			error_net_mask := false
+			if len(net_addr_slice) > 0 && len(net_mask_slice) > 0 {
+				sp.sNetAddress = strings.Trim(net_addr_slice[0], "/")
+				sp.sNetMask = strings.Trim(net_mask_slice[0], "/")
+				sp.iNetMask, _ = strconv.Atoi(sp.sNetMask)
+				error_net_mask = sp.iNetMask > 32
+
+			} else {
+				error_net_mask = true
+			}
+			if error_net_mask {
+				return errors.New("netmask have wrong format")
+			}
+		} else {
 			return errors.New("netmask have wrong format")
 		}
+		rexpPortRange, _ := regexp.Compile(`^[0-9]+-[0-9]+$`)
+		if !rexpPortRange.MatchString(sp.portRange) {
+			return errors.New("wrong port range specified")
+		}
 	} else {
-		return errors.New("netmask have wrong format")
-	}
-	rexpPortRange, _ := regexp.Compile(`^[0-9]+-[0-9]+$`)
-	if !rexpPortRange.MatchString(sp.portRange) {
-		return errors.New("wrong port range specified")
+		sp.netMask = ""
 	}
 
 	ports := strings.Split(sp.portRange, "-")
@@ -122,19 +130,28 @@ var pscanCmd = &cobra.Command{
 			For one host set /32 mask.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		nmask, _ := cmd.Flags().GetString("netmask")
+		host, _ := cmd.Flags().GetString("host")
 		prange, _ := cmd.Flags().GetString("portrange")
 
-		scanparams := scanParams{netMask: nmask,
+		scanparams := scanParams{host: host, netMask: nmask,
 			portRange: prange}
 
+		// check params for scan
 		error := scanparams.checkScanParameters()
 		if error != nil {
 			return error
 		}
 
-		openports := getHostsFromNet(scanparams.netMask)
-		if scanparams.iNetMask == 32 {
-			openports[scanparams.sNetAddress] = []int{}
+		var openports map[string][]int
+		// if host specified it is more prioriteted
+		if len(scanparams.host) > 0 {
+			openports = make(map[string][]int)
+			openports[scanparams.host] = []int{}
+		} else {
+			openports = getHostsFromNet(scanparams.netMask)
+			if scanparams.iNetMask == 32 {
+				openports[scanparams.sNetAddress] = []int{}
+			}
 		}
 		fmt.Println(scanparams)
 		fmt.Println(openports)
@@ -177,6 +194,7 @@ func init() {
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	pscanCmd.Flags().StringP("netmask", "m", "", "Mandatory: net mask (192.168.55.0/24)")
-	pscanCmd.Flags().StringP("portrange", "r", "", "Mandatory: port range (1:1024)")
+	pscanCmd.Flags().StringP("host", "n", "", "mandatory netmask or host: (-n example.com or -m 192.168.55.0/24)")
+	pscanCmd.Flags().StringP("netmask", "m", "", "mandatory netmask or host: (-n example.com or -m 192.168.55.0/24)")
+	pscanCmd.Flags().StringP("portrange", "r", "", "mandatory: port range (1:1024)")
 }
