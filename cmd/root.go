@@ -56,8 +56,8 @@ func init() {
 }
 
 func initConfig() {
-	configFile, _ := rootCmd.Flags().GetString("config")
-	if configFile != "" {
-		fmt.Println("configFile:", configFile)
-	}
+	// configFile, _ := rootCmd.Flags().GetString("config")
+	// if configFile != "" {
+	// 	fmt.Println("configFile:", configFile)
+	// }
 }
