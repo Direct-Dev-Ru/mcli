@@ -1,6 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2022 DIRECT-DEV.RU <INFO@DIRECT-DEV.RU>
 */
 package cmd
 
@@ -63,10 +62,10 @@ supercli tcp --host 1.1.1.1 --port 80`,
 
 		_, errDial := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", host, port), time.Duration(timeout*int64(time.Millisecond)))
 		if errDial != nil {
-			fmt.Println(fmt.Sprintf("%s:%s# Error occured: %s", host, port, errDial))
+			Elogger.Fatal().Msg(fmt.Sprintf("%s:%s error occured: %s", host, port, errDial))
 			return nil
 		}
-		fmt.Println(fmt.Sprintf("%s:%s# Successfully connected", host, port))
+		Ilogger.Info().Msg(fmt.Sprintf("%s:%s successfully connected", host, port))
 		return nil
 
 	},
@@ -83,6 +82,9 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// tcpCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	tcpCmd.Flags().String("host", "", "host for probe")
-	tcpCmd.Flags().String("port", "", "port for probe")
+	// tcpCmd.Flags().String("host", "", "host for probe")
+	tcpCmd.Flags().StringP("host", "n", "0.0.0.0", "Specify host/(n)ode for testing connectivity")
+
+	tcpCmd.Flags().StringP("port", "p", "80", "Specify (p)ort for testing connectivity")
+	// tcpCmd.Flags().String("port", "", "port for probe")
 }

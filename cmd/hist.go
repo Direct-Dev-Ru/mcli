@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 DIRECT-DEV.RU <INFO@DIRECT-DEV.RU>
-
 */
 package cmd
 
@@ -26,7 +25,7 @@ var histCmd = &cobra.Command{
 this command can list view its saved commands to screen. For example:
 supercli hist view
 supercli hist --filter docker`,
-	// Run: histCmdRunFunc,
+	Run: histCmdRunFunc,
 }
 
 func init() {

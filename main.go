@@ -46,7 +46,7 @@ func main() {
 			Logger()
 	}
 
-	ilogger.Info().Msg("Hello from Zerolog global ilogger")
+	// ilogger.Info().Msg("Hello from Zerolog global ilogger")
 
 	// elogger.Error().
 	// 	Stack().
