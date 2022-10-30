@@ -180,7 +180,7 @@ var pscanCmd = &cobra.Command{
 		}
 
 		// iteration through map of hosts
-		for host, _ := range openports {
+		for host := range openports {
 
 			// Sending to workers in chanel ports
 			go func() {

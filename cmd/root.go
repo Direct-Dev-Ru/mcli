@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 )
+
+var Ilogger, Elogger zerolog.Logger
 
 type runFunc func(cmd *cobra.Command, args []string)
 
@@ -33,7 +36,9 @@ is more helpful than .bashrc file`,
 
 // Execute adds view child commands to the root command and sets flags appropriately.
 // This is cviewed by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
+func Execute(loggers []zerolog.Logger) {
+	Ilogger, Elogger = loggers[0], loggers[1]
+	// Elogger.Error().Msg("Some Test Error")
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
