@@ -37,10 +37,21 @@ var clientCmd = &cobra.Command{
 			return err
 		}
 
-		if len(message) == 0 {
+		if len(message) > 0 {
+			// sending into tcp socket
+			writer := bufio.NewWriter(conn)
+			if _, err := writer.WriteString(message + "\n"); err != nil {
+				Elogger.Fatal().Msg("unable to write data to soket " + host + ":" + port)
+			}
+			fmt.Println("Message to server: " + message)
+			writer.Flush()
 
+			// Listening answer
+			messageFromServer, _ := bufio.NewReader(conn).ReadString('\n')
+			fmt.Println("Message from server: " + messageFromServer)
+			conn.Close()
+		} else {
 			for {
-
 				// reading from stdin
 				reader := bufio.NewReader(os.Stdin)
 				fmt.Print("Text to send: ")

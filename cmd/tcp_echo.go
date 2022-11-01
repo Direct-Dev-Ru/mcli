@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -16,14 +17,16 @@ func echo(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	s, err := reader.ReadString('\n')
 	if err != nil {
-		Elogger.Fatal().Msg("unable to read data")
+		Elogger.Error().Msg("unable to read data")
 	}
 	Ilogger.Trace().Msg(fmt.Sprintf("Read %d bytes: %s", len(s), s))
 	Ilogger.Trace().Msg("Writing data ...")
 
+	ws := strings.ToUpper(s)
+
 	writer := bufio.NewWriter(conn)
-	if _, err := writer.WriteString(s); err != nil {
-		Elogger.Fatal().Msg("unable to write data")
+	if _, err := writer.WriteString(ws); err != nil {
+		Elogger.Error().Msg("unable to write data")
 	}
 	writer.Flush()
 
@@ -39,7 +42,7 @@ var echoCmd = &cobra.Command{
 	Use:   "echo",
 	Short: "Starts simple tcp echo server",
 	Long:  `Starts simple tcp echo server. For example: supercli tcp echo -p 33333 `,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		port, _ := cmd.Flags().GetString("port")
 		Ilogger.Trace().Msg(fmt.Sprintf("Port for echo server is %s", port))
 
@@ -59,7 +62,6 @@ var echoCmd = &cobra.Command{
 			// Process connection using goroutines
 			go echo(conn)
 		}
-		return nil
 	},
 }
 

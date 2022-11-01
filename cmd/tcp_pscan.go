@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -20,6 +21,10 @@ type scanItem struct {
 	host   string
 	port   int
 	result bool
+}
+
+func (si scanItem) String() string {
+	return fmt.Sprintf("Host %s port %d = %t", si.host, si.port, si.result)
 }
 
 type scanParams struct {
@@ -114,7 +119,7 @@ func worker(ports, results chan scanItem, timeout int64, id int) {
 		address := fmt.Sprintf("%s:%d", p.host, p.port)
 		conn, err := net.DialTimeout("tcp", address, time.Duration(timeout*int64(time.Millisecond)))
 		if err != nil {
-			// fmt.Println("wId:", id, "fault:", resultItem)
+			// fmt.Println("wId:", id, "fault:", resultItem, err)
 			results <- resultItem
 			continue
 		}
@@ -193,12 +198,16 @@ var pscanCmd = &cobra.Command{
 				sItem := <-results
 				if sItem.result {
 					openports[host] = append(openports[host], sItem.port)
-					fmt.Println(sItem)
+					Ilogger.Trace().Msg(sItem.String())
+					// fmt.Println(sItem)
 				}
 			}
 		}
 		close(ports)
 		close(results)
+		for _, ports := range openports {
+			sort.Ints(ports)
+		}
 		fmt.Println(openports)
 		return nil
 	},
