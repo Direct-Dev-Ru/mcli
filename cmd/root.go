@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 DIRECT-DEV.RU <INFO@DIRECT-DEV.RU>
-
 */
 package cmd
 
@@ -53,7 +52,7 @@ func init() {
 	// will be global for your application.
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", os.Getenv("HOME")+"/.supercli.yaml", "config file")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", os.Getenv("HOME")+"/.supercli.yaml", "specify config file")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is cviewed directly.

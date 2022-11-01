@@ -1,12 +1,12 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
 	"io"
 	"net"
+	"strconv"
 
 	"github.com/spf13/cobra"
 )
@@ -22,14 +22,19 @@ func handle(srcConn net.Conn, dst string) {
 	//❷ we exucute code in goroutine to prevent blocking io.Copy
 	go func() {
 		// Copying from src to dst ❸
-		if _, err := io.Copy(dstConn, srcConn); err != nil {
+
+		if w, err := io.Copy(dstConn, srcConn); err != nil {
 			Elogger.Fatal().Msg("from src to dest copying: " + err.Error())
+		} else {
+			Ilogger.Trace().Msg("Written from src to dest : " + strconv.Itoa(int(w)))
 		}
-		
+
 	}()
 	//Copying from dst to src ❹
-	if _, err := io.Copy(srcConn, dstConn); err != nil {
+	if w, err := io.Copy(srcConn, dstConn); err != nil {
 		Elogger.Fatal().Msg("from dest to src copying: " + err.Error())
+	} else {
+		Ilogger.Trace().Msg("Written from dest to src : " + strconv.Itoa(int(w)))
 	}
 }
 
