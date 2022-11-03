@@ -14,7 +14,7 @@ var httpCmd = &cobra.Command{
 	Use:   "http",
 	Short: "Starts simple echo http server and top level command for other http servers and services",
 	Long: `Starts simple echo http server and top level command for other http servers and services
-	For example: supercli http
+	For example: mcli http
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		port, _ := cmd.Flags().GetString("port")

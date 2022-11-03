@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func handle(srcConn net.Conn, dst string) {
+func proxy_handle(srcConn net.Conn, dst string) {
 	// ❶
 	dstConn, err := net.Dial("tcp", dst)
 	if err != nil {
@@ -42,7 +42,7 @@ func handle(srcConn net.Conn, dst string) {
 var proxyCmd = &cobra.Command{
 	Use:   "proxy",
 	Short: "Simple tcp proxy command",
-	Long: ` Simple tcp proxy to rewrite all from one host:port to another. For example: supercli tcp proxy -d 127.0.0.1:8080 -s 127.0.0.1:80
+	Long: ` Simple tcp proxy to rewrite all from one host:port to another. For example: mcli tcp proxy -d 127.0.0.1:8080 -s 127.0.0.1:80
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -60,7 +60,7 @@ var proxyCmd = &cobra.Command{
 			if err != nil {
 				Elogger.Fatal().Msg("unable to accept connections: " + src + " " + err.Error())
 			}
-			go handle(conn, dst)
+			go proxy_handle(conn, dst)
 		}
 
 	},

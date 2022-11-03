@@ -5,9 +5,11 @@ package cmd
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -141,6 +143,8 @@ var pscanCmd = &cobra.Command{
 		nmask, _ := cmd.Flags().GetString("netmask")
 		host, _ := cmd.Flags().GetString("host")
 		prange, _ := cmd.Flags().GetString("portrange")
+		outputFormat, _ := cmd.Flags().GetString("output")
+		file, _ := cmd.Flags().GetString("file")
 
 		timeout, _ := cmd.Flags().GetInt64("timeout")
 		if timeout == 0 {
@@ -169,7 +173,7 @@ var pscanCmd = &cobra.Command{
 			}
 			numProbes = (scanparams.maxPort - scanparams.minPort + 1) * len(openports)
 		}
-		fmt.Println(scanparams)
+		Ilogger.Trace().Msg(fmt.Sprint(scanparams))
 
 		var workerCount int = 100
 		if numProbes < 100 {
@@ -208,7 +212,45 @@ var pscanCmd = &cobra.Command{
 		for _, ports := range openports {
 			sort.Ints(ports)
 		}
-		fmt.Println(openports)
+
+		var res string = ""
+		if outputFormat == "json" {
+			resByte, _ := json.Marshal(openports)
+			res = string(resByte)
+		} else {
+			i := 0
+			for host, ports := range openports {
+				if i > 0 {
+					res += "\n"
+				}
+				res += host + ":"
+				i++
+				j := 0
+				for _, port := range ports {
+					if j > 0 {
+						res += ", "
+					} else {
+						res += " "
+					}
+					res += strconv.Itoa(port)
+					j++
+				}
+			}
+		}
+		fmt.Println(res)
+		if len(file) > 0 {
+			f, err := os.Create(file)
+			if err != nil {
+				Elogger.Fatal().Msg(err.Error())
+			}
+			defer f.Close()
+			_, err = f.WriteString(res)
+
+			if err != nil {
+				Elogger.Fatal().Msg(err.Error())
+			}
+		}
+
 		return nil
 	},
 }
@@ -227,4 +269,6 @@ func init() {
 	pscanCmd.Flags().StringP("host", "n", "", "mandatory netmask or host: (-n example.com or -m 192.168.55.0/24)")
 	pscanCmd.Flags().StringP("netmask", "m", "", "mandatory netmask or host: (-n example.com or -m 192.168.55.0/24)")
 	pscanCmd.Flags().StringP("portrange", "r", "", "mandatory: port range (1:1024)")
+	pscanCmd.Flags().StringP("output", "o", "json", "output format (default - json, optional - plain)")
+	pscanCmd.Flags().StringP("file", "f", "", "save output to file - specify path")
 }

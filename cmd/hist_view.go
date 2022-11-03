@@ -93,7 +93,7 @@ to quickly create a Cobra application.`,
 		// contents, _ := ioutil.ReadFile(os.Getenv("HOME") + "/.bash_history")
 
 		filter, _ := cmd.Flags().GetString("filter")
-		fmt.Println(filter)
+		Ilogger.Trace().Msg("Filter is :" + filter)
 		for ind, entry := range readBashHistory() {
 			cmd, tm := entry.commandText, entry.commandTime
 			if strings.Contains(cmd, filter) {

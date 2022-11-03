@@ -4,16 +4,15 @@ Copyright © 2022 DIRECT-DEV.RU <INFO@DIRECT-DEV.RU>
 package cmd
 
 import (
-	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
 var histCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	// config, _ := cmd.Flags().GetString("config")
-
-	fmt.Println("Hello I am Super CLI. hist command.")
-	fmt.Println("Args are:", args)
+	Ilogger.Trace().Msg("Hello from Multy CLI. hist command.")
+	Ilogger.Trace().Msg("Args are: " + strings.Join(args, " "))
 
 }
 
@@ -23,8 +22,8 @@ var histCmd = &cobra.Command{
 	Short: "lists your bash command history",
 	Long: `Bash has history file
 this command can list view its saved commands to screen. For example:
-supercli hist view
-supercli hist --filter docker`,
+mcli hist view
+mcli hist view --filter docker`,
 	Run: histCmdRunFunc,
 }
 

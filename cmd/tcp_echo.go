@@ -21,7 +21,9 @@ func echo(conn net.Conn) {
 	}
 	Ilogger.Trace().Msg(fmt.Sprintf("Read %d bytes: %s", len(s), s))
 	Ilogger.Trace().Msg("Writing data ...")
-
+	s = strings.Trim(s, "\r\n")
+	s = strings.Trim(s, "\n")
+	// Processing recieved data
 	ws := strings.ToUpper(s)
 
 	writer := bufio.NewWriter(conn)
@@ -41,7 +43,7 @@ func echo(conn net.Conn) {
 var echoCmd = &cobra.Command{
 	Use:   "echo",
 	Short: "Starts simple tcp echo server",
-	Long:  `Starts simple tcp echo server. For example: supercli tcp echo -p 33333 `,
+	Long:  `Starts simple tcp echo server. For example: mcli tcp echo -p 33333 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		port, _ := cmd.Flags().GetString("port")
 		Ilogger.Trace().Msg(fmt.Sprintf("Port for echo server is %s", port))

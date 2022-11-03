@@ -1,4 +1,4 @@
-module supercli
+module mcli
 
 go 1.18
 

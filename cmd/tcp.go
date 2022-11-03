@@ -4,9 +4,12 @@ Copyright © 2022 DIRECT-DEV.RU <INFO@DIRECT-DEV.RU>
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,11 +23,13 @@ var tcpCmd = &cobra.Command{
 	Long: `This is a container for a set of subcommands and itself quick scan of port defined by --port parameter
 on the host defined by --host parameter. For example:
 
-supercli tcp --host 1.1.1.1 --port 80`,
+mcli tcp --host 1.1.1.1 --port 80`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		host, _ := cmd.Flags().GetString("host")
 		port, _ := cmd.Flags().GetString("port")
+		outputFormat, _ := cmd.Flags().GetString("output")
+		file, _ := cmd.Flags().GetString("file")
 		timeout, _ := cmd.Flags().GetInt64("timeout")
 
 		if len(args) > 0 && (len(host) == 0 || len(port) == 0) {
@@ -53,19 +58,63 @@ supercli tcp --host 1.1.1.1 --port 80`,
 		}
 
 		s := fmt.Sprintf("Now scanning %s:%s ...", host, port)
-		fmt.Println(s)
+		Ilogger.Trace().Msg(s)
+
 		if timeout == 0 {
 			timeout = 500
 		}
 		Ilogger.Trace().Int64("timeout:", timeout).Send()
 		// fmt.Println("timeout", timeout)
+		result := make(map[string][]int)
 
 		_, errDial := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", host, port), time.Duration(timeout*int64(time.Millisecond)))
 		if errDial != nil {
 			Elogger.Fatal().Msg(fmt.Sprintf("%s:%s error occured: %s", host, port, errDial))
 			return nil
 		}
-		Ilogger.Info().Msg(fmt.Sprintf("%s:%s successfully connected", host, port))
+		Ilogger.Trace().Msg(fmt.Sprintf("%s:%s successfully connected", host, port))
+		nport, _ := strconv.Atoi(port)
+
+		// output result
+		result[host] = []int{nport}
+
+		var res string = ""
+		if outputFormat == "json" {
+			resByte, _ := json.Marshal(result)
+			res = string(resByte)
+		} else {
+			i := 0
+			for host, ports := range result {
+				if i > 0 {
+					res += "\n"
+				}
+				res += host + ":"
+				i++
+				j := 0
+				for _, port := range ports {
+					if j > 0 {
+						res += ", "
+					} else {
+						res += " "
+					}
+					res += strconv.Itoa(port)
+					j++
+				}
+			}
+		}
+		fmt.Println(res)
+		if len(file) > 0 {
+			f, err := os.Create(file)
+			if err != nil {
+				Elogger.Fatal().Msg(err.Error())
+			}
+			defer f.Close()
+			_, err = f.WriteString(res)
+
+			if err != nil {
+				Elogger.Fatal().Msg(err.Error())
+			}
+		}
 		return nil
 
 	},
@@ -77,7 +126,7 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	tcpCmd.PersistentFlags().Int64("timeout", 0, "set timeout for dial in miliseconds")
+	tcpCmd.PersistentFlags().Int64P("timeout", "t", 0, "set timeout for dial in miliseconds")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
@@ -86,5 +135,6 @@ func init() {
 	tcpCmd.Flags().StringP("host", "n", "0.0.0.0", "Specify host/(n)ode for testing connectivity")
 
 	tcpCmd.Flags().StringP("port", "p", "80", "Specify (p)ort for testing connectivity")
-	// tcpCmd.Flags().String("port", "", "port for probe")
+	tcpCmd.Flags().StringP("output", "o", "json", "output format (default - json, optional - plain)")
+	tcpCmd.Flags().StringP("file", "f", "", "save output to file - specify path")
 }

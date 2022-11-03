@@ -1,0 +1,2 @@
+{"level":"fatal","time":"2022-11-03T12:39:48+06:00","message":"dial tcp 0.0.0.0:3434: connect: connection refused"}
+exit status 1

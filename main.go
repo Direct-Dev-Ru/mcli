@@ -6,9 +6,9 @@ Copyright © 2022 DIRECT-DEV.RU <INFO@DIRECT-DEV.RU>
 package main
 
 import (
+	"mcli/cmd"
 	"os"
 	"runtime/debug"
-	"supercli/cmd"
 	"time"
 
 	"github.com/rs/zerolog"
