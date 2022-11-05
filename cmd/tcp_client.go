@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -52,13 +53,15 @@ var clientCmd = &cobra.Command{
 			// Listening answer
 
 			// mes, err := ioutil.ReadAll(conn)
-
-			mes := make([]byte, 4096, 4096)
-			_, err := conn.Read(mes)
+			var outBuf bytes.Buffer
+			// mes := make([]byte, 4096, 4096)
+			_, err := io.Copy(&outBuf, conn)
+			// _, err := conn.Read(outBuf.Bytes())
 			if err != nil && err != io.EOF {
 				Elogger.Fatal().Msg(err.Error())
 			}
-			outServer := string(mes)
+			// outServer := string(mes)
+			outServer := outBuf.String()
 			outServer = strings.Trim(outServer, "\x00")
 			outServer = strings.Trim(outServer, "\r\n")
 			outServer = strings.Trim(outServer, "\n")
@@ -80,12 +83,17 @@ var clientCmd = &cobra.Command{
 				writer.Flush()
 
 				// Listening answer
-				mes := make([]byte, 4096, 4096)
-				_, err := conn.Read(mes)
+				// mes := make([]byte, 4096, 4096)
+				// _, err := conn.Read(mes)
+				var outBuf bytes.Buffer
+				// mes := make([]byte, 4096, 4096)
+				_, err := io.Copy(&outBuf, conn)
+
 				if err != nil && err != io.EOF {
 					Elogger.Fatal().Msg(err.Error())
 				}
-				outServer := string(mes)
+				// outServer := string(mes)
+				outServer := outBuf.String()
 				outServer = strings.Trim(outServer, "\x00")
 				outServer = strings.Trim(outServer, "\r\n")
 				outServer = strings.Trim(outServer, "\n")
