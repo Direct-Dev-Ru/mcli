@@ -1,4 +1,4 @@
-package httpclient
+package mclihttp
 
 import (
 	"fmt"
@@ -11,7 +11,10 @@ func init() {
 
 	http.HandleFunc("/html",
 		func(writer http.ResponseWriter, request *http.Request) {
-			http.ServeFile(writer, request, "./index.html")
+			// ex, _ := os.Executable()
+
+			// fmt.Println(runtime.Caller(0))
+			http.ServeFile(writer, request, "./public/index.html")
 		})
 
 	http.HandleFunc("/service/exit",

@@ -12,10 +12,9 @@
       "mode": "debug",
       // "args": ["tcp", "pscan", "-m", "192.168.87.8/32", "-r", "440-445"],
       // "args": ["tcp", "client", "-p", "30022", "-m", "ls"],
-      "args": ["tcp", "nc", "-p", "30022"],
+      "args": ["tcp", "nc", "-p", "3333"],
       //"args": [],
-      "program": "main.go",
-      
+      "program": "main.go"
     }
   ]
 }

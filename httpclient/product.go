@@ -1,4 +1,4 @@
-package httpclient
+package mclihttpclient
 
 type Product struct {
 	Name, Category string

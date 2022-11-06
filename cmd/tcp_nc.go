@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -18,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func nc_1_handle(conn net.Conn) {
+func nc_1_handler(conn net.Conn) {
 
 	/*
 	 * Explicitly calling /bin/sh and using -i for interactive mode
@@ -74,7 +73,7 @@ func (foo *Flusher) Write(b []byte) (int, error) {
 	return count, err
 }
 
-func nc_2_handle(conn net.Conn) {
+func nc_2_handler(conn net.Conn) {
 	defer conn.Close()
 	var cmd *exec.Cmd
 	oss := runtime.GOOS
@@ -92,13 +91,10 @@ func nc_2_handle(conn net.Conn) {
 
 	if err := cmd.Run(); err != nil {
 		fmt.Println("while run command error occured :", err.Error())
-	} else {
-
 	}
-
 }
 
-func nc_3_handle(conn net.Conn) {
+func nc_3_handler(conn net.Conn) {
 
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
@@ -135,7 +131,14 @@ func nc_3_handle(conn net.Conn) {
 	} else {
 		conn.Write(outBuf.Bytes())
 	}
+}
 
+type handlerFunc func(conn net.Conn)
+
+var handlers = map[string]handlerFunc{
+	"handle-1": nc_1_handler,
+	"handle-2": nc_2_handler,
+	"handle-3": nc_3_handler,
 }
 
 // ncCmd represents the nc command
@@ -146,6 +149,7 @@ var ncCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		port, _ := cmd.Flags().GetString("port")
 		host, _ := cmd.Flags().GetString("host")
+		handlerName, _ := cmd.Flags().GetString("handler")
 		Ilogger.Trace().Msg(fmt.Sprintf("Port for nc server is %s", port))
 
 		listener, err := net.Listen("tcp", host+":"+port)
@@ -154,12 +158,18 @@ var ncCmd = &cobra.Command{
 		}
 		Ilogger.Info().Msg(fmt.Sprintf("Listening on %s:%s", host, port))
 
+		hl, ok := handlers[handlerName]
+
+		if !ok {
+			Elogger.Fatal().Msg("unable to handle request by handler : " + handlerName)
+		}
+
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
 				Elogger.Fatal().Msg("unable to accept connections: " + port + " " + err.Error())
 			}
-			go nc_3_handle(conn)
+			go hl(conn)
 		}
 	},
 }
@@ -171,4 +181,5 @@ func init() {
 
 	ncCmd.Flags().StringP("host", "n", "", "Specify (n)ode")
 	ncCmd.Flags().StringP("port", "p", "20001", "Specify (p)ort to listen")
+	ncCmd.Flags().StringP("handler", "l", "handle-3", "Specify hand(l)er to process requests")
 }

@@ -1,4 +1,4 @@
-package httpclient
+package mclihttp
 
 import (
 	"encoding/json"

@@ -1,4 +1,4 @@
-package httpclient
+package mclihttpclient
 
 import (
     "net/http"
