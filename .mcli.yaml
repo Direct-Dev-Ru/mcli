@@ -1,0 +1,9 @@
+common:
+  timeout: 1000
+  output-file: results.json
+  output-format: json
+http:
+  server:
+    port: 8088
+    static-path: http-static
+    static-prefix: static

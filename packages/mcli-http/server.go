@@ -5,21 +5,29 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 )
 
-func init() {
+func InitMainRoutes(sPath string, sPrefix string) {
 
-	http.HandleFunc("/html",
+	sPath = strings.TrimPrefix(sPath, "./")
+	sPath = strings.TrimSuffix(sPath, "/")
+	sPrefix = strings.TrimPrefix(sPrefix, "/")
+	sPrefix = strings.TrimSuffix(sPrefix, "/")
+
+	fileServer := http.FileServer(http.Dir("./" + sPath))
+	http.Handle("/"+sPrefix+"/", http.StripPrefix("/"+sPrefix, fileServer))
+
+	http.HandleFunc("/",
 		func(writer http.ResponseWriter, request *http.Request) {
 			// ex, _ := os.Executable()
-
 			// fmt.Println(runtime.Caller(0))
-			http.ServeFile(writer, request, "./public/index.html")
+			http.ServeFile(writer, request, "./"+sPath+"/html/index.html")
 		})
 
 	http.HandleFunc("/service/exit",
 		func(writer http.ResponseWriter, request *http.Request) {
-			fmt.Fprintf(writer, "Server is shutting down %s... /n", nil)
+			fmt.Println("Server is shutting down")
 			os.Exit(0)
 		})
 
