@@ -1,7 +1,7 @@
 package mclihttp
 
 import (
-	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -9,34 +9,31 @@ import (
 )
 
 func handleJsonRequest(w http.ResponseWriter, request *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	url, err := request.URL.Parse(request.RequestURI)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		RenderErrorJSON(w, err)
 		return
 	}
 	log.Println(url)
 	q := url.Query()
 
 	if path := q.Get("path"); path != "" {
-		// expath, _ := os.Executable()
-		log.Println(path)
+
 		files, err := os.ReadDir(path)
 		if err != nil {
-			log.Fatal(err)
+			RenderErrorJSON(w, err)
+			return
 		}
-		dirfiles := make([]string, 0, 10)
 
+		dirfiles := make([]string, 0, 10)
 		for _, file := range files {
 			if !file.IsDir() && !strings.HasSuffix(strings.ToLower(file.Name()), ".exe") {
 				dirfiles = append(dirfiles, file.Name())
 			}
 		}
-
-		json.NewEncoder(w).Encode(dirfiles)
+		RenderJSON(w, dirfiles, true)
 	} else {
-		json.NewEncoder(w).Encode("no path specified")
+		RenderErrorJSON(w, errors.New("no path specified"))
 	}
 
 }

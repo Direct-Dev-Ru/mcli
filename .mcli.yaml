@@ -1,9 +1,30 @@
+priority: 2
 common:
-  timeout: 1000
   output-file: results.json
   output-format: json
 http:
   server:
-    port: 8088
+    timeout: 3000
+    port: 
     static-path: http-static
     static-prefix: static
+  request:
+    timeout: 5000    
+    method: GET
+    url: http://localhost:1024/echo
+    headers:
+      "Content-Type": 
+        - application/json
+      "Access-Token": 
+        - superpuper_access_token
+      "Foo": 
+        - BarFoo
+        - FooBar
+    body: 
+      "access-token": superpuper_access_token
+      "username": 
+        notroot
+      "ids":
+        - 1001
+        - 1003
+        - 1004

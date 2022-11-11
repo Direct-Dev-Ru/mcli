@@ -1,0 +1,27 @@
+Content-Type: 
+  - application/json
+Access-Token: 
+  - superpuper_access_token"
+Foo: 
+  - Bar
+  - FooBar
+Accept: 
+  - text/html
+  - application/xhtml+xml
+  - application/xml
+  - application/json 
+  - image/avif
+  - image/webp
+Accept-Language: 
+  - en-us
+  - en-us
+  - ru-ru
+  - ru
+Accept-Encoding: 
+  - gzip
+  - deflate
+  - br
+Accept-Charset:
+  - ISO-8859-1
+  - utf-8
+

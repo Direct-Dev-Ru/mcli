@@ -26,16 +26,24 @@ type CommonData struct {
 
 type ConfigData struct {
 	Common struct {
-		Timeout      int    `yaml:"timeout"`
 		OutputFile   string `yaml:"output-file"`
 		OutputFormat string `yaml:"output-format"`
 	}
 
 	Http struct {
 		Server struct {
+			Timeout      int64  `yaml:"timeout"`
 			Port         string `yaml:"port"`
 			StaticPath   string `yaml:"static-path"`
 			StaticPrefix string `yaml:"static-prefix"`
+		}
+
+		Request struct {
+			Timeout int64                  `yaml:"timeout"`
+			Method  string                 `yaml:"method"`
+			URL     string                 `yaml:"url"`
+			Headers map[string][]string    `yaml:"headers"`
+			Body    map[string]interface{} `yaml:"body"`
 		}
 	}
 }
@@ -45,8 +53,11 @@ type InputData struct {
 	joinedInput string
 }
 
+// Global Vars
 var Ilogger, Elogger zerolog.Logger
 var ConfigPath string
+var Version string = "1.0.9"
+
 var RootPath string
 var Input InputData = InputData{inputSlice: []string{}, joinedInput: ""}
 

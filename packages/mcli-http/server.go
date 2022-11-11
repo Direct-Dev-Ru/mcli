@@ -18,12 +18,15 @@ func InitMainRoutes(sPath string, sPrefix string) {
 	fileServer := http.FileServer(http.Dir("./" + sPath))
 	http.Handle("/"+sPrefix+"/", http.StripPrefix("/"+sPrefix, fileServer))
 
-	http.HandleFunc("/",
-		func(writer http.ResponseWriter, request *http.Request) {
-			// ex, _ := os.Executable()
-			// fmt.Println(runtime.Caller(0))
-			http.ServeFile(writer, request, "./"+sPath+"/html/index.html")
-		})
+	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
+		// ex, _ := os.Executable()
+		// fmt.Println(runtime.Caller(0))
+		if request.URL.Path != "/" {
+			http.NotFound(writer, request)
+			return
+		}
+		http.ServeFile(writer, request, "./"+sPath+"/html/index.html")
+	})
 
 	http.HandleFunc("/service/exit",
 		func(writer http.ResponseWriter, request *http.Request) {
@@ -42,6 +45,7 @@ func InitMainRoutes(sPath string, sPrefix string) {
 			}
 			fmt.Fprintln(writer, "-----------------------")
 
+			defer request.Body.Close()
 			data, err := io.ReadAll(request.Body)
 
 			if err == nil {
