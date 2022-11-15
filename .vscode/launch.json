@@ -15,8 +15,8 @@
       // "args": ["tcp", "nc", "-p", "3333"],
       // "args": ["http", "-p", "8080"],
       // "args": ["http", "request", "-m", "GET", "--url", "http://localhost:8080/echo", "-s", "{\"h1\":[\"v1\"],\"h2\":[\"v2\",\"v3\"]}"],
-      "args": ["http", "request", "-m", "GET", "--url", "http://localhost:8080/echo", "-s", "./http-data/http-params/headers.json","-b", "./http-data/http-params/body.json" ],
-      //"args": [],
+      // "args": ["http", "request", "-m", "GET", "--url", "http://localhost:8080/echo", "-s", "./http-data/http-params/headers.json","-b", "./http-data/http-params/body.json" ],
+      "args": ["-a","10"],
       "program": "main.go"
     }
   ]

@@ -20,7 +20,7 @@ type bashHistEntry struct {
 	commandTime time.Time
 }
 
-func readBashHistory() []bashHistEntry {
+func readHistory() []bashHistEntry {
 	filepath := os.Getenv("HOME") + "/.bash_history"
 
 	file, err := os.Open(filepath)
@@ -80,21 +80,17 @@ func readBashHistory() []bashHistEntry {
 // }
 
 // viewCmd represents the view command
-var viewCmd = &cobra.Command{
-	Use:   "view",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+var historyCmd = &cobra.Command{
+	Use:   "history",
+	Short: "grep bash history",
+	Long: `Grep bash history. For example: mcli grep history --filter docker
+`,
 	Run: func(cmd *cobra.Command, args []string) {
 		// contents, _ := ioutil.ReadFile(os.Getenv("HOME") + "/.bash_history")
 
 		filter, _ := cmd.Flags().GetString("filter")
 		Ilogger.Trace().Msg("Filter is :" + filter)
-		for ind, entry := range readBashHistory() {
+		for ind, entry := range readHistory() {
 			cmd, tm := entry.commandText, entry.commandTime
 			if strings.Contains(cmd, filter) {
 				fmt.Println(ind, cmd, " | ", tm.Local().String(), " | ")
@@ -104,15 +100,6 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	histCmd.AddCommand(viewCmd)
-	viewCmd.Flags().String("filter", "", "filter for output")
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and view subcommands, e.g.:
-	// viewCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is cviewed directly, e.g.:
-	// viewCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	grepCmd.AddCommand(historyCmd)
+	historyCmd.Flags().String("filter", "", "filter for output")
 }

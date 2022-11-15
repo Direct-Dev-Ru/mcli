@@ -1,0 +1,10 @@
+  request:
+    timeout: 6000    
+    method: GET
+    baseURL: https://api.shodan.io    
+    url: 
+    headers:
+      "Content-Type": 
+        - application/json      
+    body: 
+      "access-token": HznwafLg7ejQTzo8u4Ky1JgCDgllE0k8      

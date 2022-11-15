@@ -8,10 +8,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
@@ -41,6 +45,7 @@ type ConfigData struct {
 		Request struct {
 			Timeout int64                  `yaml:"timeout"`
 			Method  string                 `yaml:"method"`
+			BaseURL string                 `yaml:"baseURL"`
 			URL     string                 `yaml:"url"`
 			Headers map[string][]string    `yaml:"headers"`
 			Body    map[string]interface{} `yaml:"body"`
@@ -66,9 +71,86 @@ var Config ConfigData = ConfigData{}
 
 type runFunc func(cmd *cobra.Command, args []string)
 
+type SomeData struct {
+	payload int
+	err     error
+}
+type AccumData struct {
+	sync.Mutex
+	data map[string]SomeData
+}
+
+func set(newData *SomeData, wc chan *SomeData) {
+	wc <- newData
+}
+func get(rc chan *SomeData) *SomeData {
+	return <-rc
+}
+
+func monitor(rc chan *SomeData, wc chan *SomeData, db *AccumData) {
+	var someData *SomeData
+	defer fmt.Println("close monitor")
+	for {
+		select {
+		case newData := <-wc:
+			someData = newData
+			db.Lock()
+			db.data[strconv.Itoa(newData.payload)] = *newData
+			db.Unlock()
+			fmt.Printf("%d \n", someData.payload)
+		case rc <- someData:
+		}
+	}
+
+}
+
 var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	config, _ := cmd.Flags().GetString("config")
+	rootArgs, _ := cmd.Flags().GetString("root-args")
 	Ilogger.Info().Msg("Hello from Multy CLI. Config is " + config)
+
+	if len(args) == 0 {
+		args = strings.Fields(rootArgs)
+	}
+
+	n, err := strconv.Atoi(args[0])
+
+	if err != nil {
+		Elogger.Error().Msg("mcli: " + err.Error())
+		n, err = strconv.Atoi("3")
+	}
+
+	var readData = make(chan *SomeData)
+	var writeData = make(chan *SomeData)
+	var accuData *AccumData = &AccumData{
+		data: make(map[string]SomeData),
+	}
+
+	rand.Seed(time.Now().UnixNano())
+	go monitor(readData, writeData, accuData)
+
+	var w sync.WaitGroup
+
+	for r := 0; r < n; r++ {
+		w.Add(1)
+		go func() {
+			defer w.Done()
+			set(&SomeData{payload: rand.Intn(10 * n)}, writeData)
+		}()
+	}
+	w.Wait()
+
+	Ilogger.Trace().Msg(fmt.Sprintf("mcli: Last value : %v\n", get(readData).payload))
+	Ilogger.Trace().Msg(fmt.Sprintf("mcli: data : %v\n", accuData.data))
+
+	// closure variables - danger in gorutines
+	// for i := 1; i < 21; i++ {
+	// 	go func(i int) {
+	// 		fmt.Print(i, " ")
+	// 	}(i)
+	// }
+	// time.Sleep(2 * time.Second)
+	// fmt.Println()
 }
 
 // rootCmd represents the base command when cviewed without any subcommands
@@ -109,7 +191,7 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is cviewed directly.
-	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.Flags().StringP("root-args", "a", "", "args for root command")
 }
 
 func initConfig() {
@@ -160,7 +242,7 @@ func initConfig() {
 		Input.inputSlice = inputSlice
 		Input.joinedInput = joinedInput
 
-		// fmt.Println(Input)
+		// fmt.Println(Input.inputSlice)
 	}
 
 	// fmt.Println(info.Mode(), info.Name(), info.Size())

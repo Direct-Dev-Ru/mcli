@@ -10,7 +10,8 @@ http:
   request:
     timeout: 6000    
     method: GET
-    url: http://localhost:8088/echo
+    baseURL: http://localhost:8080
+    url: /echo
     headers:
       "Content-Type": 
         - application/json
@@ -21,8 +22,7 @@ http:
         - FooBar
     body: 
       "access-token": superpuper_access_token
-      "username": 
-        notroot
+      "username": notroot
       "ids":
         - 1001
         - 1003

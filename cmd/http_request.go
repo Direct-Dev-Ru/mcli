@@ -187,7 +187,7 @@ var requestCmd = &cobra.Command{
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		var method, url, headers, body string
+		var method, baseURL, url, headers, body string
 		var timeout int64 = 0
 		var mapHeaders map[string][]string
 		var mapBody map[string]interface{}
@@ -199,6 +199,7 @@ var requestCmd = &cobra.Command{
 		isMethodSet := cmd.Flags().Lookup("method").Changed
 
 		url, _ = cmd.Flags().GetString("url")
+		url = strings.TrimSpace(url)
 		isUrlSet := cmd.Flags().Lookup("url").Changed
 
 		headers, _ = cmd.Flags().GetString("headers")
@@ -215,7 +216,10 @@ var requestCmd = &cobra.Command{
 			timeout = Config.Http.Request.Timeout
 		}
 		if !isUrlSet && len(Config.Http.Request.URL) > 0 {
-			url = Config.Http.Request.URL
+			url = strings.TrimSpace(Config.Http.Request.URL)
+		}
+		if len(Config.Http.Request.BaseURL) > 0 {
+			baseURL = strings.TrimSpace(Config.Http.Request.BaseURL)
 		}
 
 		if !isBodySet && len(Config.Http.Request.Body) > 0 {
@@ -238,10 +242,11 @@ var requestCmd = &cobra.Command{
 			}
 		}
 
-		URL, err := UrlPackage.Parse(url)
+		URL, err := UrlPackage.Parse(baseURL + url)
 		if err != nil {
 			Elogger.Fatal().Msg(fmt.Sprintf("fatal error while parsing url: %v ", err.Error()))
 		}
+		fmt.Println(URL)
 		// URL.Path = UrlPackage.PathEscape(URL.Path)
 		// URL.RawQuery = UrlPackage.QueryEscape(URL.RawQuery)
 
