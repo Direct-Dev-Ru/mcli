@@ -73,7 +73,7 @@ type runFunc func(cmd *cobra.Command, args []string)
 
 type SomeData struct {
 	payload int
-	err     error
+	// err     error
 }
 type AccumData struct {
 	sync.Mutex
@@ -117,7 +117,7 @@ var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 
 	if err != nil {
 		Elogger.Error().Msg("mcli: " + err.Error())
-		n, err = strconv.Atoi("3")
+		n, _ = strconv.Atoi("3")
 	}
 
 	var readData = make(chan *SomeData)
@@ -203,7 +203,7 @@ func initConfig() {
 			configContent, err := os.ReadFile(configFile)
 
 			if err == nil {
-				err = yaml.Unmarshal(configContent, &Config)
+				_ = yaml.Unmarshal(configContent, &Config)
 			}
 			// fmt.Println("Configuration content :", string(configContent))
 			Ilogger.Trace().Msg(fmt.Sprint("Configuration struct :", Config))

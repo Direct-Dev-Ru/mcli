@@ -87,7 +87,7 @@ var httpCmd = &cobra.Command{
 		if err := srv.Shutdown(ctx); err != nil {
 			Elogger.Fatal().Msg(fmt.Sprintf("server shutdown failed:%+v", err))
 		}
-		Ilogger.Info().Msg(fmt.Sprintf("server exited properly"))
+		Ilogger.Info().Msg("server exited properly")
 	},
 }
 

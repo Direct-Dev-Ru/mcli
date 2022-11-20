@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -20,17 +19,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func httpRequestReadBody(rc io.ReadCloser) (string, error) {
-	data, err := io.ReadAll(rc)
-	if err == nil {
-		defer rc.Close()
-		strBody, err := UrlPackage.QueryUnescape(string(data))
-		if err == nil {
-			return strBody, nil
-		}
-	}
-	return "", err
-}
+// func httpRequestReadBody(rc io.ReadCloser) (string, error) {
+// 	data, err := io.ReadAll(rc)
+// 	if err == nil {
+// 		defer rc.Close()
+// 		strBody, err := UrlPackage.QueryUnescape(string(data))
+// 		if err == nil {
+// 			return strBody, nil
+// 		}
+// 	}
+// 	return "", err
+// }
 
 type httpRequestOpts struct {
 	timeout             int64
@@ -51,6 +50,9 @@ func httpRequestDo(method, url string, opts *httpRequestOpts) (*http.Response, e
 	body := opts.body
 	var builder strings.Builder
 	err = json.NewEncoder(&builder).Encode(body)
+	if err != nil {
+		return nil, err
+	}
 
 	req, err = http.NewRequest(method, url, io.NopCloser(strings.NewReader(builder.String())))
 
@@ -152,7 +154,6 @@ func bodyParser(body string) (bodyData map[string]interface{}, err error) {
 
 	isFile := ext == ".json" || ext == ".yaml" || ext == ".yml" || ext == ".form"
 
-	bodyData = make(map[string]interface{})
 	var bs interface{}
 
 	if isFile && (ext == ".yaml" || ext == ".yml") {
