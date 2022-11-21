@@ -97,7 +97,7 @@ func monitor(rc chan *SomeData, wc chan *SomeData, db *AccumData) {
 			db.Lock()
 			db.data[strconv.Itoa(newData.payload)] = *newData
 			db.Unlock()
-			fmt.Printf("%d \n", someData.payload)
+			// fmt.Printf("%d \n", someData.payload)
 		case rc <- someData:
 		}
 	}
@@ -112,8 +112,10 @@ var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	if len(args) == 0 {
 		args = strings.Fields(rootArgs)
 	}
-
-	n, err := strconv.Atoi(args[0])
+	n, err := strconv.Atoi("3")
+	if len(args) > 0 {
+		n, err = strconv.Atoi(args[0])
+	}
 
 	if err != nil {
 		Elogger.Error().Msg("mcli: " + err.Error())
@@ -241,8 +243,9 @@ func initConfig() {
 		joinedInput = strings.ReplaceAll(joinedInput, "\n", "")
 		Input.inputSlice = inputSlice
 		Input.joinedInput = joinedInput
-
-		// fmt.Println(Input.inputSlice)
+		if len(Input.inputSlice) > 0 {
+			Ilogger.Trace().Msg(fmt.Sprintf("\n%v\n", Input.inputSlice))
+		}
 	}
 
 	// fmt.Println(info.Mode(), info.Name(), info.Size())
