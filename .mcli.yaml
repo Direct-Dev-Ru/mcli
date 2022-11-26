@@ -4,9 +4,9 @@ common:
 secrets:
   common:
     use-words: false
-    vault-path: "{{$HOME}}/.mcli/secrets/defvault"
-    keyfile-path: "{{$HOME}}/.ssh/id_rsa"
-    dict-path: "{{$RootPath$}}/pwdgen/freqrnc2011.csv"    
+    vault-path: {{$HomeDir$}}/.mcli/secrets/defvault
+    keyfile-path: {{$HomeDir$}}/.ssh/id_rsa
+    dict-path: {{$RootPath$}}/pwdgen/freqrnc2011.csv
     min-lenght: 14
     max-lenght: 32
 http:

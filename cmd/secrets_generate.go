@@ -5,8 +5,6 @@ package cmd
 
 import (
 	"bufio"
-	"encoding/csv"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -18,37 +16,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func readCsv(path string) (map[string][]string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, errors.New("cannot open CSV file:" + err.Error())
-	}
-	defer file.Close()
-	reader := csv.NewReader(file)
-	reader.Comma = '\t'
-	rows, err := reader.ReadAll()
-	if err != nil {
-		return nil, errors.New("cannot open CSV file:" + err.Error())
-	}
-	result := make(map[string][]string)
-
-	for _, row := range rows {
-
-		if len(row) == 1 {
-			row = strings.Fields(row[0])
-		}
-
-		if len(row) >= 2 {
-			s := strings.TrimSpace(row[0])
-			if len(s) > 3 && !strings.Contains(s, "-") {
-				result[row[1]] = append(result[row[1]], strings.TrimSpace(row[0]))
-			}
-		}
-	}
-
-	return result, nil
-}
-
 // generateCmd represents the generate command
 var generateCmd = &cobra.Command{
 	Use:   "generate",
@@ -57,6 +24,8 @@ var generateCmd = &cobra.Command{
 For example: mcli secrets generate --use-words 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
+		var LineBreak string = GlobalMap["LineBreak"]
+
 		var useWords bool
 		var dictPath, vaultPath, keyFilePath string
 		var minLength, maxLength int
@@ -74,7 +43,7 @@ For example: mcli secrets generate --use-words
 		}
 		vaultPath, _ = cmd.Flags().GetString("vault-path")
 		isVaultPathSet := cmd.Flags().Lookup("vault-path").Changed
-		fmt.Println(vaultPath, isVaultPathSet, Config.Secrets.Common.VaultPath)
+		// fmt.Println(vaultPath, isVaultPathSet, Config.Secrets.Common.VaultPath)
 		if !isVaultPathSet && len(Config.Secrets.Common.VaultPath) > 0 {
 			vaultPath = Config.Secrets.Common.VaultPath
 		}
@@ -119,14 +88,14 @@ For example: mcli secrets generate --use-words
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Print("Please enter secret name: ")
 			name, _ := reader.ReadString('\n')
-			name = strings.TrimSuffix(name, "\n")
+			name = strings.TrimSuffix(name, LineBreak)
 			fmt.Print("Please enter secret login: ")
 			login, _ := reader.ReadString('\n')
-			login = strings.TrimSuffix(login, "\n")
+			login = strings.TrimSuffix(login, LineBreak)
 
 			fmt.Print("Please enter secret description: ")
 			descr, _ := reader.ReadString('\n')
-			descr = strings.TrimSuffix(descr, "\n")
+			descr = strings.TrimSuffix(descr, LineBreak)
 
 			if useWords {
 				phrase, err = mcli_crypto.GeneratePassPhrase(dictPath, runesReplaces)
@@ -139,7 +108,7 @@ For example: mcli secrets generate --use-words
 
 			fmt.Print("Suggested secret " + phrase + " (enter another if you want): ")
 			ownSecret, _ := reader.ReadString('\n')
-			if ownSecret != "\n" {
+			if ownSecret != LineBreak {
 				fmt.Print("Retype your own secret: ")
 				reOwnSecret, _ := reader.ReadString('\n')
 				if ownSecret != reOwnSecret {
@@ -156,7 +125,7 @@ For example: mcli secrets generate --use-words
 					fmt.Println("Secret too slow - Good buy !!! (please generate in you mind more complex secret )")
 					Elogger.Fatal().Msg("mcli secrets: secret too easy - Good buy !!! (please generate in you mind more complex secret )")
 				}
-				phrase = strings.TrimSuffix(ownSecret, "\n")
+				phrase = strings.TrimSuffix(ownSecret, LineBreak)
 			}
 			nowTime := time.Now()
 
@@ -164,9 +133,9 @@ For example: mcli secrets generate --use-words
 
 			fmt.Print("Store Secret Enrty to Secret Vault? Enter yes or no: ")
 			cmd, _ := reader.ReadString('\n')
-			cmd = strings.TrimSuffix(cmd, "\n")
+			cmd = strings.TrimSuffix(cmd, LineBreak)
 			cmd = strings.ToLower(cmd)
-			// if cmd = "y" || cmd = "yes" || "д" || cmd = "да" || cmd = "да"
+
 			if strings.Contains("y да yes д ", cmd+" ") {
 
 				fmt.Println(secretEntry)
@@ -179,9 +148,10 @@ For example: mcli secrets generate --use-words
 
 			fmt.Print("Enter (q)uit to quit generation or any key to continue: ")
 			cmd, _ = reader.ReadString('\n')
+			cmd = strings.TrimSuffix(cmd, LineBreak)
 			// runeCmd := []rune(cmd)
 
-			if !(cmd == "quit\n" || cmd == "q\n") {
+			if !(cmd == "quit" || cmd == "q") {
 				continue
 			} else {
 				break
@@ -205,8 +175,8 @@ func init() {
 	secretsCmd.AddCommand(generateCmd)
 
 	generateCmd.Flags().StringP("dict-path", "d", "", "path to csv word dictionary")
-	generateCmd.Flags().StringP("vault-path", "v", os.Getenv("HOME")+"/.mcli/secrets/defvault", "path to vault")
-	generateCmd.Flags().StringP("keyfile-path", "k", "/dev/random", "path to file to get vault key or /dev/random to get random key")
+	generateCmd.Flags().StringP("vault-path", "v", GlobalMap["HomeDir"]+"/.mcli/secrets/defvault", "path to vault")
+	generateCmd.Flags().StringP("keyfile-path", "k", "random", "path to file to get vault key or /dev/random to get random key")
 	generateCmd.Flags().BoolP("use-words", "w", false, "generate by russian words toggle")
 	generateCmd.Flags().IntP("min-length", "m", 8, "min length of password (affected then use-words eq false )")
 	generateCmd.Flags().IntP("max-length", "x", 24, "max length of password (affected then use-words eq false )")

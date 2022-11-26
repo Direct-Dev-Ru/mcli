@@ -10,9 +10,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
-	"path"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -24,34 +22,6 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
-
-type InputData struct {
-	inputSlice  []string
-	joinedInput string
-}
-
-// Global Vars
-var Ilogger, Elogger zerolog.Logger
-var ConfigPath string
-var RootPath string
-var GlobalMap map[string]string = make(map[string]string)
-
-var Version string = "1.0.9"
-var Input InputData = InputData{inputSlice: []string{}, joinedInput: ""}
-
-// var Config map[string]interface{}
-var Config ConfigData = ConfigData{}
-
-type runFunc func(cmd *cobra.Command, args []string)
-
-type SomeData struct {
-	payload int
-	// err     error
-}
-type AccumData struct {
-	sync.Mutex
-	data map[string]SomeData
-}
 
 func set(newData *SomeData, wc chan *SomeData) {
 	wc <- newData
@@ -77,6 +47,7 @@ func monitor(rc chan *SomeData, wc chan *SomeData, db *AccumData) {
 
 }
 
+var Config ConfigData = ConfigData{}
 var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	config, _ := cmd.Flags().GetString("config")
 	rootArgs, _ := cmd.Flags().GetString("root-args")
@@ -150,20 +121,6 @@ func Execute(loggers []zerolog.Logger) {
 	}
 }
 
-func init() {
-
-	cobra.OnInitialize(initConfig)
-
-	_, callerPath, _, _ := runtime.Caller(0)
-	RootPath = path.Dir(path.Dir(callerPath))
-	GlobalMap["RootPath"] = RootPath
-
-	rootCmd.PersistentFlags().StringVar(&ConfigPath, "config", RootPath+"/.mcli.yaml",
-		"specify config file - default "+RootPath+"/.mcli.yaml")
-
-	rootCmd.Flags().StringP("root-args", "a", "", "args for root command")
-}
-
 func initConfig() {
 
 	// Check if piped to StdIn
@@ -225,7 +182,10 @@ func initConfig() {
 			}
 
 			if err == nil {
-				_ = yaml.Unmarshal([]byte(configContentString), &Config)
+				err = yaml.Unmarshal([]byte(configContentString), &Config)
+				if err != nil {
+					Elogger.Fatal().Msg(err.Error())
+				}
 			}
 			// fmt.Println("Configuration content :", string(configContent))
 			Ilogger.Trace().Msg(fmt.Sprint("Configuration struct :", Config))

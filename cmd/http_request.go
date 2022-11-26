@@ -247,7 +247,7 @@ var requestCmd = &cobra.Command{
 		if err != nil {
 			Elogger.Fatal().Msg(fmt.Sprintf("fatal error while parsing url: %v ", err.Error()))
 		}
-		fmt.Println(URL)
+		// fmt.Println(URL)
 		// URL.Path = UrlPackage.PathEscape(URL.Path)
 		// URL.RawQuery = UrlPackage.QueryEscape(URL.RawQuery)
 
