@@ -11,47 +11,19 @@ import (
 	"math/rand"
 	"os"
 	"path"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	mcli_utils "mcli/packages/mcli-utils"
+
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
-
-type CommonData struct {
-	Timeout      int    `yaml:"timeout"`
-	OutputFile   string `yaml:"output-file"`
-	OutputFormat string `yaml:"output-format"`
-}
-
-type ConfigData struct {
-	Common struct {
-		OutputFile   string `yaml:"output-file"`
-		OutputFormat string `yaml:"output-format"`
-	}
-
-	Http struct {
-		Server struct {
-			Timeout      int64  `yaml:"timeout"`
-			Port         string `yaml:"port"`
-			StaticPath   string `yaml:"static-path"`
-			StaticPrefix string `yaml:"static-prefix"`
-		}
-
-		Request struct {
-			Timeout int64                  `yaml:"timeout"`
-			Method  string                 `yaml:"method"`
-			BaseURL string                 `yaml:"baseURL"`
-			URL     string                 `yaml:"url"`
-			Headers map[string][]string    `yaml:"headers"`
-			Body    map[string]interface{} `yaml:"body"`
-		}
-	}
-}
 
 type InputData struct {
 	inputSlice  []string
@@ -61,9 +33,10 @@ type InputData struct {
 // Global Vars
 var Ilogger, Elogger zerolog.Logger
 var ConfigPath string
-var Version string = "1.0.9"
-
 var RootPath string
+var GlobalMap map[string]string = make(map[string]string)
+
+var Version string = "1.0.9"
 var Input InputData = InputData{inputSlice: []string{}, joinedInput: ""}
 
 // var Config map[string]interface{}
@@ -179,46 +152,22 @@ func Execute(loggers []zerolog.Logger) {
 
 func init() {
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
 	cobra.OnInitialize(initConfig)
+
 	_, callerPath, _, _ := runtime.Caller(0)
 	RootPath = path.Dir(path.Dir(callerPath))
-	// fmt.Fprintln(os.Stdout, RootPath)
+	GlobalMap["RootPath"] = RootPath
 
-	// rootCmd.PersistentFlags().StringVar(&ConfigPath, "config", os.Getenv("HOME")+"/.mcli.yaml", "specify config file - default $HOME/.mcli.yaml")
 	rootCmd.PersistentFlags().StringVar(&ConfigPath, "config", RootPath+"/.mcli.yaml",
 		"specify config file - default "+RootPath+"/.mcli.yaml")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is cviewed directly.
 	rootCmd.Flags().StringP("root-args", "a", "", "args for root command")
 }
 
 func initConfig() {
-	configFile, _ := rootCmd.Flags().GetString("config")
-	if configFile != "" {
-		Ilogger.Trace().Msg(fmt.Sprint("parsing config file:", configFile))
-
-		if _, err := os.Stat(configFile); err == nil {
-			configContent, err := os.ReadFile(configFile)
-
-			if err == nil {
-				_ = yaml.Unmarshal(configContent, &Config)
-			}
-			// fmt.Println("Configuration content :", string(configContent))
-			Ilogger.Trace().Msg(fmt.Sprint("Configuration struct :", Config))
-		} else if errors.Is(err, os.ErrNotExist) {
-			Ilogger.Trace().Msg("config file " + configFile + " does not exist")
-		} else {
-			Elogger.Trace().Msg("config file detect error " + err.Error())
-		}
-	}
 
 	// Check if piped to StdIn
 	info, _ := os.Stdin.Stat()
-
 	if (info.Mode()&os.ModeNamedPipe) == os.ModeNamedPipe || info.Size() > 0 {
 
 		var inputSlice []string = []string{}
@@ -245,6 +194,45 @@ func initConfig() {
 		Input.joinedInput = joinedInput
 		if len(Input.inputSlice) > 0 {
 			Ilogger.Trace().Msg(fmt.Sprintf("\n%v\n", Input.inputSlice))
+		}
+	}
+
+	// read config
+	configFile, _ := rootCmd.Flags().GetString("config")
+	if configFile != "" {
+		Ilogger.Trace().Msg(fmt.Sprint("parsing config file:", configFile))
+
+		if _, err := os.Stat(configFile); err == nil {
+			configContent, err := os.ReadFile(configFile)
+			configContentString := string(configContent)
+
+			templateRegExp := regexp.MustCompile(`{{\$.+?}}`)
+			allVarsEntries := mcli_utils.RemoveDuplicatesStr(templateRegExp.FindAllString(configContentString, -1))
+			for _, varEntry := range allVarsEntries {
+				// fmt.Println(varEntry)
+				if strings.HasSuffix(varEntry, "$}}") {
+
+					mapkey := strings.ReplaceAll(varEntry, "{{$", "")
+					mapkey = strings.ReplaceAll(mapkey, "$}}", "")
+					configContentString = strings.ReplaceAll(configContentString, varEntry, GlobalMap[mapkey])
+				}
+				if strings.HasSuffix(varEntry, "}}") && !strings.HasSuffix(varEntry, "$}}") {
+
+					osEnv := strings.ReplaceAll(varEntry, "{{$", "")
+					osEnv = strings.ReplaceAll(osEnv, "}}", "")
+					configContentString = strings.ReplaceAll(configContentString, varEntry, os.Getenv(osEnv))
+				}
+			}
+
+			if err == nil {
+				_ = yaml.Unmarshal([]byte(configContentString), &Config)
+			}
+			// fmt.Println("Configuration content :", string(configContent))
+			Ilogger.Trace().Msg(fmt.Sprint("Configuration struct :", Config))
+		} else if errors.Is(err, os.ErrNotExist) {
+			Ilogger.Trace().Msg("config file " + configFile + " does not exist")
+		} else {
+			Elogger.Trace().Msg("config file detect error " + err.Error())
 		}
 	}
 

@@ -9,6 +9,7 @@ import (
 	"mcli/cmd"
 	"os"
 	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -22,8 +23,8 @@ func main() {
 	elogger := zerolog.New(os.Stderr).Level(zerolog.ErrorLevel).With().Timestamp().Logger()
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	elogger.Level(zerolog.ErrorLevel)
-
-	if os.Getenv("DEBUG") == "true" {
+	ENV_DEBUG := strings.ToLower(os.Getenv("DEBUG"))
+	if ENV_DEBUG == "true" {
 		zerolog.SetGlobalLevel(zerolog.TraceLevel)
 		buildInfo, _ := debug.ReadBuildInfo()
 

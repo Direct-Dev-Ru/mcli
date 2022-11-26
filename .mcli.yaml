@@ -1,26 +1,34 @@
 common:
   output-file: results.json
   output-format: json
+secrets:
+  common:
+    use-words: false
+    vault-path: "{{$HOME}}/.mcli/secrets/defvault"
+    keyfile-path: "{{$HOME}}/.ssh/id_rsa"
+    dict-path: "{{$RootPath$}}/pwdgen/freqrnc2011.csv"    
+    min-lenght: 14
+    max-lenght: 32
 http:
   server:
     timeout: 3000
-    port: 
+    port:
     static-path: http-static
     static-prefix: static
   request:
-    timeout: 6000    
+    timeout: 6000
     method: GET
     baseURL: http://localhost:8080
     url: /echo
     headers:
-      "Content-Type": 
+      "Content-Type":
         - application/json
-      "Access-Token": 
+      "Access-Token":
         - superpuper_access_token
-      "Foo": 
+      "Foo":
         - BarFoo
         - FooBar
-    body: 
+    body:
       "access-token": superpuper_access_token
       "username": notroot
       "ids":
