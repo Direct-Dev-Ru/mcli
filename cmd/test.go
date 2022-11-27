@@ -7,8 +7,9 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
+
+	mcli_fs "mcli/packages/mcli-filesystem"
 
 	"github.com/spf13/cobra"
 )
@@ -32,18 +33,28 @@ var testCmd = &cobra.Command{
 		// 	fmt.Println(val)
 		// }
 
-		cmdSh := &exec.Cmd{
-			Path:   "./script.sh",
-			Args:   []string{"./script.sh"},
-			Stdout: os.Stdout,
-			Stderr: os.Stderr,
-		}
+		// cmdSh := &exec.Cmd{
+		// 	Path:   "./script.sh",
+		// 	Args:   []string{"./script.sh"},
+		// 	Stdout: os.Stdout,
+		// 	Stderr: os.Stderr,
+		// }
 
-		// run command
-		if err := cmdSh.Run(); err != nil {
-			fmt.Println("Error:", err)
-		}
+		// // run command
+		// if err := cmdSh.Run(); err != nil {
+		// 	fmt.Println("Error:", err)
+		// }
 
+		f, closer, err := mcli_fs.GetFileOrCreate("file.tmp")
+		defer closer()
+		if err != nil {
+			Elogger.Fatal().Msg(err.Error())
+		}
+		n, err := f.WriteString("test string")
+		if err != nil {
+			Elogger.Fatal().Msg(err.Error())
+		}
+		Ilogger.Info().Msg(fmt.Sprintf("%d bytes written", n))
 	},
 }
 
