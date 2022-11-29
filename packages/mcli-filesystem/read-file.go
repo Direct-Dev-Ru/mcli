@@ -4,13 +4,13 @@ import "io"
 
 // https://www.devdungeon.com/content/working-files-go
 
-type GetFileContentHandler func(string) ([]byte, error)
+type GetFileContentType func(string) ([]byte, error)
 
-var GetFile GetFileContentHandler = func(string) ([]byte, error) {
+var GetFile GetFileContentType = func(string) ([]byte, error) {
 	return nil, nil
 }
 
-func (gc GetFileContentHandler) GetContent(filePath string) ([]byte, error) {
+func (gc GetFileContentType) GetContent(filePath string) ([]byte, error) {
 	f, closer, err := getFileForR(filePath)
 	if err != nil {
 		return nil, err

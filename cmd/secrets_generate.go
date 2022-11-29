@@ -11,7 +11,6 @@ import (
 	"time"
 
 	mcli_crypto "mcli/packages/mcli-crypto"
-	mcli_fs "mcli/packages/mcli-filesystem"
 	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/spf13/cobra"
@@ -73,7 +72,7 @@ For example: mcli secrets generate --use-words
 		runesReplaces[1] = mcli_crypto.ReplaceEntry{OriginRune: 'А', ReplaceRune: '@', Number: 1}
 		runesReplaces[2] = mcli_crypto.ReplaceEntry{OriginRune: 'О', ReplaceRune: '0', Number: 1}
 
-		secretStore := mcli_crypto.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile, nil, nil)
+		// secretStore := mcli_crypto.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile, nil, nil)
 
 		var phrase string
 		var err error

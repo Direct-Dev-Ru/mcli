@@ -4,7 +4,29 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+
+	"golang.org/x/crypto/scrypt"
 )
+
+type AesCypherType func(opts any) AesCypherType
+
+var AesCypher AesCypherType = func(opts any) AesCypherType { return func(opts any) }
+
+func DeriveKey(password, salt []byte) ([]byte, []byte, error) {
+	if salt == nil {
+		salt = make([]byte, 32)
+		if _, err := rand.Read(salt); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	key, err := scrypt.Key(password, salt, 1048576, 8, 1, 32)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return key, salt, nil
+}
 
 func Encrypt(key, data []byte) ([]byte, error) {
 	blockCipher, err := aes.NewCipher(key)
