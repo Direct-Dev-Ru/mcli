@@ -61,7 +61,7 @@ func GeneratePassPhrase(wordsListPath string, replaces []ReplaceEntry) (string, 
 		string(append([]rune{unicode.ToUpper(adv[0])}, adv[1:]...)),
 		string(append([]rune{unicode.ToUpper(v[0])}, v[1:]...)))
 	// Process replacements
-	if replaces != nil && len(replaces) > 0 {
+	if len(replaces) > 0 {
 		for _, r := range replaces {
 			phrase = strings.Replace(phrase, string(r.OriginRune), string(r.ReplaceRune), r.Number)
 		}

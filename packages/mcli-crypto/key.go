@@ -2,9 +2,7 @@ package mclicrypto
 
 import (
 	"crypto/rand"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 )
 
@@ -25,12 +23,13 @@ func GetKeyFromFile(path string) (theKey []byte, err error) {
 	var rawKey []byte
 	_, err = os.Stat(keyPath)
 	if err == nil {
-		rawKey, err = ioutil.ReadFile(keyPath)
+		rawKey, err = os.ReadFile(keyPath)
+
 		theKey = SHA_256(string(rawKey))
 	} else if os.IsNotExist(err) {
-		err = errors.New(fmt.Sprintf("file %s does not exists: %v", keyPath, err))
+		err = fmt.Errorf(fmt.Sprintf("file %s does not exists: %v", keyPath, err))
 	} else {
-		err = errors.New(fmt.Sprintf("file %s stat error: %v", keyPath, err))
+		err = fmt.Errorf(fmt.Sprintf("file %s stat error: %v", keyPath, err))
 	}
 
 	return

@@ -10,9 +10,13 @@ import (
 
 type AesCypherType func(opts any) AesCypherType
 
-var AesCypher AesCypherType = func(opts any) AesCypherType { return func(opts any) }
+func AesCypherDefault(opts any) AesCypherType {
+	return AesCypherDefault
+}
 
-func DeriveKey(password, salt []byte) ([]byte, []byte, error) {
+var AesCypher AesCypherType = AesCypherDefault
+
+func (aesct AesCypherType) DeriveKey(password, salt []byte) ([]byte, []byte, error) {
 	if salt == nil {
 		salt = make([]byte, 32)
 		if _, err := rand.Read(salt); err != nil {
@@ -28,7 +32,7 @@ func DeriveKey(password, salt []byte) ([]byte, []byte, error) {
 	return key, salt, nil
 }
 
-func Encrypt(key, data []byte) ([]byte, error) {
+func (aesct AesCypherType) Encrypt(key, data []byte) ([]byte, error) {
 	blockCipher, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -49,7 +53,7 @@ func Encrypt(key, data []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-func Decrypt(key, data []byte) ([]byte, error) {
+func (aesct AesCypherType) Decrypt(key, data []byte) ([]byte, error) {
 	blockCipher, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
