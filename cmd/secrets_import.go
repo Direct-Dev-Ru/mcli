@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -64,17 +63,17 @@ var importCmd = &cobra.Command{
 			key, err = mcli_crypto.GetKeyFromString(Input.joinedInput)
 		case "/ask":
 			reader := bufio.NewReader(os.Stdin)
-			fmt.Print(ColorBlue + "your key: " + ColorReset)
+			fmt.Print(ColorGreen + "your key: " + ColorReset)
 			keyString, _ := reader.ReadString('\n')
 			if keyString == LineBreak {
-				fmt.Print(ColorBlue + "your key: " + ColorReset)
+				fmt.Print(ColorYellow + "your key: " + ColorReset)
 				keyString, _ = reader.ReadString('\n')
 				if keyString == LineBreak {
-					fmt.Print(ColorRed + "Empty key privided ... Good luck" + ColorReset)
+					fmt.Println(ColorRed + "Empty key provided ... Good luck" + ColorReset)
 					Elogger.Fatal().Msg("mcli secrets import: key is empty from keyboard")
 				}
-				key, err = mcli_crypto.GetKeyFromString(keyString)
 			}
+			key, err = mcli_crypto.GetKeyFromString(keyString)
 		default:
 			key, err = sourceStore.Cypher.GetKey(importkey_path, false)
 		}

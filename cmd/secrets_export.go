@@ -1,15 +1,16 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	mcli_crypto "mcli/packages/mcli-crypto"
 	mcli_fs "mcli/packages/mcli-filesystem"
 	mcli_secrets "mcli/packages/mcli-secrets"
 	"os"
+	"regexp"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -25,7 +26,7 @@ var exportCmd = &cobra.Command{
 	Or you can use stdin for key definition
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-
+		var LineBreak string = GlobalMap["LineBreak"]
 		var vaultPath, expvault_path, keyFilePath, destkey_path string
 
 		vaultPath, _ = cmd.Flags().GetString("vault-path")
@@ -39,8 +40,8 @@ var exportCmd = &cobra.Command{
 			keyFilePath = Config.Secrets.Common.KeyFilePath
 		}
 
-		destkey_path, _ = cmd.Flags().GetString("destkey-path")
-		expvault_path, _ = cmd.Flags().GetString("expvault-path")
+		destkey_path, _ = cmd.Flags().GetString("exportkey-path")
+		expvault_path, _ = cmd.Flags().GetString("destvault-path")
 
 		var key []byte
 		var err error
@@ -52,7 +53,36 @@ var exportCmd = &cobra.Command{
 		case "/input":
 			key, err = mcli_crypto.GetKeyFromString(Input.joinedInput)
 		case "/ask":
-			key, err = mcli_crypto.GetKeyFromString(Input.joinedInput)
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print(ColorGreen + "your key: " + ColorReset)
+			keyString, _ := reader.ReadString('\n')
+			if keyString == LineBreak {
+				fmt.Print(ColorYellow + "your key: " + ColorReset)
+				keyString, _ = reader.ReadString('\n')
+				if keyString == LineBreak {
+					fmt.Println(ColorRed + "Empty key provided ... Good luck" + ColorReset)
+					Elogger.Fatal().Msg("mcli secrets import: key is empty from keyboard")
+				}
+			}
+
+			secure := true
+			tests := []string{".{8,}", "[a-z]{3,}", "[A-Z]", "[0-9]", "[^\\d\\w]"}
+			for _, test := range tests {
+				t, _ := regexp.MatchString(test, keyString)
+				if !t {
+					secure = false
+					break
+				}
+			}
+
+			if !secure {
+				Elogger.Fatal().Msgf("your key is too weak - at least 8 simbols with digits and spesial simbols")
+			}
+			key, err = mcli_crypto.GetKeyFromString(keyString)
+
+			if err != nil {
+				Elogger.Fatal().Msgf("get key error: %v", err)
+			}
 		default:
 			key, err = secretStore.Cypher.GetKey(destkey_path, false)
 		}
@@ -73,6 +103,9 @@ var exportCmd = &cobra.Command{
 			secretStore.Secrets = filteredSecrets
 		}
 		encData, err := secretStore.GetEncContent(key)
+		if err != nil {
+			Elogger.Fatal().Msg(err.Error())
+		}
 		if expvault_path == "/stdout" || len(expvault_path) == 0 {
 			fmt.Println(string(encData))
 		} else {
@@ -86,7 +119,7 @@ func init() {
 	secretsCmd.AddCommand(exportCmd)
 
 	exportCmd.Flags().StringP("vault-path", "v", GlobalMap["HomeDir"]+"/.mcli/secrets/defvault", "path to source secret vault")
-	exportCmd.Flags().StringP("expvault-path", "e", "/stdout", "path to destination secret vault or /stdout to out into terminal")
+	exportCmd.Flags().StringP("destvault-path", "d", "/stdout", "path to destination secret vault or /stdout to out into terminal")
 	exportCmd.Flags().StringP("keyfile-path", "k", "", "path to file to get access key of source secret vault")
-	exportCmd.Flags().StringP("destkey-path", "d", "/input", "path to file to get access key of dest secret vault(or /input or /ask")
+	exportCmd.Flags().StringP("exportkey-path", "e", "/input", "path to file to get access key of dest secret vault(or /input or /ask")
 }

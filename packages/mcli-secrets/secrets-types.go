@@ -182,5 +182,6 @@ func (ses *SecretsEntries) GetFromEncContent(content []byte, key []byte) error {
 	if err != nil {
 		return fmt.Errorf("decrypting fault: %v", err)
 	}
-	ses.Srl.Unmarshal(storeContent, &ses.Secrets)
+	return ses.Srl.Unmarshal(storeContent, &ses.Secrets)
+
 }
