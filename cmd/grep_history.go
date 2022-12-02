@@ -101,5 +101,5 @@ var historyCmd = &cobra.Command{
 
 func init() {
 	grepCmd.AddCommand(historyCmd)
-	historyCmd.Flags().String("filter", "", "filter for output")
+	historyCmd.Flags().StringP("filter", "f", "", "filter for output")
 }

@@ -3,3 +3,5 @@ mcli
 ./mcli.exe
 mcli.exe
 *.pdf
+*.vault
+*.tmp

@@ -2,6 +2,7 @@ package mclicrypto
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"os"
 )
@@ -24,7 +25,6 @@ func GetKeyFromFile(path string) (theKey []byte, err error) {
 	_, err = os.Stat(keyPath)
 	if err == nil {
 		rawKey, err = os.ReadFile(keyPath)
-
 		theKey = SHA_256(string(rawKey))
 	} else if os.IsNotExist(err) {
 		err = fmt.Errorf(fmt.Sprintf("file %s does not exists: %v", keyPath, err))
@@ -33,4 +33,18 @@ func GetKeyFromFile(path string) (theKey []byte, err error) {
 	}
 
 	return
+}
+
+func GetKeyFromString(s string) ([]byte, error) {
+	var resultKey []byte
+
+	if len(s) == 0 {
+		return nil, fmt.Errorf("from getkeyfromstring %w", errors.New("input string is empty"))
+	}
+	resultKey = SHA_256(s)
+
+	if len(resultKey) == 0 {
+		return nil, fmt.Errorf("from getkeyfromstring %w", errors.New("generated empty key"))
+	}
+	return resultKey, nil
 }

@@ -1,6 +1,10 @@
 package mclifilesystem
 
-import "io"
+import (
+	"errors"
+	"io"
+	"os"
+)
 
 // https://www.devdungeon.com/content/working-files-go
 
@@ -11,11 +15,29 @@ var GetFile GetFileContentType = func(string) ([]byte, error) {
 }
 
 func (gc GetFileContentType) GetContent(filePath string) ([]byte, error) {
+
+	if _, err := os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
+		file, err := os.Create(filePath)
+		if err != nil {
+			return nil, err
+		}
+		file.Close()
+	}
+
+	result, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (gc GetFileContentType) GetContentChunks(filePath string) ([]byte, error) {
 	f, closer, err := getFileForR(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer closer()
+
 	var result []byte = make([]byte, 0, 1024*1024)
 	buf := make([]byte, 1024)
 	for {

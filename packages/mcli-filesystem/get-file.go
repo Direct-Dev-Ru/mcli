@@ -36,7 +36,11 @@ var getFileForR getFileHandler = func(filePath string) (*os.File, func(), error)
 	)
 
 	if _, err = os.Stat(filePath); errors.Is(err, os.ErrNotExist) {
-		return nil, nil, errors.New("file does not exist")
+		file, err = os.Create(filePath)
+		if err != nil {
+			return nil, nil, err
+		}
+		return file, func() { file.Close() }, nil
 	} else {
 		file, err = os.OpenFile(filePath, os.O_RDONLY, 0644)
 	}

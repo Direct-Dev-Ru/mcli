@@ -36,6 +36,37 @@ var GlobalMap map[string]string = make(map[string]string)
 var Version string = "1.0.9"
 var Input InputData = InputData{inputSlice: []string{}, joinedInput: ""}
 
+var ColorReset string = "\033[0m"
+
+var ColorRed string = "\033[31m"
+var ColorGreen string = "\033[32m"
+var ColorYellow string = "\033[33m"
+var ColorBlue string = "\033[34m"
+var ColorPurple string = "\033[35m"
+var ColorCyan string = "\033[36m"
+var ColorWhite string = "\033[37m"
+
+func ToggleColors(showColor bool) {
+	if !showColor {
+		ColorRed = ""
+		ColorGreen = ""
+		ColorYellow = ""
+		ColorBlue = ""
+		ColorPurple = ""
+		ColorCyan = ""
+		ColorWhite = ""
+	} else {
+		ColorRed = "\033[31m"
+		ColorGreen = "\033[32m"
+		ColorYellow = "\033[33m"
+		ColorBlue = "\033[34m"
+		ColorPurple = "\033[35m"
+		ColorCyan = "\033[36m"
+		ColorWhite = "\033[37m"
+
+	}
+}
+
 func init() {
 	cobra.OnInitialize(initConfig)
 

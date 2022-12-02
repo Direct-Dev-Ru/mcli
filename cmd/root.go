@@ -150,14 +150,14 @@ func initConfig() {
 		Input.inputSlice = inputSlice
 		Input.joinedInput = joinedInput
 		if len(Input.inputSlice) > 0 {
-			Ilogger.Trace().Msg(fmt.Sprintf("\n%v\n", Input.inputSlice))
+			// Ilogger.Trace().Msg(fmt.Sprintf("\n%v\n", Input.inputSlice))
 		}
 	}
 
 	// read config
 	configFile, _ := rootCmd.Flags().GetString("config")
 	if configFile != "" {
-		Ilogger.Trace().Msg(fmt.Sprint("parsing config file:", configFile))
+		// Ilogger.Trace().Msg(fmt.Sprint("parsing config file:", configFile))
 
 		if _, err := os.Stat(configFile); err == nil {
 			configContent, err := os.ReadFile(configFile)

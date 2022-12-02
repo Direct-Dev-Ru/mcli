@@ -4,11 +4,8 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"strings"
-
-	mcli_fs "mcli/packages/mcli-filesystem"
 
 	"github.com/spf13/cobra"
 )
@@ -43,20 +40,20 @@ var testCmd = &cobra.Command{
 		// 	fmt.Println("Error:", err)
 		// }
 
-		writeContent := strings.Repeat("Blya-ha Muha ", 100)
+		// writeContent := strings.Repeat("Blya-ha Muha ", 100)
 
-		n, err := mcli_fs.SetFile.SetContent("file.tmp", writeContent)
-		if err != nil {
-			Elogger.Fatal().Msg(err.Error())
-		}
-		Ilogger.Info().Msg(fmt.Sprintf("\nwritten:\n%d bytes\n", n))
+		// n, err := mcli_fs.SetFile.SetContent("file.tmp", []byte(writeContent))
+		// if err != nil {
+		// 	Elogger.Fatal().Msg(err.Error())
+		// }
+		// Ilogger.Info().Msg(fmt.Sprintf("\nwritten:\n%d bytes\n", n))
 
-		readContent, err := mcli_fs.GetFile.GetContent("file.tmp")
+		// readContent, err := mcli_fs.GetFile.GetContent("file.tmp")
 
-		if err != nil {
-			Elogger.Fatal().Msg(err.Error())
-		}
-		Ilogger.Info().Msg(fmt.Sprintf("\ncontent:\n%s\n", readContent))
+		// if err != nil {
+		// 	Elogger.Fatal().Msg(err.Error())
+		// }
+		// Ilogger.Info().Msg(fmt.Sprintf("\ncontent:\n%s\n", readContent))
 	},
 }
 

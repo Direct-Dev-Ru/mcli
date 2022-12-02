@@ -55,8 +55,8 @@ For example: mcli secrets generate --use-words
 			keyFilePath = Config.Secrets.Common.KeyFilePath
 		}
 
-		Ilogger.Trace().Bool("use-words", useWords).Str("dict-path", dictPath).Str("vault-path", vaultPath).
-			Str("keyfile-path", keyFilePath).Send()
+		// Ilogger.Trace().Bool("use-words", useWords).Str("dict-path", dictPath).Str("vault-path", vaultPath).
+		// 	Str("keyfile-path", keyFilePath).Send()
 
 		minLength, _ = cmd.Flags().GetInt("min-length")
 		isMinLengthSet := cmd.Flags().Lookup("min-length").Changed
@@ -77,30 +77,26 @@ For example: mcli secrets generate --use-words
 		secretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile,
 			mcli_crypto.AesCypher, nil)
 
-		fmt.Println(secretStore)
-
 		var phrase string
 		var err error
 
-		theKey, err := mcli_crypto.GetKeyFromFile(keyFilePath)
-		if err != nil {
+		if err := secretStore.FillStore(vaultPath, keyFilePath); err != nil {
 			Elogger.Fatal().Msg(err.Error())
 		}
-		theKeyString := mcli_crypto.SHA_256(string(theKey))
-		// fmt.Println(phrase)
-		fmt.Println(theKeyString, len(theKeyString))
+		Ilogger.Trace().Msg("storeContent: " + fmt.Sprintf("%v", secretStore.Secrets))
 
 		for {
+			fmt.Println(ColorGreen + "-------------------Start Generation------------------------------" + ColorReset)
 			// reading from stdin
 			reader := bufio.NewReader(os.Stdin)
-			fmt.Print("Please enter secret name: ")
+			fmt.Print(ColorGreen + "Please enter secret name: " + ColorReset)
 			name, _ := reader.ReadString('\n')
 			name = strings.TrimSuffix(name, LineBreak)
-			fmt.Print("Please enter secret login: ")
+			fmt.Print(ColorGreen + "Please enter secret login: " + ColorReset)
 			login, _ := reader.ReadString('\n')
 			login = strings.TrimSuffix(login, LineBreak)
 
-			fmt.Print("Please enter secret description: ")
+			fmt.Print(ColorGreen + "Please enter secret description: " + ColorReset)
 			descr, _ := reader.ReadString('\n')
 			descr = strings.TrimSuffix(descr, LineBreak)
 
@@ -113,23 +109,23 @@ For example: mcli secrets generate --use-words
 				Elogger.Fatal().Msg(err.Error())
 			}
 
-			fmt.Print("Suggested secret " + phrase + " (enter another if you want): ")
+			fmt.Print(ColorYellow + "Is secret " + ColorBlue + phrase + ColorYellow + " is good enougth for you (or enter another if you want): " + ColorReset)
 			ownSecret, _ := reader.ReadString('\n')
 			if ownSecret != LineBreak {
-				fmt.Print("Retype your own secret: ")
+				fmt.Print(ColorBlue + "Retype your own secret: " + ColorReset)
 				reOwnSecret, _ := reader.ReadString('\n')
 				if ownSecret != reOwnSecret {
-					fmt.Print("Secrets dont match (enter your secret): ")
+					fmt.Print(ColorRed + "Secrets dont match (enter your secret): " + ColorReset)
 					ownSecret, _ = reader.ReadString('\n')
-					fmt.Print("Retype your own secret: ")
+					fmt.Print(ColorRed + "Retype your own secret: " + ColorReset)
 					reOwnSecret, _ = reader.ReadString('\n')
 					if ownSecret != reOwnSecret {
-						fmt.Println("Secrets dont match - Good buy !!! (please take a lesson of keyboard using )")
+						fmt.Println(ColorRed + "Secrets dont match - Good buy !!! (please take a lesson of keyboard using )" + ColorReset)
 						Elogger.Fatal().Msg("mcli secrets: secrets dont match - Good buy !!! (please take a lesson of keyboard using )")
 					}
 				}
 				if len(ownSecret) < minLength {
-					fmt.Println("Secret too slow - Good buy !!! (please generate in you mind more complex secret )")
+					fmt.Println(ColorRed + "Secret too slow - Good buy !!! (please generate in you mind more complex secret )" + ColorReset)
 					Elogger.Fatal().Msg("mcli secrets: secret too easy - Good buy !!! (please generate in you mind more complex secret )")
 				}
 				phrase = strings.TrimSuffix(ownSecret, LineBreak)
@@ -139,24 +135,18 @@ For example: mcli secrets generate --use-words
 			secretEntry := mcli_secrets.SecretEntry{Name: name, Description: descr,
 				Login: login, Secret: phrase, CreatedAt: nowTime}
 
-			fmt.Print("Store Secret Enrty to Secret Vault? Enter yes or no: ")
+			fmt.Print(ColorYellow + "Store Secret Entry to Secret Vault? Enter yes or no: " + ColorReset)
 			cmd, _ := reader.ReadString('\n')
 			cmd = strings.TrimSuffix(cmd, LineBreak)
 			cmd = strings.ToLower(cmd)
 
 			if strings.Contains("y да yes д ", cmd+" ") {
-
-				fmt.Println(secretEntry)
-				os.Setenv("SECRETS_LOGIN", secretEntry.Login)
-				os.Setenv("SECRETS_SECRET", secretEntry.Secret)
-
-				// shellCmd := exec.Command("echo", "SECRETS_SECRET="+phrase)
-				// str, err := shellCmd.Output()
-				// fmt.Println(string(str), err)
-
+				secretStore.AddEntry(secretEntry)
+				secretStore.Save("", "")
 			}
 
-			fmt.Print("Enter (q)uit to quit generation or any key to continue: ")
+			fmt.Println(ColorGreen + "-----------------------------------------------------------------" + ColorReset)
+			fmt.Print(ColorPurple + "Enter (q)uit to quit generation or any key to continue: ")
 			cmd, _ = reader.ReadString('\n')
 			cmd = strings.TrimSuffix(cmd, LineBreak)
 			// runeCmd := []rune(cmd)
@@ -168,16 +158,6 @@ For example: mcli secrets generate --use-words
 			}
 		}
 
-		// encByteArray, err := mcli_crypto.Encrypt(theKeyString, []byte(phrase))
-		// encString := hex.EncodeToString(encByteArray)
-		// fmt.Println(encByteArray)
-		// fmt.Println(encString)
-		// decByteArray, _ := hex.DecodeString(encString)
-		// decByteArray, _ = mcli_crypto.Decrypt(theKeyString, decByteArray)
-		// decString := string(decByteArray)
-		// fmt.Println(decByteArray)
-		// fmt.Println(decString)
-
 	},
 }
 
@@ -186,7 +166,7 @@ func init() {
 
 	generateCmd.Flags().StringP("dict-path", "d", "", "path to csv word dictionary")
 	generateCmd.Flags().StringP("vault-path", "v", GlobalMap["HomeDir"]+"/.mcli/secrets/defvault", "path to vault")
-	generateCmd.Flags().StringP("keyfile-path", "k", "random", "path to file to get vault key or /dev/random to get random key")
+	generateCmd.Flags().StringP("keyfile-path", "k", "", "path to file to get access key")
 	generateCmd.Flags().BoolP("use-words", "w", false, "generate by russian words toggle")
 	generateCmd.Flags().IntP("min-length", "m", 8, "min length of password (affected then use-words eq false )")
 	generateCmd.Flags().IntP("max-length", "x", 24, "max length of password (affected then use-words eq false )")
