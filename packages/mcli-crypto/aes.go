@@ -85,6 +85,9 @@ func (aesct AesCypherType) Decrypt(key, data []byte, isSalted bool) ([]byte, err
 		salt, data = data[len(data)-32:], data[:len(data)-32]
 
 		key, _, err = aesct.DeriveKey(key, salt)
+		if err != nil {
+			return nil, err
+		}
 	}
 	blockCipher, err := aes.NewCipher(key)
 	if err != nil {

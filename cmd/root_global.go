@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -11,8 +12,17 @@ import (
 )
 
 type InputData struct {
-	inputSlice  []string
-	joinedInput string
+	InputSlice []string
+}
+
+func (d InputData) GetJoinedString(strJoin string, removeLineBreaks bool) (string, error) {
+	joinedInput := strings.Join(d.InputSlice, strJoin)
+
+	if removeLineBreaks {
+		joinedInput = strings.ReplaceAll(joinedInput, "\r\n", "")
+		joinedInput = strings.ReplaceAll(joinedInput, "\n", "")
+	}
+	return joinedInput, nil
 }
 
 type runFunc func(cmd *cobra.Command, args []string)
@@ -34,7 +44,7 @@ var RootPath string
 var GlobalMap map[string]string = make(map[string]string)
 
 var Version string = "1.0.9"
-var Input InputData = InputData{inputSlice: []string{}, joinedInput: ""}
+var Input InputData = InputData{InputSlice: []string{}}
 
 var ColorReset string = "\033[0m"
 
@@ -65,6 +75,11 @@ func ToggleColors(showColor bool) {
 		ColorWhite = "\033[37m"
 
 	}
+}
+
+func IsCommanInPipe() bool {
+
+	return GlobalMap["IS_COMMAND_IN_PIPE"] == "CommandInPipe"
 }
 
 func init() {

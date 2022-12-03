@@ -125,8 +125,9 @@ func initConfig() {
 
 	// Check if piped to StdIn
 	info, _ := os.Stdin.Stat()
+	GlobalMap["IS_COMMAND_IN_PIPE"] = "CommandNotInPipe"
 	if (info.Mode()&os.ModeNamedPipe) == os.ModeNamedPipe || info.Size() > 0 {
-
+		GlobalMap["IS_COMMAND_IN_PIPE"] = "CommandInPipe"
 		var inputSlice []string = []string{}
 		r := bufio.NewReader(os.Stdin)
 		for {
@@ -138,20 +139,16 @@ func initConfig() {
 				break
 			}
 		}
+		Input.InputSlice = inputSlice
 
-		// fmt.Println(len(inputSlice))
-		// for i, v := range inputSlice {
-		// 	fmt.Print(i, " ", v)
+		// joinedInput := strings.Join(inputSlice, "")
+		// joinedInput = strings.ReplaceAll(joinedInput, "\r\n", "")
+		// joinedInput = strings.ReplaceAll(joinedInput, "\n", "")
+
+		// Input.joinedInput = joinedInput
+		// if len(Input.inputSlice) > 0 {
+		// Ilogger.Trace().Msg(fmt.Sprintf("\n%v\n", Input.inputSlice))
 		// }
-
-		joinedInput := strings.Join(inputSlice, " ")
-		joinedInput = strings.ReplaceAll(joinedInput, "\r\n", "")
-		joinedInput = strings.ReplaceAll(joinedInput, "\n", "")
-		Input.inputSlice = inputSlice
-		Input.joinedInput = joinedInput
-		if len(Input.inputSlice) > 0 {
-			// Ilogger.Trace().Msg(fmt.Sprintf("\n%v\n", Input.inputSlice))
-		}
 	}
 
 	// read config

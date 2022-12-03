@@ -51,7 +51,9 @@ var exportCmd = &cobra.Command{
 
 		switch destkey_path {
 		case "/input":
-			key, err = mcli_crypto.GetKeyFromString(Input.joinedInput)
+			joinedInput, _ := Input.GetJoinedString("", true)
+			key, err = mcli_crypto.GetKeyFromString(joinedInput)
+			fmt.Println(key)
 		case "/ask":
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Print(ColorGreen + "your key: " + ColorReset)

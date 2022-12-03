@@ -10,6 +10,7 @@ import (
 	mcli_fs "mcli/packages/mcli-filesystem"
 	mcli_secrets "mcli/packages/mcli-secrets"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -43,7 +44,7 @@ var importCmd = &cobra.Command{
 		source_path, _ = cmd.Flags().GetString("source-path")
 		_, _ = importkey_path, source_path
 
-		var key []byte
+		var key, encContent []byte
 		var err error
 
 		// destination vault
@@ -60,7 +61,8 @@ var importCmd = &cobra.Command{
 
 		switch importkey_path {
 		case "/input":
-			key, err = mcli_crypto.GetKeyFromString(Input.joinedInput)
+			joinedInput, _ := Input.GetJoinedString("", true)
+			key, err = mcli_crypto.GetKeyFromString(joinedInput)
 		case "/ask":
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Print(ColorGreen + "your key: " + ColorReset)
@@ -80,7 +82,21 @@ var importCmd = &cobra.Command{
 		if err != nil {
 			Elogger.Fatal().Msg(err.Error())
 		}
-		encContent, err := os.ReadFile(source_path)
+
+		switch source_path {
+		case "/stdin":
+			if IsCommanInPipe() && slices.Contains([]string{"/input", "/ask"}, importkey_path) {
+				Elogger.Fatal().Msg("import command in pipe - reading data from stdin is impossiible")
+			}
+			encContentString, _ := Input.GetJoinedString("", false)
+
+			encContentString = strings.TrimSuffix(encContentString, LineBreak)
+
+			encContent = []byte(encContentString)
+		default:
+			encContent, err = os.ReadFile(source_path)
+		}
+
 		if err != nil {
 			Elogger.Fatal().Msg(err.Error())
 		}
@@ -89,19 +105,27 @@ var importCmd = &cobra.Command{
 			Elogger.Fatal().Msg(err.Error())
 		}
 
-		fmt.Println(secretStore.Secrets)
-		fmt.Println(sourceStore.Secrets)
+		// well now we can add entries from imported slice to main vault
+		// fmt.Println(secretStore.Secrets)
+		srcVault := sourceStore.Secrets
+		// fmt.Println(srcVault)
 
-		if len(args) > 0 {
-			filteredSecrets := make([]mcli_secrets.SecretEntry, 0, len(args))
-			for _, s := range secretStore.Secrets {
-				if slices.Contains(args, s.Name) {
-					filteredSecrets = append(filteredSecrets, s)
+		for _, impEntry := range srcVault {
+
+			isAdding := true
+
+			if len(args) > 0 {
+				if !slices.Contains(args, impEntry.Name) {
+					isAdding = false
 				}
 			}
-			secretStore.Secrets = filteredSecrets
+			if isAdding {
+				if err := secretStore.AddEntry(impEntry); err != nil {
+					Elogger.Error().Msgf("importing entry %s error %v", impEntry.Name, err)
+				}
+			}
 		}
-
+		secretStore.Save("", "")
 	},
 }
 
@@ -111,6 +135,6 @@ func init() {
 	importCmd.Flags().StringP("vault-path", "v", GlobalMap["HomeDir"]+"/.mcli/secrets/defvault", "path to destination secret vault")
 	importCmd.Flags().StringP("keyfile-path", "k", "", "path to file to get access key of destination secret vault")
 
-	importCmd.Flags().StringP("source-path", "s", "", "path to source secret vault")
+	importCmd.Flags().StringP("source-path", "s", "", "path to source secret vault or /stdin to ctrl-v from clipboard")
 	importCmd.Flags().StringP("importkey-path", "i", "/input", "path to file to get access key of source secret vault (or /input or /ask")
 }

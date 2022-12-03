@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -165,7 +164,8 @@ var listCmd = &cobra.Command{
 			}
 			fmt.Println(ColorGreen + outString + ColorReset)
 		default:
-			Elogger.Fatal().Msg("undefined error: " + fmt.Sprintf("output format not defined"))
+			reason := "output format not defined"
+			Elogger.Fatal().Msg("undefined error: " + fmt.Sprintf("reason: %s", reason))
 		}
 
 	},

@@ -20,8 +20,8 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	// Ilogger.Trace().Msg("Args are: " + strings.Join(args, " "))
 	// Ilogger.Trace().Msg("\nInput are: " + fmt.Sprintf("%v", Input.inputSlice))
 	inputMap := make(map[int][]string)
-	if len(Input.inputSlice) > 0 {
-		for i, inputline := range Input.inputSlice {
+	if len(Input.InputSlice) > 0 {
+		for i, inputline := range Input.InputSlice {
 			// splits by two
 			splitRX := regexp.MustCompile(`([ ]{2,})|([\t]{1,})`)
 

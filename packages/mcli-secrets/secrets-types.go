@@ -43,6 +43,17 @@ type SecretEntry struct {
 	CreatedAt   time.Time
 }
 
+func (se *SecretEntry) Update(seSource SecretEntry) error {
+	if !(len(seSource.Secret) > 0 && seSource.Name == se.Name) {
+		return fmt.Errorf("secretEntry update: empty secret or different secret names")
+	}
+	se.Login = seSource.Login
+	se.Secret = seSource.Secret
+	se.Description = seSource.Description
+	se.CreatedAt = seSource.CreatedAt
+	return nil
+}
+
 type SecretsEntries struct {
 	sync.Mutex
 	Secrets   []SecretEntry
@@ -68,7 +79,20 @@ func NewSecretsEntries(rd SecretsReader, wr SecretsWriter, cyp SecretsCypher,
 func (ses *SecretsEntries) AddEntry(se SecretEntry) error {
 	ses.Lock()
 	defer ses.Unlock()
-	ses.Secrets = append(ses.Secrets, se)
+	var update bool = false
+	for _, s := range ses.Secrets {
+		if s.Name == se.Name {
+			if err := s.Update(se); err != nil {
+				return err
+			}
+			update = true
+			break
+		}
+	}
+	if !update {
+		ses.Secrets = append(ses.Secrets, se)
+	}
+
 	return nil
 }
 
