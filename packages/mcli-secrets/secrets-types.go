@@ -43,6 +43,29 @@ type SecretEntry struct {
 	CreatedAt   time.Time
 }
 
+func (se *SecretEntry) encodeSecret(phrase string, key []byte, isSalted bool) (string, error) {
+	encodedString := hex.EncodeToString([]byte(phrase))
+	return encodedString, nil
+}
+
+func (se *SecretEntry) decodeSecret(encContent string, key []byte, isSalted bool) (string, error) {
+	decoded, err := hex.DecodeString(encContent)
+	return string(decoded), err
+}
+
+func (se *SecretEntry) SetSecret(phrase string, key []byte, isSalted bool) (string, error) {
+	encodedString, err := se.encodeSecret(phrase, key, isSalted)
+	if err == nil {
+		se.Secret = encodedString
+	}
+	return encodedString, err
+}
+
+func (se *SecretEntry) GetSecret(key []byte, isSalted bool) (string, error) {
+	decodedString, err := se.decodeSecret(se.Secret, key, isSalted)
+	return decodedString, err
+}
+
 func (se *SecretEntry) Update(seSource SecretEntry) error {
 	if !(len(seSource.Secret) > 0 && seSource.Name == se.Name) {
 		return fmt.Errorf("secretEntry update: empty secret or different secret names")

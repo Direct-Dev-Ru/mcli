@@ -68,7 +68,9 @@ For example: mcli secrets generate --use-words
 		if !isMaxLengthSet && Config.Secrets.Common.MaxLength > 11 {
 			maxLength = Config.Secrets.Common.MaxLength
 		}
-
+		if IsCommanInPipe() {
+			Elogger.Fatal().Msg("generate doesn't support pipe yet ...")
+		}
 		var runesReplaces []mcli_crypto.ReplaceEntry = make([]mcli_crypto.ReplaceEntry, 3)
 		runesReplaces[0] = mcli_crypto.ReplaceEntry{OriginRune: 'а', ReplaceRune: '@', Number: 1}
 		runesReplaces[1] = mcli_crypto.ReplaceEntry{OriginRune: 'А', ReplaceRune: '@', Number: 1}
@@ -134,6 +136,7 @@ For example: mcli secrets generate --use-words
 
 			secretEntry := mcli_secrets.SecretEntry{Name: name, Description: descr,
 				Login: login, Secret: phrase, CreatedAt: nowTime}
+			secretEntry.SetSecret(phrase, []byte{}, false)
 
 			fmt.Print(ColorYellow + "Store Secret Entry to Secret Vault? Enter yes or no: " + ColorReset)
 			cmd, _ := reader.ReadString('\n')
