@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	mcli_crypto "mcli/packages/mcli-crypto"
 	mcli_fs "mcli/packages/mcli-filesystem"
@@ -132,11 +131,16 @@ For example: mcli secrets generate --use-words
 				}
 				phrase = strings.TrimSuffix(ownSecret, LineBreak)
 			}
-			nowTime := time.Now()
 
-			secretEntry := mcli_secrets.SecretEntry{Name: name, Description: descr,
-				Login: login, Secret: phrase, CreatedAt: nowTime}
-			secretEntry.SetSecret(phrase, []byte{}, false)
+			// secretEntry := mcli_secrets.SecretEntry{Name: name, Description: descr,
+			// 	Login: login, Secret: phrase, CreatedAt: time.Now()}
+			// secretEntry.SetSecret(phrase, []byte{}, false)
+
+			secretEntry, err := secretStore.NewEntry(name, login, descr)
+			if err != nil {
+				Elogger.Fatal().Msgf("generate: new secret error: %v", err)
+			}
+			secretEntry.SetSecret(phrase, true, true)
 
 			fmt.Print(ColorYellow + "Store Secret Entry to Secret Vault? Enter yes or no: " + ColorReset)
 			cmd, _ := reader.ReadString('\n')

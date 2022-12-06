@@ -41,29 +41,64 @@ type SecretEntry struct {
 	Secret      string
 	Description string
 	CreatedAt   time.Time
+	store       *SecretsEntries
 }
 
-func (se *SecretEntry) encodeSecret(phrase string, key []byte, isSalted bool) (string, error) {
-	encodedString := hex.EncodeToString([]byte(phrase))
+func (se *SecretEntry) encodeSecret(phrase string, keyPath string, isSalted bool) (string, error) {
+	key, err := se.store.Cypher.GetKey(keyPath, false)
+	if err != nil {
+		return "", fmt.Errorf("%w", err)
+	}
+	encData, err := se.store.Cypher.Encrypt(key, []byte(phrase), isSalted)
+	if err != nil {
+		return "", fmt.Errorf("%w", err)
+	}
+	encodedString := hex.EncodeToString(encData)
 	return encodedString, nil
 }
 
-func (se *SecretEntry) decodeSecret(encContent string, key []byte, isSalted bool) (string, error) {
-	decoded, err := hex.DecodeString(encContent)
-	return string(decoded), err
-}
-
-func (se *SecretEntry) SetSecret(phrase string, key []byte, isSalted bool) (string, error) {
-	encodedString, err := se.encodeSecret(phrase, key, isSalted)
-	if err == nil {
-		se.Secret = encodedString
+func (se *SecretEntry) decodeSecret(encContent string, keyPath string, isSalted bool) (string, error) {
+	key, err := se.store.Cypher.GetKey(keyPath, false)
+	if err != nil {
+		// if _, err = os.Stat(keyPath); !errors.Is(err, os.ErrNotExist) {
+		// 	key, err = ses.Cypher.GetKey(keyPath, true)
+		// 	fmt.Println(key)
+		// } else {
+		return "", fmt.Errorf("%w", err)
+		// }
 	}
-	return encodedString, err
+	cypherData, err := hex.DecodeString(encContent)
+	if err != nil {
+		return "", fmt.Errorf("hex decrypting fault: %w", err)
+	}
+
+	decryptingContent, err := se.store.Cypher.Decrypt(key, cypherData, true)
+	if err != nil {
+		return "", fmt.Errorf("decrypting fault: %v", err)
+	}
+	return string(decryptingContent), err
 }
 
-func (se *SecretEntry) GetSecret(key []byte, isSalted bool) (string, error) {
-	decodedString, err := se.decodeSecret(se.Secret, key, isSalted)
-	return decodedString, err
+func (se *SecretEntry) SetSecret(phrase string, isSalted, encode bool) (string, error) {
+	if encode {
+		encodedString, err := se.encodeSecret(phrase, se.store.keyPath, isSalted)
+		if err == nil {
+			se.Secret = "enc:" + encodedString
+		}
+		return se.Secret, err
+	}
+	se.Secret = phrase
+	return phrase, nil
+}
+
+func (se *SecretEntry) GetSecret(keyPath string, isSalted, encoded bool) (string, error) {
+	secretData := se.Secret
+
+	if encoded {
+		decodedString, err := se.decodeSecret(secretData, keyPath, isSalted)
+		return decodedString, err
+	}
+	return secretData, nil
 }
 
 func (se *SecretEntry) Update(seSource SecretEntry) error {
@@ -77,6 +112,7 @@ func (se *SecretEntry) Update(seSource SecretEntry) error {
 	return nil
 }
 
+// SecretEntries - struct for storing array of secrets and maintain some operations on them
 type SecretsEntries struct {
 	sync.Mutex
 	Secrets   []SecretEntry
@@ -97,6 +133,17 @@ func NewSecretsEntries(rd SecretsReader, wr SecretsWriter, cyp SecretsCypher,
 		ser = DefaultSer
 	}
 	return SecretsEntries{Secrets: make([]SecretEntry, 0, 10), Wrt: wr, Rdr: rd, Srl: ser, Cypher: cyp}
+}
+
+func (ses *SecretsEntries) NewEntry(name, login, descr string) (SecretEntry, error) {
+	ses.Lock()
+	defer ses.Unlock()
+	if len(name) == 0 {
+		return SecretEntry{}, fmt.Errorf("add secret entry: name is empty")
+	}
+	secretEntry := SecretEntry{Name: name, Description: descr,
+		Login: login, Secret: "", CreatedAt: time.Now(), store: ses}
+	return secretEntry, nil
 }
 
 func (ses *SecretsEntries) AddEntry(se SecretEntry) error {

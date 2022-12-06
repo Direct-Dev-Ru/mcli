@@ -73,7 +73,8 @@ var listCmd = &cobra.Command{
 
 		switch {
 		case outputType == "table":
-			// TODO: well yes this cod is ugly (((
+			// TODO: well, yes, this cod is ugly (((
+			limitSecretColumnlength := 60
 			headerTitles := []string{"Name:", "Login:", "Secret:", "Description:", "CreatedAt:"}
 			columnCount := len(headerTitles)
 			maxLengths := make([]int, 0, columnCount)
@@ -101,16 +102,27 @@ var listCmd = &cobra.Command{
 						value = []rune(s.Name)
 					}
 					if maxLengths[i] < len(value) {
-						maxLengths[i] = len(value)
+						maxLengths[i] = limitSecretColumnlength
+						if !(i == 2 && len(value) > limitSecretColumnlength) {
+							maxLengths[i] = len(value)
+						}
 					}
 				}
 			}
+			fmt.Println(maxLengths)
 			stringToPrint := ""
 
 			// printing headers
 			var numSpaces int = 3
 			for i, v := range headerTitles {
-				stringToPrint += v + strings.Repeat(" ", maxLengths[i]-len(v)+numSpaces) + "\t"
+				valueToPrint := v
+				if len(valueToPrint) > limitSecretColumnlength {
+					runeString := []rune(valueToPrint)
+					valueToPrint = string(runeString[:(maxLengths[i]-5)]) + "    "
+				} else {
+					valueToPrint += strings.Repeat(" ", maxLengths[i]-len(v)+numSpaces)
+				}
+				stringToPrint += valueToPrint + "\t"
 			}
 			fmt.Println(ColorPurple + stringToPrint + ColorReset)
 
@@ -121,12 +133,22 @@ var listCmd = &cobra.Command{
 				stringToPrint += string(v) + strings.Repeat(" ", maxLengths[0]-len(v)+numSpaces) + "\t"
 				v = []rune(s.Login)
 				stringToPrint += string(v) + strings.Repeat(" ", maxLengths[1]-len(v)+numSpaces) + "\t"
+
+				// Print Secret
 				v = []rune(s.Secret)
-				if showSecret {
-					stringToPrint += string(v) + strings.Repeat(" ", maxLengths[2]-len(v)+numSpaces) + "\t"
+				var secretToPrint string
+				if !showSecret {
+					secretToPrint = strings.Repeat("*", maxLengths[2]-5)
 				} else {
-					stringToPrint += strings.Repeat("*", maxLengths[2]-len(v)+numSpaces) + strings.Repeat(" ", len(v)) + "\t"
+					if len(v) > limitSecretColumnlength {
+						secretToPrint = string(v[:(maxLengths[2]-5)]) + " ..."
+					} else {
+						secretToPrint = string(v) + strings.Repeat(" ", maxLengths[2]-len(v)+numSpaces)
+					}
 				}
+
+				stringToPrint += secretToPrint + "\t"
+
 				v = []rune(s.Description)
 
 				stringToPrint += string(v) + strings.Repeat(" ", maxLengths[3]-len(v)+numSpaces) + "\t"

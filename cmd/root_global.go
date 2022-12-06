@@ -4,12 +4,20 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 )
+
+type TerminalParams struct {
+	TermWidth  int
+	TermHeight int
+	IsTerminal bool
+}
 
 type InputData struct {
 	InputSlice []string
@@ -38,6 +46,8 @@ type AccumData struct {
 
 // Global Vars
 var Ilogger, Elogger zerolog.Logger
+var TermWidth, TermHeight int = 0, 0
+var IsTerminal bool = false
 var OS string
 var ConfigPath string
 var RootPath string
@@ -84,6 +94,24 @@ func IsCommanInPipe() bool {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+
+	// define Terminal Params
+	GlobalMap["IsTerminal"] = "false"
+	if term.IsTerminal(0) {
+		// println("in a term")
+		IsTerminal = true
+		GlobalMap["IsTerminal"] = "true"
+	}
+	var err error
+	TermWidth, TermHeight, err = term.GetSize(0)
+	GlobalMap["TermWidth"] = strconv.Itoa(TermWidth)
+	GlobalMap["TermHeight"] = strconv.Itoa(TermHeight)
+
+	if err != nil {
+		IsTerminal = false
+		GlobalMap["IsTerminal"] = "false"
+	}
+	// println("width:", TermWidth, "height:", TermHeight)
 
 	_, callerPath, _, _ := runtime.Caller(0)
 	RootPath = path.Dir(path.Dir(callerPath))
