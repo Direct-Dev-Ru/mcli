@@ -84,7 +84,7 @@ For example: mcli secrets generate --use-words
 		if err := secretStore.FillStore(vaultPath, keyFilePath); err != nil {
 			Elogger.Fatal().Msg(err.Error())
 		}
-		Ilogger.Trace().Msg("storeContent: " + fmt.Sprintf("%v", secretStore.Secrets))
+		// Ilogger.Trace().Msg("storeContent: " + fmt.Sprintf("%v", secretStore.Secrets))
 
 		for {
 			fmt.Println(ColorGreen + "-------------------Start Generation------------------------------" + ColorReset)

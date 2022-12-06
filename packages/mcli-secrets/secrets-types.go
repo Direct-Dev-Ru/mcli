@@ -60,12 +60,7 @@ func (se *SecretEntry) encodeSecret(phrase string, keyPath string, isSalted bool
 func (se *SecretEntry) decodeSecret(encContent string, keyPath string, isSalted bool) (string, error) {
 	key, err := se.store.Cypher.GetKey(keyPath, false)
 	if err != nil {
-		// if _, err = os.Stat(keyPath); !errors.Is(err, os.ErrNotExist) {
-		// 	key, err = ses.Cypher.GetKey(keyPath, true)
-		// 	fmt.Println(key)
-		// } else {
 		return "", fmt.Errorf("%w", err)
-		// }
 	}
 	cypherData, err := hex.DecodeString(encContent)
 	if err != nil {
@@ -91,11 +86,13 @@ func (se *SecretEntry) SetSecret(phrase string, isSalted, encode bool) (string, 
 	return phrase, nil
 }
 
-func (se *SecretEntry) GetSecret(keyPath string, isSalted, encoded bool) (string, error) {
+func (se *SecretEntry) GetSecret(keyPath string, isSalted bool) (string, error) {
 	secretData := se.Secret
-
-	if encoded {
-		decodedString, err := se.decodeSecret(secretData, keyPath, isSalted)
+	if secretData[:4] == "enc:" {
+		if len(keyPath) == 0 && se.store != nil {
+			keyPath = se.store.keyPath
+		}
+		decodedString, err := se.decodeSecret(secretData[4:], keyPath, isSalted)
 		return decodedString, err
 	}
 	return secretData, nil
@@ -150,16 +147,17 @@ func (ses *SecretsEntries) AddEntry(se SecretEntry) error {
 	ses.Lock()
 	defer ses.Unlock()
 	var update bool = false
-	for _, s := range ses.Secrets {
-		if s.Name == se.Name {
-			if err := s.Update(se); err != nil {
+	for i := 0; i < len(ses.Secrets); i++ {
+		if ses.Secrets[i].Name == se.Name {
+			if err := ses.Secrets[i].Update(se); err != nil {
 				return err
 			}
-			update = true
-			break
+			return nil
 		}
 	}
+
 	if !update {
+		se.store = ses
 		ses.Secrets = append(ses.Secrets, se)
 	}
 
@@ -175,12 +173,7 @@ func (ses *SecretsEntries) FillStore(vaultPath, keyPath string) error {
 	if len(storeContent) > 0 {
 		key, err := ses.Cypher.GetKey(keyPath, false)
 		if err != nil {
-			// if _, err = os.Stat(keyPath); !errors.Is(err, os.ErrNotExist) {
-			// 	key, err = ses.Cypher.GetKey(keyPath, true)
-			// 	fmt.Println(key)
-			// } else {
 			return fmt.Errorf("%w", err)
-			// }
 		}
 		cypherData, err := hex.DecodeString(string(storeContent))
 		if err != nil {
@@ -193,6 +186,10 @@ func (ses *SecretsEntries) FillStore(vaultPath, keyPath string) error {
 		}
 		ses.Srl.Unmarshal(storeContent, &ses.Secrets)
 	}
+	for i := 0; i < len(ses.Secrets); i++ {
+		ses.Secrets[i].store = ses
+	}
+
 	ses.vaultPath = vaultPath
 	ses.keyPath = keyPath
 	return nil

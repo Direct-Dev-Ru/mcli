@@ -109,7 +109,7 @@ var listCmd = &cobra.Command{
 					}
 				}
 			}
-			fmt.Println(maxLengths)
+			// fmt.Println(maxLengths)
 			stringToPrint := ""
 
 			// printing headers
@@ -160,13 +160,22 @@ var listCmd = &cobra.Command{
 
 		case outputType == "plain":
 			for _, v := range secretStore.Secrets {
+
 				if onlySecret {
-					fmt.Println(v.Secret)
+					secretString, err := v.GetSecret(keyFilePath, true)
+					if err != nil {
+						Elogger.Fatal().Msgf("decription secret error: %v", err)
+					}
+					fmt.Println(secretString)
 					continue
 				}
 
 				if showSecret {
-					fmt.Println(v.Login + ":" + v.Secret)
+					secretString, err := v.GetSecret(keyFilePath, true)
+					if err != nil {
+						Elogger.Fatal().Msgf("decription secret error: %v", err)
+					}
+					fmt.Println(v.Login + ":" + secretString)
 				} else {
 					fmt.Println(v.Login)
 				}
