@@ -21,7 +21,17 @@ type bashHistEntry struct {
 }
 
 func readHistory() []bashHistEntry {
-	filepath := os.Getenv("HOME") + "/.bash_history"
+	var filepath string
+	switch GlobalMap["OS"] {
+	case "windows":
+		filepath = os.Getenv("USERPROFILE") + "/AppData/Roaming/Microsoft/Windows/PowerShell/PSReadline/ConsoleHost_history.txt"
+	case "darwin":
+		filepath = os.Getenv("HOME") + "/.bash_history"
+	case "linux":
+		filepath = os.Getenv("HOME") + "/.bash_history"
+	default:
+		filepath = os.Getenv("HOME") + "/.bash_history"
+	}
 
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -36,7 +46,7 @@ func readHistory() []bashHistEntry {
 	var tm time.Time
 	// var timeIsOn bool = false
 	bashCommands := make([]bashHistEntry, 100)
-
+	fmt.Println("time", tm)
 	for scanner.Scan() {
 		currentCommand = scanner.Text()
 		if strings.HasPrefix(currentCommand, "#") {
@@ -48,7 +58,6 @@ func readHistory() []bashHistEntry {
 			}
 			tm = time.Unix(i, 0)
 		} else {
-
 			currentCommand = strings.TrimSpace(currentCommand)
 			bashCommands = append(bashCommands, bashHistEntry{commandText: currentCommand, commandTime: tm})
 		}
@@ -60,34 +69,15 @@ func readHistory() []bashHistEntry {
 	return bashCommands
 }
 
-// for scanner.Scan() {
-// 	currentLine = scanner.Text()
-// 	if !strings.HasPrefix(currentLine, "#") {
-// 		currentLine = strings.TrimSpace(currentLine)
-// 		fmt.Println(currentLine, "(", tm, ")")
-// 	} else {
-// 		currentTs = strings.TrimPrefix(currentLine, "#")
-// 		i, err := strconv.ParseInt(currentTs, 10, 64)
-// 		if err != nil {
-// 			log.Fatal(err)
-// 		}
-// 		tm = time.Unix(i, 0)
-// 	}
-
-// }
-// if err := scanner.Err(); err != nil {
-// 	log.Fatal(err)
-// }
-
 // viewCmd represents the view command
 var historyCmd = &cobra.Command{
 	Use:   "history",
-	Short: "grep bash history",
-	Long: `Grep bash history. For example: mcli grep history --filter docker
+	Short: "grep terminal history",
+	Long: `	prints terminal history and optionally filters it. 
+			for example: mcli grep history --filter docker
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		// contents, _ := ioutil.ReadFile(os.Getenv("HOME") + "/.bash_history")
-
 		filter, _ := cmd.Flags().GetString("filter")
 		Ilogger.Trace().Msg("Filter is :" + filter)
 		for ind, entry := range readHistory() {
