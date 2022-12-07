@@ -6,7 +6,6 @@ package cmd
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -16,8 +15,9 @@ import (
 )
 
 type bashHistEntry struct {
-	commandText string
-	commandTime time.Time
+	commandNumber int
+	commandText   string
+	commandTime   time.Time
 }
 
 func readHistory() []bashHistEntry {
@@ -35,7 +35,7 @@ func readHistory() []bashHistEntry {
 
 	file, err := os.Open(filepath)
 	if err != nil {
-		log.Fatal(err)
+		Elogger.Fatal().Msgf("grep history: %w", err)
 	}
 	defer file.Close()
 
@@ -46,7 +46,7 @@ func readHistory() []bashHistEntry {
 	var tm time.Time
 	// var timeIsOn bool = false
 	bashCommands := make([]bashHistEntry, 100)
-	fmt.Println("time", tm)
+	iteration := 1
 	for scanner.Scan() {
 		currentCommand = scanner.Text()
 		if strings.HasPrefix(currentCommand, "#") {
@@ -54,39 +54,59 @@ func readHistory() []bashHistEntry {
 			currentTs = strings.TrimPrefix(currentCommand, "#")
 			i, err := strconv.ParseInt(currentTs, 10, 64)
 			if err != nil {
-				log.Fatal(err)
+				Elogger.Fatal().Msgf("grep history: %w", err)
 			}
 			tm = time.Unix(i, 0)
 		} else {
 			currentCommand = strings.TrimSpace(currentCommand)
-			bashCommands = append(bashCommands, bashHistEntry{commandText: currentCommand, commandTime: tm})
+			isDuplicated := false
+			for k, v := range bashCommands {
+				if currentCommand == v.commandText {
+					bashCommands[k].commandNumber = iteration
+					bashCommands[k].commandTime = tm
+					isDuplicated = true
+					break
+				}
+			}
+			if !isDuplicated {
+				bashCommands = append(bashCommands,
+					bashHistEntry{commandNumber: iteration, commandText: currentCommand, commandTime: tm})
+			}
+			iteration++
 		}
 
 	}
 	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		Elogger.Fatal().Msgf("grep history: %w", err)
 	}
 	return bashCommands
 }
 
-// viewCmd represents the view command
+func historyRun(cmd *cobra.Command, args []string) {
+
+	filter, _ := cmd.Flags().GetString("filter")
+	Ilogger.Trace().Msg("Filter is: " + filter)
+	var emptyTm time.Time
+	for _, entry := range readHistory() {
+		numCmd, cmd, tm := entry.commandNumber, entry.commandText, entry.commandTime
+		if strings.Contains(cmd, filter) {
+			if tm.UnixNano() > emptyTm.UnixNano() {
+				fmt.Println(numCmd, cmd, " | ", tm.Local().String(), " | ")
+			} else {
+				fmt.Println(numCmd, cmd)
+			}
+		}
+	}
+}
+
+// historyCmd represents the view command
 var historyCmd = &cobra.Command{
 	Use:   "history",
 	Short: "grep terminal history",
 	Long: `	prints terminal history and optionally filters it. 
 			for example: mcli grep history --filter docker
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		// contents, _ := ioutil.ReadFile(os.Getenv("HOME") + "/.bash_history")
-		filter, _ := cmd.Flags().GetString("filter")
-		Ilogger.Trace().Msg("Filter is :" + filter)
-		for ind, entry := range readHistory() {
-			cmd, tm := entry.commandText, entry.commandTime
-			if strings.Contains(cmd, filter) {
-				fmt.Println(ind, cmd, " | ", tm.Local().String(), " | ")
-			}
-		}
-	},
+	Run: historyRun,
 }
 
 func init() {
