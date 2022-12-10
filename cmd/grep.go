@@ -6,8 +6,10 @@ package cmd
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 )
 
 var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
@@ -19,6 +21,44 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 
 	// Ilogger.Trace().Msg("Args are: " + strings.Join(args, " "))
 	// Ilogger.Trace().Msg("\nInput are: " + fmt.Sprintf("%v", Input.inputSlice))
+
+	var inputType, outputType, filter, source string
+
+	var showColor, isRegExp bool = false, false
+	showColor, _ = cmd.Flags().GetBool("color")
+	ToggleColors(showColor)
+
+	inputType, _ = cmd.Flags().GetString("input-type")
+	isInputTypeSet := cmd.Flags().Lookup("input-type").Changed
+	if !isInputTypeSet && false { //len(Config.Secrets.Common....) > 0 {
+		inputType = "" //Config.Secrets.Common....
+	}
+	inputTypes := []string{"plain", "json", "table"}
+	ok := slices.Contains(inputTypes, inputType)
+	if !ok {
+		inputType = "plain"
+	}
+
+	filter, _ = cmd.Flags().GetString("filter")
+	isFilterSet := cmd.Flags().Lookup("").Changed
+	if !isFilterSet && false { //len(Config.Secrets.Common....) > 0 {
+		filter = "" //Config.Secrets.Common....
+	}
+	fmt.Println(isRegExp, filter, source)
+
+	outputType, _ = cmd.Flags().GetString("output-type")
+	outputType = strings.ToLower(outputType)
+	isOutputTypeSet := cmd.Flags().Lookup("output-type").Changed
+	if !isOutputTypeSet && false { //len(Config.Secrets.Common....) > 0 {
+		outputType = "" //Config.Secrets.Common....
+	}
+
+	outTypes := []string{"plain", "json", "table"}
+	ok = slices.Contains(outTypes, outputType)
+	if !ok {
+		outputType = "plain"
+	}
+
 	inputMap := make(map[int][]string)
 	if len(Input.InputSlice) > 0 {
 		for i, inputline := range Input.InputSlice {
@@ -40,10 +80,10 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 // grepCmd represents the grep command
 var grepCmd = &cobra.Command{
 	Use:   "grep",
-	Short: "grep command analog",
-	Long: `Linux has grep command
-	this command can grep input from pipe or file. For example:
-		mcli grep --file ./myfile --filter docker 
+	Short: "analog of grep command",
+	Long: `Linux has grep command - this command can grep input from pipe or file or source can be specified 
+		througth param --source. For example: mcli grep --source ./myfile1 ./mydir2 --filter Hello
+		--filter is a regular expression if starts with regexp: --filter regexp:^Hello
 	`,
 	Run: grepCmdRunFunc,
 }
@@ -51,14 +91,10 @@ var grepCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(grepCmd)
 
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and view subcommands, e.g.:
-	// grepCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is cviewed directly, e.g.:
-	// grepCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	grepCmd.Flags().StringP("input-parse", "i", "plaintext", "how parse input: as plaintext or json or table")
+	grepCmd.Flags().StringP("input-type", "i", "plain", "how parse input: as plain or json or table")
+	grepCmd.Flags().StringP("output-type", "o", "plain", "how format output: as plain or json or table")
+	grepCmd.Flags().StringP("source", "s", "/input", "is input data from pipe - /input value or should be specified througth --source")
+	grepCmd.Flags().StringP("dest", "d", "/stdout", "is output data print to stdout /stdout or to file. default - stdout")
+	grepCmd.Flags().StringP("filter", "f", "", "filter expression - if starts from regexp: it will be regexp search")
+	grepCmd.Flags().BoolP("color", "c", false, "show with colorzzz")
 }

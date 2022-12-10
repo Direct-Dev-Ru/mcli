@@ -37,7 +37,6 @@ var listCmd = &cobra.Command{
 
 		vaultPath, _ = cmd.Flags().GetString("vault-path")
 		isVaultPathSet := cmd.Flags().Lookup("vault-path").Changed
-		// fmt.Println(vaultPath, isVaultPathSet, Config.Secrets.Common.VaultPath)
 		if !isVaultPathSet && len(Config.Secrets.Common.VaultPath) > 0 {
 			vaultPath = Config.Secrets.Common.VaultPath
 		}
