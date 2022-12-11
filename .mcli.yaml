@@ -6,7 +6,7 @@ secrets:
     use-words: false
     vault-path: {{$HomeDir$}}/.mcli/secrets/defvault
     keyfile-path: {{$HomeDir$}}/.ssh/id_rsa
-    dict-path: {{$RootPath$}}/pwdgen/freqrnc2011.csv
+    dict-path: {{$HomeDir$}}/.mcli/pwdgen/dict.csv
     min-lenght: 14
     max-lenght: 32
 http:

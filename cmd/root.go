@@ -51,7 +51,10 @@ var Config ConfigData = ConfigData{}
 var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	config, _ := cmd.Flags().GetString("config")
 	rootArgs, _ := cmd.Flags().GetString("root-args")
-	Ilogger.Info().Msg("Hello from Multy CLI. Config is " + config)
+	if len(config) == 0 {
+		config = GlobalMap["DefaultConfigPath"]
+	}
+	Ilogger.Info().Msg("Hello from Multy CLI. Config file = " + config)
 
 	if len(args) == 0 {
 		args = strings.Fields(rootArgs)
@@ -141,20 +144,15 @@ func initConfig() {
 		}
 		Input.InputSlice = inputSlice
 
-		// joinedInput := strings.Join(inputSlice, "")
-		// joinedInput = strings.ReplaceAll(joinedInput, "\r\n", "")
-		// joinedInput = strings.ReplaceAll(joinedInput, "\n", "")
-
-		// Input.joinedInput = joinedInput
-		// if len(Input.inputSlice) > 0 {
-		// Ilogger.Trace().Msg(fmt.Sprintf("\n%v\n", Input.inputSlice))
-		// }
 	}
 
 	// read config
 	configFile, _ := rootCmd.Flags().GetString("config")
+	if len(configFile) == 0 {
+		configFile = GlobalMap["DefaultConfigPath"]
+	}
 	if configFile != "" {
-		// Ilogger.Trace().Msg(fmt.Sprint("parsing config file:", configFile))
+		Ilogger.Trace().Msg(fmt.Sprint("parsing config file:", configFile))
 
 		if _, err := os.Stat(configFile); err == nil {
 			configContent, err := os.ReadFile(configFile)

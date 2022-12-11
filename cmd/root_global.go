@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -20,7 +21,11 @@ type TerminalParams struct {
 }
 
 type InputData struct {
+	// slice of input lines separatated by \n
 	InputSlice []string
+	// map then input is a table
+	InputMap        map[string][]string
+	InputTableSlice []map[string]string
 }
 
 func (d InputData) GetJoinedString(strJoin string, removeLineBreaks bool) (string, error) {
@@ -53,9 +58,13 @@ var ConfigPath string
 var RootPath string
 var GlobalMap map[string]string = make(map[string]string)
 
-var Version string = "1.0.9"
-var Input InputData = InputData{InputSlice: []string{}}
+var Version string = "0.1.0"
+var Input InputData = InputData{InputSlice: []string{},
+	InputMap:        make(map[string][]string),
+	InputTableSlice: make([]map[string]string, 0),
+}
 
+// https://habr.com/ru/company/macloud/blog/558316/
 var ColorReset string = "\033[0m"
 
 var ColorRed string = "\033[31m"
@@ -87,9 +96,64 @@ func ToggleColors(showColor bool) {
 	}
 }
 
-func IsCommanInPipe() bool {
+func StandartPath(path string) string {
+	return strings.ReplaceAll(path, "\\", "/")
+}
 
+func IsCommandInPipe() bool {
 	return GlobalMap["IS_COMMAND_IN_PIPE"] == "CommandInPipe"
+}
+
+func GetRootAndDefaultConfigPaths() (configPath string, rootPath string, err error) {
+	var execPath string
+	execPath, err = os.Executable()
+	if err != nil {
+		return "", "", err
+	}
+
+	execDirPath := filepath.Dir(execPath)
+	rootPath = execDirPath
+	var configPathCandidate string
+	configPath = ""
+	// if runs as script e.g.: go run .
+	if strings.Contains(execPath, "go-build") {
+		_, callerPath, _, _ := runtime.Caller(0)
+		rootPath = path.Dir(path.Dir(callerPath))
+		configPathCandidate = rootPath + "/.mcli.yaml"
+		_, err = os.Stat(configPathCandidate)
+		if err == nil && len(configPath) == 0 {
+			configPath = configPathCandidate
+		}
+	}
+
+	// check if the .mcli.yaml file is in the root dir, in the same dir as executable file
+	configPathCandidate = execDirPath + "/.mcli.yaml"
+	_, err = os.Stat(configPathCandidate)
+
+	if err == nil && len(configPath) == 0 {
+		configPath = configPathCandidate
+		return configPath, rootPath, nil
+	}
+
+	OS = runtime.GOOS
+	var homeDir string
+	switch OS {
+	case "windows":
+		homeDir = os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
+	default:
+		homeDir = os.Getenv("HOME")
+	}
+	// check if the .mcli.yaml file is in the home dir
+	configPathCandidate = homeDir + "/.mcli/config/.mcli.yaml"
+
+	_, err = os.Stat(configPathCandidate)
+	if err == nil && len(configPath) == 0 {
+		configPath = configPathCandidate
+		return configPath, rootPath, nil
+	}
+
+	return "", rootPath, nil
+
 }
 
 func init() {
@@ -113,29 +177,30 @@ func init() {
 	}
 	// println("width:", TermWidth, "height:", TermHeight)
 
-	_, callerPath, _, _ := runtime.Caller(0)
-	RootPath = path.Dir(path.Dir(callerPath))
-	GlobalMap["RootPath"] = RootPath
 	OS = runtime.GOOS
 	GlobalMap["OS"] = OS
 
 	switch OS {
 	case "windows":
-		GlobalMap["HomeDir"] = os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH")
+		GlobalMap["HomeDir"] = StandartPath(os.Getenv("HOMEDRIVE") + os.Getenv("HOMEPATH"))
 		GlobalMap["LineBreak"] = "\r\n"
 	case "darwin":
 		GlobalMap["LineBreak"] = "\n"
-		GlobalMap["HomeDir"] = os.Getenv("HOME")
+		GlobalMap["HomeDir"] = StandartPath(os.Getenv("HOME"))
 	case "linux":
-		GlobalMap["HomeDir"] = os.Getenv("HOME")
+		GlobalMap["HomeDir"] = StandartPath(os.Getenv("HOME"))
 		GlobalMap["LineBreak"] = "\n"
 	default:
 		GlobalMap["LineBreak"] = "\n"
-		GlobalMap["HomeDir"] = os.Getenv("HOME")
+		GlobalMap["HomeDir"] = StandartPath(os.Getenv("HOME"))
 	}
 
-	rootCmd.PersistentFlags().StringVar(&ConfigPath, "config", RootPath+"/.mcli.yaml",
-		"specify config file - default "+RootPath+"/.mcli.yaml")
+	cPath, rPath, _ := GetRootAndDefaultConfigPaths()
+
+	GlobalMap["RootPath"] = StandartPath(rPath)
+	GlobalMap["DefaultConfigPath"] = StandartPath(cPath)
+
+	rootCmd.PersistentFlags().StringVar(&ConfigPath, "config", "", "specify path to config file *.yaml")
 
 	rootCmd.Flags().StringP("root-args", "a", "", "args for root command")
 

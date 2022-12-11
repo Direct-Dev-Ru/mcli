@@ -67,7 +67,7 @@ For example: mcli secrets generate --use-words
 		if !isMaxLengthSet && Config.Secrets.Common.MaxLength > 11 {
 			maxLength = Config.Secrets.Common.MaxLength
 		}
-		if IsCommanInPipe() {
+		if IsCommandInPipe() {
 			Elogger.Fatal().Msg("generate doesn't support pipe yet ...")
 		}
 		var runesReplaces []mcli_crypto.ReplaceEntry = make([]mcli_crypto.ReplaceEntry, 3)

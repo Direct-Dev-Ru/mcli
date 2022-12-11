@@ -1,0 +1,3 @@
+CONTAINER ID                                                       IMAGE                   COMMAND                                                                        CREATED        STATUS       PORTS                               NAMES
+5849d44cb6f7a1c0174a4204cbdfc2e6b3b5c541e4bd9f70fbec15f644cd6c72   phpmyadmin/phpmyadmin   "/docker-entrypoint.sh apache2-foreground"                                     4 months ago   Up 3 hours   0.0.0.0:8081->80/tcp                pma
+65ed420998016c35543d5f105e904f26c42e58e163130e65fc5b2a1b15c7bc85   mysql:8-debian          "docker-entrypoint.sh --default-authentication-plugin=mysql_native_password"   4 months ago   Up 3 hours   0.0.0.0:3306->3306/tcp, 33060/tcp   mysql-db

@@ -85,7 +85,7 @@ var importCmd = &cobra.Command{
 
 		switch source_path {
 		case "/stdin":
-			if IsCommanInPipe() && slices.Contains([]string{"/input", "/ask"}, importkey_path) {
+			if IsCommandInPipe() && slices.Contains([]string{"/input", "/ask"}, importkey_path) {
 				Elogger.Fatal().Msg("import command in pipe - reading data from stdin is impossiible")
 			}
 			encContentString, _ := Input.GetJoinedString("", false)

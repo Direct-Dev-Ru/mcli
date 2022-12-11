@@ -8,7 +8,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 	"testing"
 
@@ -44,7 +44,7 @@ func Test_HistoryRun(t *testing.T) {
 	cmd.SetOut(&b)
 	// cmd.SetArgs([]string{"--filter", "merge"})
 	cmd.Execute()
-	out, err := ioutil.ReadAll(&b)
+	out, err := io.ReadAll(&b)
 	if err != nil {
 		t.Fatal(err)
 	}
