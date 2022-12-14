@@ -6,6 +6,8 @@ package cmd
 import (
 	"fmt"
 	mcli_utils "mcli/packages/mcli-utils"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -77,6 +79,68 @@ func filterTable(table []map[string]string, tokens [][]string) []map[string]stri
 		}
 	}
 	return resTable
+}
+
+type outWalker struct {
+	filepath    string
+	lineContent string
+	lineNumber  int
+}
+
+func ProcessOneInputFile(filepath, filter string) []outWalker {
+	result := make([]outWalker, 0, 10)
+
+	result = append(result, outWalker{filepath: filepath, lineContent: "line 1", lineNumber: 1})
+	result = append(result, outWalker{filepath: filepath, lineContent: "line 2", lineNumber: 2})
+	result = append(result, outWalker{filepath: filepath, lineContent: "line 3", lineNumber: 3})
+
+	return result
+}
+
+func ListSourceByWalk(path, filter string) (result []outWalker, err error) {
+	fs, err := os.Stat(path)
+	if err != nil {
+		return nil, err
+	}
+	// path is file
+	if !fs.IsDir() {
+		result = ProcessOneInputFile(path, filter)
+		return result, nil
+	}
+
+	// if path is Dir
+	resultCh := make(chan []outWalker, 100)
+	filepath.Walk(path, func(wPath string, info os.FileInfo, err error) error {
+		// if the same path
+		if wPath == path {
+			return nil
+		}
+		// If current path is Dir - do nothing
+		if info.IsDir() {
+			_ = fmt.Sprintf("[%s]\n", wPath)
+		}
+		// if we got file, we take its full path and
+		if wPath != path && !info.IsDir() {
+			fullFilePath := wPath
+			WgGlb.Add(1)
+			go func(path, filter string) {
+				defer WgGlb.Done()
+				resultCh <- ProcessOneInputFile(path, filter)
+			}(fullFilePath, "")
+		}
+		return nil
+	})
+
+	// waits for all goroutines to finish
+	go func() {
+		WgGlb.Wait()
+		close(resultCh)
+	}()
+
+	for v := range resultCh {
+		result = append(result, v...)
+	}
+	return result, nil
 }
 
 var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
@@ -195,7 +259,22 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 		}
 	} else {
 		// read input data given through parameters ( files or dirs )
-		CopyInput.TableSlice = append(CopyInput.TableSlice, map[string]string{"k": "kkk"})
+		// CopyInput.TableSlice = append(CopyInput.TableSlice, map[string]string{"k": "kkk"})
+
+		switch inputType {
+		case "plain":
+			source := strings.Split(source, " ")
+			result := make([]outWalker, 0, 10)
+			for _, path := range source {
+				res, err := ListSourceByWalk(path, filter)
+				if err != nil {
+					Elogger.Error().Msgf("processing '' %s '' got an error:  %v", path, err.Error())
+					continue
+				}
+				result = append(result, res...)
+			}
+			fmt.Println(result)
+		}
 	}
 
 	// Process filtering of data

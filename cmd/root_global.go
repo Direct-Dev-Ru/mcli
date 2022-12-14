@@ -54,6 +54,7 @@ var Ilogger, Elogger zerolog.Logger
 var TermWidth, TermHeight int = 0, 0
 var IsTerminal bool = false
 var OS string
+var WgGlb sync.WaitGroup
 var ConfigPath string
 var RootPath string
 var GlobalMap map[string]string = make(map[string]string)

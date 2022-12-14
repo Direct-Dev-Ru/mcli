@@ -6,35 +6,11 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
-
-func listDirByWalk(path string) {
-	filepath.Walk(path, func(wPath string, info os.FileInfo, err error) error {
-
-		// Обход директории без вывода
-		if wPath == path {
-			return nil
-		}
-
-		// Если данный путь является директорией, то останавливаем рекурсивный обход
-		// и возвращаем название папки
-		if info.IsDir() {
-			fmt.Printf("[%s]\n", wPath)
-			// return filepath.SkipDir
-		}
-
-		// Выводится название файла
-		if wPath != path && !info.IsDir() {
-			fmt.Println(path + "/" + wPath)
-		}
-		return nil
-	})
-}
 
 // testCmd represents the test command
 var testCmd = &cobra.Command{

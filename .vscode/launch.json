@@ -18,7 +18,7 @@
       // "args": ["http", "request", "-m", "GET", "--url", "http://localhost:8080/echo", "-s", "{\"h1\":[\"v1\"],\"h2\":[\"v2\",\"v3\"]}"],
       // "args": ["http", "request", "-m", "GET", "--url", "http://localhost:8080/echo", "-s", "./http-data/http-params/headers.json","-b", "./http-data/http-params/body.json" ],
       // "args": ["secrets", "generate", "--use-words"],
-      "args": ["grep", "history"],
+      "args": ["grep", "-i", "plain", "-s", ".mcli.yam"],
       //    "args": ["secrets", "remove", "q"],
       //   "args": ["secrets", "list", "-o", "plain", "-s"],
       // "args": ["test"],
