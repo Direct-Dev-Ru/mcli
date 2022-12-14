@@ -24,8 +24,8 @@ type InputData struct {
 	// slice of input lines separatated by \n
 	InputSlice []string
 	// map then input is a table
-	InputMap        map[string][]string
-	InputTableSlice []map[string]string
+	InputMap   map[string][]string
+	TableSlice []map[string]string
 }
 
 func (d InputData) GetJoinedString(strJoin string, removeLineBreaks bool) (string, error) {
@@ -60,8 +60,8 @@ var GlobalMap map[string]string = make(map[string]string)
 
 var Version string = "0.1.0"
 var Input InputData = InputData{InputSlice: []string{},
-	InputMap:        make(map[string][]string),
-	InputTableSlice: make([]map[string]string, 0),
+	InputMap:   make(map[string][]string),
+	TableSlice: make([]map[string]string, 0),
 }
 
 // https://habr.com/ru/company/macloud/blog/558316/

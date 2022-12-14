@@ -4,11 +4,37 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+func listDirByWalk(path string) {
+	filepath.Walk(path, func(wPath string, info os.FileInfo, err error) error {
+
+		// Обход директории без вывода
+		if wPath == path {
+			return nil
+		}
+
+		// Если данный путь является директорией, то останавливаем рекурсивный обход
+		// и возвращаем название папки
+		if info.IsDir() {
+			fmt.Printf("[%s]\n", wPath)
+			// return filepath.SkipDir
+		}
+
+		// Выводится название файла
+		if wPath != path && !info.IsDir() {
+			fmt.Println(path + "/" + wPath)
+		}
+		return nil
+	})
+}
 
 // testCmd represents the test command
 var testCmd = &cobra.Command{
@@ -20,6 +46,28 @@ var testCmd = &cobra.Command{
 		if ENV_DEBUG != "true" {
 			os.Exit(1)
 		}
+
+		// var re = regexp.MustCompile(`(?m)^([A-Z0-9А-Я]+:)(.+)`)
+		var re = regexp.MustCompile(`^?(?P<col>[A-Z0-9А-Я]+):(?P<val>.+)`)
+		var str = `IMAGE:django`
+		fmt.Printf("%#v\n", re.FindStringSubmatch(str))
+		fmt.Printf("%#v\n", re.SubexpNames())
+		fmt.Printf("%#v\n", re.SubexpIndex("col"))
+		fmt.Printf("%#v\n", re.SubexpIndex("val"))
+		fmt.Printf("%#v\n", re.FindStringSubmatchIndex(str))
+
+		for i, match := range re.FindAllString(str, -1) {
+
+			fmt.Println(match, "found at index", i)
+		}
+
+		// tests := "test str*ing"
+		// fmt.Println(mcli_utils.SubString(tests, 5, 22222222), len(mcli_utils.SubString(tests, 5, 22222222)))
+		// fmt.Println(mcli_utils.SubStringFind(tests, "t", "t"), len(mcli_utils.SubStringFind(tests, " ", "*")))
+
+		// fmt.Println("List by Walk")
+		// listDirByWalk("/home")
+
 		// refString := "{{$RootPath$}}/pwdgen/{{$HOME}}/freqrnc2011.csv"
 		// templateRegExp := regexp.MustCompile(`{{\$.+?}}`)
 

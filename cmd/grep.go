@@ -13,10 +13,76 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
-	var inputType, outputType, filter, source, dest string
+func getFilterTokens(filter string) [][]string {
+	orFilterMembers := strings.Split(filter, "-or-")
+	filterStructure := make([][]string, 0)
+	for _, orM := range orFilterMembers {
+		currenAndSlice := make([]string, 0)
+		currentMember := strings.TrimSpace(orM)
+		andFilterMembers := strings.Split(currentMember, "-and-")
+		for _, andM := range andFilterMembers {
+			currenAndSlice = append(currenAndSlice, strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(andM), "{"), "}"))
+		}
+		filterStructure = append(filterStructure, currenAndSlice)
+	}
+	return filterStructure
+}
 
-	var showColor, isRegExp bool = false, false
+func filterTable(table []map[string]string, tokens [][]string) []map[string]string {
+	resTable := make([]map[string]string, 0, 1)
+
+	for _, row := range table {
+		if len(tokens) == 0 {
+			resTable = append(resTable, row)
+			continue
+		}
+		resOr := false
+
+		for _, orM := range tokens {
+			currentAndRes := true
+			for _, andM := range orM {
+				var re = regexp.MustCompile(`^?(?P<col>[A-Z0-9А-Я]+):(?P<val>.+)`)
+				tokenSubMatch := re.FindStringSubmatch(andM)
+				if len(tokenSubMatch) > 0 {
+					var colName, val string = "", ""
+					if index := re.SubexpIndex("col"); index > 0 {
+						colName = tokenSubMatch[index]
+					}
+					if index := re.SubexpIndex("val"); index > 0 {
+						val = tokenSubMatch[index]
+					}
+					if len(val) > 0 && len(colName) > 0 {
+						colValue, ok := row[colName]
+						if ok {
+							valRe := regexp.MustCompile(val)
+							currentAndRes = currentAndRes && valRe.MatchString(colValue)
+							continue
+						}
+						currentAndRes = currentAndRes && false
+					}
+				} else {
+					// Column not specified - check all columns -> true if match in any column
+					currentRowMatch := false
+					for _, col := range row {
+						valRe := regexp.MustCompile(andM)
+						currentRowMatch = currentRowMatch || valRe.MatchString(col)
+					}
+					currentAndRes = currentAndRes && currentRowMatch
+				}
+			}
+			resOr = resOr || currentAndRes
+		}
+		if resOr {
+			resTable = append(resTable, row)
+		}
+	}
+	return resTable
+}
+
+var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
+	var inputType, outputType, filter, source, dest, out_cols string
+
+	var showColor, isNoHeaders bool = false, false
 	showColor, _ = cmd.Flags().GetBool("color")
 	ToggleColors(showColor)
 
@@ -60,56 +126,104 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	if !ok {
 		outputType = "plain"
 	}
+
+	out_cols, _ = cmd.Flags().GetString("out-cols")
+	out_cols = strings.ToUpper(out_cols)
+	outColumns := strings.Split(out_cols, ",")
+	isNoHeaders, _ = cmd.Flags().GetBool("no-headers")
+
 	Ilogger.Trace().MsgFunc(func() string {
-		return fmt.Sprintf("%v %v %v %v", isRegExp, filter, source, dest)
+		return fmt.Sprintf("%#v %#v %#v", filter, source, dest)
 	})
+
+	CopyInput := InputData{InputSlice: Input.InputSlice,
+		InputMap:   make(map[string][]string),
+		TableSlice: make([]map[string]string, 0),
+	}
 
 	// Process if input througth pipe entered
 	if IsCommandInPipe() {
-
-		if len(Input.InputSlice) > 0 {
+		if len(CopyInput.InputSlice) > 0 {
 			var headers []string = make([]string, 0, 5)
+			var headersPositions []int = make([]int, 0, 5)
 			var isHeadersSet bool = false
-			for _, inputLine := range Input.InputSlice {
-
-				currentLine := strings.TrimSpace(strings.ReplaceAll(inputLine, GlobalMap["LineBreak"], ""))
+			for _, inputLine := range CopyInput.InputSlice {
+				currentLine := strings.ReplaceAll(inputLine, GlobalMap["LineBreak"], "")
 				if len(currentLine) == 0 {
 					continue
 				}
 				// check for input type
 				switch inputType {
 				case "table":
-
-					// splits by two or more spaces or one ore more tabs
+					// splits by two or more spaces or one or more tabs
 					splitRX := regexp.MustCompile(`([ ]{2,})|([\t]{1,})`)
+
 					if !isHeadersSet {
 						hs := splitRX.Split(currentLine, -1)
 						for _, h := range hs {
-							Input.InputMap[h] = make([]string, 0, len(Input.InputSlice)-1)
-							headers = append(headers, h)
+							CopyInput.InputMap[h] = make([]string, 0, len(CopyInput.InputSlice)-1)
+							headers = append(headers, strings.ToUpper(h))
+							headersPositions = append(headersPositions, strings.Index(currentLine, h))
 						}
 						isHeadersSet = true
 						continue
 					}
-					row := splitRX.Split(currentLine, -1)
-					currentRowMap := make(map[string]string, 0)
-					for k, h := range headers {
-						Input.InputMap[h] = append(Input.InputMap[h], row[k])
-						currentRowMap[h] = row[k]
+					var row []string
+
+					row = splitRX.Split(currentLine, -1)
+					if len(row) != len(headers) {
+						row = mcli_utils.SliceStringByPositions(currentLine, headersPositions)
 					}
-					Input.InputTableSlice = append(Input.InputTableSlice, currentRowMap)
+
+					currentRowMap := make(map[string]string, 0)
+
+					for k, h := range headers {
+						if k < len(row) {
+							CopyInput.InputMap[h] = append(CopyInput.InputMap[h], row[k])
+							currentRowMap[h] = row[k]
+						}
+					}
+					CopyInput.TableSlice = append(CopyInput.TableSlice, currentRowMap)
+
 				case "json":
 				default:
 
 				}
 
 			}
-			// for k, v := range Input.InputMap {
-			// 	fmt.Println(k, v)
-			// }
 
-			outString, _ := mcli_utils.PrettyJsonEncodeToString(Input.InputTableSlice)
-			fmt.Println(outString)
+		}
+	} else {
+		// read input data given through parameters ( files or dirs )
+		CopyInput.TableSlice = append(CopyInput.TableSlice, map[string]string{"k": "kkk"})
+	}
+
+	// Process filtering of data
+	filteredSlice := filterTable(CopyInput.TableSlice, getFilterTokens(filter))
+
+	// Output results
+
+	outJson, _ := mcli_utils.PrettyJsonEncodeToString(filteredSlice)
+	fmt.Println(outJson)
+
+	printFunction := func(header, value string) {
+		fmt.Printf("%s:%s\n", header, value)
+	}
+	if isNoHeaders {
+		printFunction = func(header, value string) {
+			fmt.Printf("%s\n", value)
+		}
+	}
+	switch {
+	case outputType == "plai n":
+		if len(outColumns) > 0 {
+			for k, v := range CopyInput.InputMap {
+				if slices.Contains(outColumns, k) {
+					for _, v2 := range v {
+						printFunction(k, v2)
+					}
+				}
+			}
 		}
 	}
 
@@ -131,6 +245,8 @@ func init() {
 
 	grepCmd.Flags().StringP("input-type", "i", "plain", "how parse input: as plain or json or table")
 	grepCmd.Flags().StringP("output-type", "o", "plain", "how format output: as plain or json or table")
+	grepCmd.Flags().StringP("out-cols", "l", "", "output columns when table outputs: if omits  - all columns printed")
+	grepCmd.Flags().BoolP("no-headers", "n", false, "then outputs as table omit headers or not")
 	grepCmd.Flags().StringP("source", "s", "/input", "is input data from pipe - /input value or should be specified througth --source")
 	grepCmd.Flags().StringP("dest", "d", "/stdout", "is output data print to stdout /stdout or to file. default - stdout")
 	grepCmd.Flags().StringP("filter", "f", "", "filter expression - if starts from regexp: it will be regexp search")
