@@ -4,9 +4,10 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"encoding/base64"
 	"fmt"
+	mcli_fs "mcli/packages/mcli-filesystem"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -23,19 +24,34 @@ var testCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		// var re = regexp.MustCompile(`(?m)^([A-Z0-9А-Я]+:)(.+)`)
-		var re = regexp.MustCompile(`^?(?P<col>[A-Z0-9А-Я]+):(?P<val>.+)`)
-		var str = `IMAGE:django`
-		fmt.Printf("%#v\n", re.FindStringSubmatch(str))
-		fmt.Printf("%#v\n", re.SubexpNames())
-		fmt.Printf("%#v\n", re.SubexpIndex("col"))
-		fmt.Printf("%#v\n", re.SubexpIndex("val"))
-		fmt.Printf("%#v\n", re.FindStringSubmatchIndex(str))
-
-		for i, match := range re.FindAllString(str, -1) {
-
-			fmt.Println(match, "found at index", i)
+		var paths string = ".mcli.yaml  http-data/http-params cmd    http-data"
+		gzData, err := mcli_fs.ZipData([]byte(paths))
+		if err != nil {
+			Elogger.Error().Msg(err.Error())
 		}
+		str := base64.StdEncoding.EncodeToString(gzData)
+		fmt.Println(str)
+
+		data, _ := base64.StdEncoding.DecodeString(str)
+		unData, err := mcli_fs.UnZipData(data)
+		if err != nil {
+			Elogger.Error().Msg(err.Error())
+		}
+		fmt.Println(string(unData))
+
+		// var re = regexp.MustCompile(`(?m)^([A-Z0-9А-Я]+:)(.+)`)
+		// var re = regexp.MustCompile(`^?(?P<col>[A-Z0-9А-Я]+):(?P<val>.+)`)
+		// var str = `IMAGE:django`
+		// fmt.Printf("%#v\n", re.FindStringSubmatch(str))
+		// fmt.Printf("%#v\n", re.SubexpNames())
+		// fmt.Printf("%#v\n", re.SubexpIndex("col"))
+		// fmt.Printf("%#v\n", re.SubexpIndex("val"))
+		// fmt.Printf("%#v\n", re.FindStringSubmatchIndex(str))
+
+		// for i, match := range re.FindAllString(str, -1) {
+
+		// 	fmt.Println(match, "found at index", i)
+		// }
 
 		// tests := "test str*ing"
 		// fmt.Println(mcli_utils.SubString(tests, 5, 22222222), len(mcli_utils.SubString(tests, 5, 22222222)))

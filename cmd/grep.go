@@ -4,11 +4,13 @@ Copyright © 2022 DIRECT-DEV.RU <INFO@DIRECT-DEV.RU>
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	mcli_utils "mcli/packages/mcli-utils"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -81,56 +83,129 @@ func filterTable(table []map[string]string, tokens [][]string) []map[string]stri
 	return resTable
 }
 
+func filterString(line string, tokens [][]string) bool {
+	if len(tokens) == 0 {
+		return true
+	}
+	resOr := false
+	for _, orM := range tokens {
+		currentAndRes := true
+		for _, andM := range orM {
+			valRe := regexp.MustCompile(andM)
+			currentMatch := valRe.MatchString(line)
+			currentAndRes = currentAndRes && currentMatch
+			if !currentAndRes {
+				break
+			}
+		}
+		resOr = resOr || currentAndRes
+	}
+	return resOr
+}
+
 type outWalker struct {
 	filepath    string
 	lineContent string
 	lineNumber  int
 }
 
-func ProcessOneInputFile(filepath, filter string) []outWalker {
+func ProcessOneInputFile(filepath string, filterTokens [][]string, fnameFilterTokens [][]string, fs os.FileInfo) []outWalker {
 	result := make([]outWalker, 0, 10)
+	fmt.Println(filepath, filterTokens)
 
-	result = append(result, outWalker{filepath: filepath, lineContent: "line 1", lineNumber: 1})
-	result = append(result, outWalker{filepath: filepath, lineContent: "line 2", lineNumber: 2})
-	result = append(result, outWalker{filepath: filepath, lineContent: "line 3", lineNumber: 3})
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	var currentLine string
+	var lineNumber int = 1
+	for scanner.Scan() {
+		currentLine = scanner.Text()
+		if filterString(currentLine, filterTokens) {
+			result = append(result, outWalker{filepath: filepath, lineContent: currentLine, lineNumber: lineNumber})
+		}
+		lineNumber++
+	}
 
 	return result
 }
 
-func ListSourceByWalk(path, filter string) (result []outWalker, err error) {
-	fs, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-	// path is file
-	if !fs.IsDir() {
-		result = ProcessOneInputFile(path, filter)
-		return result, nil
-	}
+func ProcessSourceParameter(source string) []string {
+	pathCandidates := make([]string, 0, 5)
+	pathMembers := make([]string, 0, len(pathCandidates))
 
-	// if path is Dir
+	for _, path := range strings.Fields(source) {
+		if path = strings.TrimSpace(path); len(path) > 0 {
+			pathCandidates = append(pathCandidates, path)
+		}
+	}
+	sort.Strings(pathCandidates)
+
+	for k, p := range pathCandidates {
+		var prev string
+		if k > 0 {
+			prev = pathCandidates[k-1]
+		} else {
+			pathMembers = append(pathMembers, p)
+		}
+		if !strings.Contains(p, prev) {
+			pathMembers = append(pathMembers, p)
+		}
+	}
+	return pathMembers
+}
+
+func ListSourceByWalk(source, filter string) (result []outWalker, err error) {
+
+	paths := ProcessSourceParameter(source)
+	filterTokens := getFilterTokens(filter)
+	//  TODO: implement filering by filename and dirname
+	// fileNameFilterTokens := getFilterTokens(fnameFilter)
+
 	resultCh := make(chan []outWalker, 100)
-	filepath.Walk(path, func(wPath string, info os.FileInfo, err error) error {
-		// if the same path
-		if wPath == path {
-			return nil
+	// loop through paths and run goroutines
+	for _, path := range paths {
+
+		fs, err := os.Stat(path)
+		if err != nil {
+			return nil, err
 		}
-		// If current path is Dir - do nothing
-		if info.IsDir() {
-			_ = fmt.Sprintf("[%s]\n", wPath)
-		}
-		// if we got file, we take its full path and
-		if wPath != path && !info.IsDir() {
-			fullFilePath := wPath
+		// path is file
+		if !fs.IsDir() {
 			WgGlb.Add(1)
 			go func(path, filter string) {
 				defer WgGlb.Done()
-				resultCh <- ProcessOneInputFile(path, filter)
-			}(fullFilePath, "")
-		}
-		return nil
-	})
+				resultCh <- ProcessOneInputFile(path, filterTokens, nil, fs)
+			}(path, filter)
+		} else {
+			// path is Dir
+			filepath.Walk(path, func(wPath string, info os.FileInfo, err error) error {
+				// if the same path
+				if wPath == path {
+					return nil
+				}
+				// If current path is Dir - do nothing
+				if info.IsDir() {
+					_ = fmt.Sprintf("[%s]\n", wPath)
+				}
+				// if we got file, we take its full path and
+				if wPath != path && !info.IsDir() {
+					fullFilePath := wPath
 
+					WgGlb.Add(1)
+					go func(path, filter string) {
+						defer WgGlb.Done()
+						resultCh <- ProcessOneInputFile(path, filterTokens, nil, fs)
+					}(fullFilePath, filter)
+				}
+				return nil
+			})
+		}
+	}
 	// waits for all goroutines to finish
 	go func() {
 		WgGlb.Wait()
@@ -140,6 +215,7 @@ func ListSourceByWalk(path, filter string) (result []outWalker, err error) {
 	for v := range resultCh {
 		result = append(result, v...)
 	}
+
 	return result, nil
 }
 
@@ -263,27 +339,31 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 
 		switch inputType {
 		case "plain":
-			source := strings.Split(source, " ")
-			result := make([]outWalker, 0, 10)
-			for _, path := range source {
-				res, err := ListSourceByWalk(path, filter)
-				if err != nil {
-					Elogger.Error().Msgf("processing '' %s '' got an error:  %v", path, err.Error())
-					continue
-				}
-				result = append(result, res...)
+			if source == "/input" {
+				Elogger.Fatal().Msg("source (paths to file(s) or dir(s)) does not specified")
 			}
-			fmt.Println(result)
+			result, err := ListSourceByWalk(source, filter)
+			if err != nil {
+				Elogger.Error().Msgf("while processing [%s] got an error:  %v", source, err.Error())
+			}
+			for _, v := range result {
+				fmt.Println(v)
+			}
 		}
 	}
 
-	// Process filtering of data
-	filteredSlice := filterTable(CopyInput.TableSlice, getFilterTokens(filter))
+	// Process filtering of data - if plain then filtering was maid during reading of files
+	switch inputType {
+	case "table":
+		filteredSlice := filterTable(CopyInput.TableSlice, getFilterTokens(filter))
+		outJson, _ := mcli_utils.PrettyJsonEncodeToString(filteredSlice)
+		fmt.Println("outJson :", outJson)
+
+	case "json":
+	default:
+	}
 
 	// Output results
-
-	outJson, _ := mcli_utils.PrettyJsonEncodeToString(filteredSlice)
-	fmt.Println(outJson)
 
 	printFunction := func(header, value string) {
 		fmt.Printf("%s:%s\n", header, value)
@@ -293,6 +373,7 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 			fmt.Printf("%s\n", value)
 		}
 	}
+
 	switch {
 	case outputType == "plai n":
 		if len(outColumns) > 0 {
