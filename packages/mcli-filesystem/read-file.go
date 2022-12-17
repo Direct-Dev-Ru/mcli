@@ -8,10 +8,14 @@ import (
 
 // https://www.devdungeon.com/content/working-files-go
 
-type GetFileContentType func(string) ([]byte, error)
+type GetFileContentType func([]string) ([]string, error)
 
-var GetFile GetFileContentType = func(string) ([]byte, error) {
-	return nil, nil
+var GetFile GetFileContentType = func(in []string) ([]string, error) {
+	return in, nil
+}
+
+func (gc GetFileContentType) UntarFromFile(tarball, target string) error {
+	return UntarFromFile(tarball, target)
 }
 
 func (gc GetFileContentType) GetContent(filePath string) ([]byte, error) {
@@ -53,21 +57,3 @@ func (gc GetFileContentType) GetContentChunks(filePath string) ([]byte, error) {
 	}
 	return result, nil
 }
-
-// // make a buffer to keep chunks that are read
-// buf := make([]byte, 1024)
-// for {
-// 	// read a chunk
-// 	n, err := fi.Read(buf)
-// 	if err != nil && err != io.EOF {
-// 		panic(err)
-// 	}
-// 	if n == 0 {
-// 		break
-// 	}
-
-// 	// write a chunk
-// 	if _, err := fo.Write(buf[:n]); err != nil {
-// 		panic(err)
-// 	}
-// }

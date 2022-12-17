@@ -9,7 +9,7 @@ import (
 
 type getFileHandler func(string) (*os.File, func(), error)
 
-var getFileForRW getFileHandler = func(filePath string) (*os.File, func(), error) {
+var GetFileForRW getFileHandler = func(filePath string) (*os.File, func(), error) {
 	var (
 		file *os.File = nil
 		err  error    = nil

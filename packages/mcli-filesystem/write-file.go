@@ -1,26 +1,23 @@
 package mclifilesystem
 
-import "os"
+import (
+	"os"
+)
 
 // https://www.devdungeon.com/content/working-files-go
 
-type SetFileContentType func(string, string) (int, error)
+type SetFileContentType func([]string) ([]string, error)
 
-var SetFile SetFileContentType = func(string, string) (int, error) {
-	return 0, nil
+var SetFile SetFileContentType = func(in []string) ([]string, error) {
+	return in, nil
+}
+
+func (sc SetFileContentType) TarToFile(source, target string) error {
+	// fmt.Println(sc([]string{source, target}))
+	return TarToFile(source, target)
 }
 
 func (sc SetFileContentType) SetContent(filePath string, content []byte) (int, error) {
 	err := os.WriteFile(filePath, content, 0644)
 	return len(content), err
-	// f, closer, err := getFileForRW(filePath)
-	// if err != nil {
-	// 	return 0, err
-	// }
-	// defer closer()
-	// n, err := f.Write(content)
-	// if err != nil {
-	// 	return 0, err
-	// }
-	// return n, nil
 }

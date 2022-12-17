@@ -5,7 +5,9 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/hex"
 	"fmt"
+	mcli_crypto "mcli/packages/mcli-crypto"
 	mcli_utils "mcli/packages/mcli-utils"
 	"os"
 	"path/filepath"
@@ -276,32 +278,33 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 		return fmt.Sprintf("%#v %#v %#v", filter, source, dest)
 	})
 
-	CopyInput := InputData{InputSlice: Input.InputSlice,
+	InputForGrep := InputData{InputSlice: Input.InputSlice,
 		InputMap:   make(map[string][]string),
-		TableSlice: make([]map[string]string, 0),
+		InputTable: make([]map[string]string, 0),
 	}
+
+	OutPut := OutputData{OutputSlice: make([]string, 0, 10)}
 
 	// Process if input througth pipe entered
 	if IsCommandInPipe() {
-		if len(CopyInput.InputSlice) > 0 {
-			var headers []string = make([]string, 0, 5)
-			var headersPositions []int = make([]int, 0, 5)
-			var isHeadersSet bool = false
-			for _, inputLine := range CopyInput.InputSlice {
-				currentLine := strings.ReplaceAll(inputLine, GlobalMap["LineBreak"], "")
-				if len(currentLine) == 0 {
-					continue
-				}
-				// check for input type
-				switch inputType {
-				case "table":
+		if len(InputForGrep.InputSlice) > 0 {
+			switch inputType {
+			case "table":
+				var headers []string = make([]string, 0, 5)
+				var headersPositions []int = make([]int, 0, 5)
+				var isHeadersSet bool = false
+				for _, inputLine := range InputForGrep.InputSlice {
+					currentLine := strings.ReplaceAll(inputLine, GlobalMap["LineBreak"], "")
+					if len(currentLine) == 0 {
+						continue
+					}
 					// splits by two or more spaces or one or more tabs
 					splitRX := regexp.MustCompile(`([ ]{2,})|([\t]{1,})`)
 
 					if !isHeadersSet {
 						hs := splitRX.Split(currentLine, -1)
 						for _, h := range hs {
-							CopyInput.InputMap[h] = make([]string, 0, len(CopyInput.InputSlice)-1)
+							InputForGrep.InputMap[h] = make([]string, 0, len(InputForGrep.InputSlice)-1)
 							headers = append(headers, strings.ToUpper(h))
 							headersPositions = append(headersPositions, strings.Index(currentLine, h))
 						}
@@ -319,23 +322,31 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 
 					for k, h := range headers {
 						if k < len(row) {
-							CopyInput.InputMap[h] = append(CopyInput.InputMap[h], row[k])
+							InputForGrep.InputMap[h] = append(InputForGrep.InputMap[h], row[k])
 							currentRowMap[h] = row[k]
 						}
 					}
-					CopyInput.TableSlice = append(CopyInput.TableSlice, currentRowMap)
-
-				case "json":
-				default:
+					InputForGrep.InputTable = append(InputForGrep.InputTable, currentRowMap)
 
 				}
-
+			case "json":
+			case "plain":
+				for _, inputLine := range InputForGrep.InputSlice {
+					currentLine := strings.ReplaceAll(inputLine, GlobalMap["LineBreak"], "")
+					if len(currentLine) == 0 {
+						continue
+					}
+					hashSum := hex.EncodeToString(mcli_crypto.SHA_256(currentLine))
+					InputForGrep.InputMap[hashSum] = []string{currentLine}
+				}
+				for k, v := range InputForGrep.InputMap {
+					fmt.Printf("%s: %v\n", k, v)
+				}
 			}
-
 		}
 	} else {
 		// read input data given through parameters ( files or dirs )
-		// CopyInput.TableSlice = append(CopyInput.TableSlice, map[string]string{"k": "kkk"})
+		// InputForGrep.InputTable = append(InputForGrep.InputTable, map[string]string{"k": "kkk"})
 
 		switch inputType {
 		case "plain":
@@ -355,8 +366,8 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	// Process filtering of data - if plain then filtering was maid during reading of files
 	switch inputType {
 	case "table":
-		filteredSlice := filterTable(CopyInput.TableSlice, getFilterTokens(filter))
-		outJson, _ := mcli_utils.PrettyJsonEncodeToString(filteredSlice)
+		OutPut.OutputTable = filterTable(InputForGrep.InputTable, getFilterTokens(filter))
+		outJson, _ := mcli_utils.PrettyJsonEncodeToString(OutPut.OutputTable)
 		fmt.Println("outJson :", outJson)
 
 	case "json":
@@ -377,7 +388,7 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	switch {
 	case outputType == "plai n":
 		if len(outColumns) > 0 {
-			for k, v := range CopyInput.InputMap {
+			for k, v := range InputForGrep.InputMap {
 				if slices.Contains(outColumns, k) {
 					for _, v2 := range v {
 						printFunction(k, v2)
