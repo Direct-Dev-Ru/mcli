@@ -4,8 +4,6 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"encoding/base64"
-	"fmt"
 	mcli_fs "mcli/packages/mcli-filesystem"
 	"os"
 	"strings"
@@ -24,20 +22,41 @@ var testCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		var paths string = ".mcli.yaml  http-data/http-params cmd    http-data"
-		gzData, err := mcli_fs.ZipData([]byte(paths))
-		if err != nil {
-			Elogger.Error().Msg(err.Error())
-		}
-		str := base64.StdEncoding.EncodeToString(gzData)
-		fmt.Println(str)
+		// var paths string = ".mcli.yaml  http-data/http-params cmd    http-data"
+		// content, _ := mcli_fs.GetFile.GetContent("/home/su/projects/golang/cobra-cli-example/run.cmd")
 
-		data, _ := base64.StdEncoding.DecodeString(str)
-		unData, err := mcli_fs.UnZipData(data)
-		if err != nil {
-			Elogger.Error().Msg(err.Error())
-		}
-		fmt.Println(string(unData))
+		// gzData, err := mcli_fs.ZipData(content)
+		// if err != nil {
+		// 	Elogger.Error().Msg(err.Error())
+		// }
+		// str := base64.StdEncoding.EncodeToString(gzData)
+		// str := string(gzData)
+		// fmt.Println(len(gzData))
+		// fmt.Println(gzData)
+		// mcli_fs.SetFile.SetContent("/home/su/projects/golang/cobra-cli-example/.test-data/grep1.go.gz", gzData)
+		// mcli_fs.SetFile.SetZipContent("/home/su/projects/golang/cobra-cli-example/.test-data/grep2.go.gz", content)
+		// unzipcontent, err := mcli_fs.GetFile.GetUnZipContent("/home/su/projects/golang/cobra-cli-example/.test-data/grep2.go.gz")
+
+		// if err := mcli_fs.SetFile.ZipFile(".mcli.yaml", ".test-data/.mcli.yaml.gz"); err != nil {
+		// 	fmt.Println(err)
+		// }
+		// if err := mcli_fs.GetFile.UnZipFile(".test-data/.mcli.yaml.gz", ""); err != nil {
+		// 	fmt.Println("unzip error :", err)
+		// }
+
+		// fmt.Println(string(unzipcontent), err)
+		mcli_fs.SetFile.TarToFile("cmd", ".test-data/cmd.tar")
+		// mcli_fs.TarToFile("cmd", ".test-data/cmd.tar")
+		mcli_fs.UntarFromFile(".test-data/cmd.tar", ".test-data")
+
+		// // data, _ := base64.StdEncoding.DecodeString(str)
+		// data := []byte(str)
+		// unGzData, err := mcli_fs.UnZipData(data)
+		// if err != nil {
+		// 	Elogger.Error().Msg(err.Error())
+		// }
+		// fmt.Println(len(string(unGzData)))
+		// fmt.Println(string(unGzData))
 
 		// var re = regexp.MustCompile(`(?m)^([A-Z0-9А-Я]+:)(.+)`)
 		// var re = regexp.MustCompile(`^?(?P<col>[A-Z0-9А-Я]+):(?P<val>.+)`)

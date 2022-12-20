@@ -25,7 +25,13 @@ type InputData struct {
 	InputSlice []string
 	// map then input is a table
 	InputMap   map[string][]string
-	TableSlice []map[string]string
+	InputTable []map[string]string
+}
+
+type OutputData struct {
+	OutputSlice []string
+	OutputMap   map[string]interface{}
+	OutputTable []map[string]string
 }
 
 func (d InputData) GetJoinedString(strJoin string, removeLineBreaks bool) (string, error) {
@@ -62,7 +68,7 @@ var GlobalMap map[string]string = make(map[string]string)
 var Version string = "0.1.0"
 var Input InputData = InputData{InputSlice: []string{},
 	InputMap:   make(map[string][]string),
-	TableSlice: make([]map[string]string, 0),
+	InputTable: make([]map[string]string, 0),
 }
 
 // https://habr.com/ru/company/macloud/blog/558316/
