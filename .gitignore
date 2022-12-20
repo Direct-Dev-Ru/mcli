@@ -5,3 +5,4 @@ mcli.exe
 *.pdf
 *.vault
 *.tmp
+.vagrant
