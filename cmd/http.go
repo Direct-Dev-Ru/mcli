@@ -9,10 +9,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
-	mclihttp "mcli/packages/mcli-http"
+	mcli_http "mcli/packages/mcli-http"
 
 	"github.com/spf13/cobra"
 )
@@ -53,29 +54,57 @@ var httpCmd = &cobra.Command{
 		if !isStaticPrefix && len(Config.Http.Server.StaticPrefix) > 0 {
 			staticPrefix = Config.Http.Server.StaticPrefix
 		}
+		// Wait for interrupt signal
+		StopHttpChan := make(chan os.Signal, 1)
 
-		mclihttp.InitMainRoutes(staticPath, staticPrefix)
+		// mcli_http.InitMainRoutes(staticPath, staticPrefix)
+		r := mcli_http.NewRouter(staticPath, staticPrefix)
+
+		// root route
+		rootRoute := mcli_http.NewRoute("/", mcli_http.Equal)
+		rootRoute.SetHandler(func(res http.ResponseWriter, req *http.Request) {
+			sPath := "./" + staticPath
+			if strings.HasPrefix(staticPath, "/") {
+				sPath = staticPath
+			}
+			mainPagePath := ""
+			mainPagePathCandidate := sPath + "/index.html"
+			if _, err := os.Stat(mainPagePathCandidate); err != nil {
+				mainPagePathCandidate = sPath + "/html/index.html"
+				if _, err := os.Stat(mainPagePathCandidate); err != nil {
+					mainPagePathCandidate = ""
+				}
+			}
+			mainPagePath = mainPagePathCandidate
+
+			if len(mainPagePath) > 0 {
+				http.ServeFile(res, req, mainPagePath)
+			} else {
+				http.Error(res, "404 Not Found Root Index.html", 404)
+			}
+		})
+		r.AddRoute(rootRoute)
+
+		r.AddRouteWithHandler("/echo", mcli_http.Prefix, mcli_http.Http_Echo)
+
 		srv := &http.Server{
 			Addr:         ":" + port,
-			Handler:      http.DefaultServeMux,
+			Handler:      r,
 			ReadTimeout:  time.Duration(timeout * int64(time.Millisecond)),
-			WriteTimeout: time.Duration(timeout * int64(time.Millisecond)),
+			WriteTimeout: time.Duration(timeout * 3 * int64(time.Millisecond)),
+			IdleTimeout:  time.Duration(timeout * 4 * int64(time.Millisecond)),
 		}
 
-		// err := http.ListenAndServe(":"+port, nil)
-		// var srvErr error
 		go func() {
 			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 				Elogger.Fatal().Msg(err.Error())
 			}
 		}()
 
-		// Wait for interrupt signal
-		done := make(chan os.Signal, 1)
-		signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+		signal.Notify(StopHttpChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 		Ilogger.Info().Msg(fmt.Sprintf("http server started on port %s", port))
 
-		<-done
+		<-StopHttpChan
 		Ilogger.Info().Msg(fmt.Sprintf("http server stopeed on port %s", port))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -94,7 +123,7 @@ var httpCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(httpCmd)
 
-	httpCmd.Flags().Int64P("timeout", "t", 5000, "Specify timeout for http services (server and request)")
+	httpCmd.Flags().Int64P("timeout", "t", 5000, "Specify timeout for http server service")
 
 	// setup flags
 	var port, staticPath, staticPrefix string = "8080", "http-static", "static"

@@ -4,6 +4,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,11 +41,13 @@ type httpRequestOpts struct {
 	headers             map[string][]string
 }
 
-func httpRequestDo(method, url string, opts *httpRequestOpts) (*http.Response, error) {
+func httpRequestDo(ctx context.Context, method, url string, opts *httpRequestOpts) (*http.Response, error) {
 	var response *http.Response
 	var req *http.Request
 	var err error
-
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	mapHeaders := opts.headers
 
 	body := opts.body
@@ -54,7 +57,7 @@ func httpRequestDo(method, url string, opts *httpRequestOpts) (*http.Response, e
 		return nil, err
 	}
 
-	req, err = http.NewRequest(method, url, io.NopCloser(strings.NewReader(builder.String())))
+	req, err = http.NewRequestWithContext(ctx, method, url, io.NopCloser(strings.NewReader(builder.String())))
 
 	if err == nil {
 		req.Header["User-Agent"] = []string{"mcli v." + Version}
@@ -148,6 +151,7 @@ func headersParser(headers string) (headersData map[string][]string, err error) 
 	}
 	return
 }
+
 func bodyParser(body string) (bodyData map[string]interface{}, err error) {
 
 	ext := filepath.Ext(strings.ToLower(body))
@@ -262,7 +266,7 @@ var requestCmd = &cobra.Command{
 			MaxIdleConnsPerHost: 100,
 		}
 
-		response, err := httpRequestDo(method, URL.String(), reqOpts)
+		response, err := httpRequestDo(context.Background(), method, URL.String(), reqOpts)
 
 		if response == nil {
 			Elogger.Fatal().Msg(fmt.Sprintf("error: response is nil %v", err.Error()))

@@ -63,6 +63,7 @@ var OS string
 var WgGlb sync.WaitGroup
 var ConfigPath string
 var RootPath string
+
 var GlobalMap map[string]string = make(map[string]string)
 
 var Version string = "0.1.0"

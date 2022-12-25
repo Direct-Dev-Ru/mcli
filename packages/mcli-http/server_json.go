@@ -19,6 +19,8 @@ func handleJsonRequest(w http.ResponseWriter, request *http.Request) {
 
 	if path := q.Get("path"); path != "" {
 
+		path = strings.Trim(path, `"`)
+
 		files, err := os.ReadDir(path)
 		if err != nil {
 			RenderErrorJSON(w, err)
