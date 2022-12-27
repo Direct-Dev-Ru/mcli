@@ -6,3 +6,4 @@ mcli.exe
 *.vault
 *.tmp
 .vagrant
+cert

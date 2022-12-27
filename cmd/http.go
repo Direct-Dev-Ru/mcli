@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"os"
@@ -27,7 +28,7 @@ var httpCmd = &cobra.Command{
 	and we can refer to it in url by /static/... prefix
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		var port, staticPath, staticPrefix string
+		var port, staticPath, staticPrefix, tlsKey, tlsCert string
 		var timeout int64 = 0
 
 		port, _ = cmd.Flags().GetString("port")
@@ -35,6 +36,8 @@ var httpCmd = &cobra.Command{
 		staticPath, _ = cmd.Flags().GetString("static-path")
 		isStaticPathSet := cmd.Flags().Lookup("static-path").Changed
 		staticPrefix, _ = cmd.Flags().GetString("static-prefix")
+		tlsKey, _ = cmd.Flags().GetString("tls-key")
+		tlsCert, _ = cmd.Flags().GetString("tls-cert")
 		isStaticPrefix := cmd.Flags().Lookup("static-prefix").Changed
 		timeout, _ = cmd.Flags().GetInt64("timeout")
 		isTimeoutSet := cmd.Flags().Lookup("timeout").Changed
@@ -87,19 +90,42 @@ var httpCmd = &cobra.Command{
 
 		r.AddRouteWithHandler("/echo", mcli_http.Prefix, mcli_http.Http_Echo)
 
-		srv := &http.Server{
-			Addr:         ":" + port,
-			Handler:      r,
-			ReadTimeout:  time.Duration(timeout * int64(time.Millisecond)),
-			WriteTimeout: time.Duration(timeout * 3 * int64(time.Millisecond)),
-			IdleTimeout:  time.Duration(timeout * 4 * int64(time.Millisecond)),
-		}
+		var srv *http.Server
 
-		go func() {
-			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				Elogger.Fatal().Msg(err.Error())
+		if len(tlsCert) > 0 && len(tlsKey) > 0 {
+
+			srv = &http.Server{
+				Addr:         ":" + port,
+				Handler:      r,
+				ReadTimeout:  time.Duration(timeout * int64(time.Millisecond)),
+				WriteTimeout: time.Duration(timeout * 3 * int64(time.Millisecond)),
+				IdleTimeout:  time.Duration(timeout * 4 * int64(time.Millisecond)),
+				TLSConfig: &tls.Config{
+					MinVersion:               tls.VersionTLS13,
+					PreferServerCipherSuites: true,
+				},
 			}
-		}()
+
+			go func() {
+				if err := srv.ListenAndServeTLS(tlsCert, tlsKey); err != nil && err != http.ErrServerClosed {
+					Elogger.Fatal().Msg(err.Error())
+				}
+			}()
+		} else {
+			srv = &http.Server{
+				Addr:         ":" + port,
+				Handler:      r,
+				ReadTimeout:  time.Duration(timeout * int64(time.Millisecond)),
+				WriteTimeout: time.Duration(timeout * 3 * int64(time.Millisecond)),
+				IdleTimeout:  time.Duration(timeout * 4 * int64(time.Millisecond)),
+			}
+
+			go func() {
+				if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+					Elogger.Fatal().Msg(err.Error())
+				}
+			}()
+		}
 
 		signal.Notify(StopHttpChan, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 		Ilogger.Info().Msg(fmt.Sprintf("http server started on port %s", port))
@@ -131,4 +157,6 @@ func init() {
 	httpCmd.Flags().StringP("port", "p", port, "Specify port for test http server.")
 	httpCmd.Flags().String("static-path", staticPath, "Specify relative part of path to static folder")
 	httpCmd.Flags().String("static-prefix", staticPrefix, "Specify url prefix part to static folder")
+	httpCmd.Flags().String("tls-cert", "", "Specify tls-cert file")
+	httpCmd.Flags().String("tls-key", "", "Specify tls-key file")
 }
