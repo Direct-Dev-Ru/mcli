@@ -2,7 +2,6 @@ package mclicrypto
 
 import (
 	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	mcli_fs "mcli/packages/mcli-filesystem"
 	mcli_utils "mcli/packages/mcli-utils"
@@ -47,6 +46,7 @@ func GeneratePassPhrase(wordsListPath string, replaces []ReplaceEntry) (string, 
 		list, ok := passDict[t]
 
 		if ok && len(list) > 0 {
+
 			words[t] = list[mcli_utils.Random(0, len(list)-1)]
 		}
 	}
@@ -60,14 +60,13 @@ func GeneratePassPhrase(wordsListPath string, replaces []ReplaceEntry) (string, 
 		string(append([]rune{unicode.ToUpper(s[0])}, s[1:]...)),
 		string(append([]rune{unicode.ToUpper(adv[0])}, adv[1:]...)),
 		string(append([]rune{unicode.ToUpper(v[0])}, v[1:]...)))
+	phrase = mcli_utils.TranslitToLatFromCyr(phrase)
+
 	// Process replacements
 	if len(replaces) > 0 {
 		for _, r := range replaces {
 			phrase = strings.Replace(phrase, string(r.OriginRune), string(r.ReplaceRune), r.Number)
 		}
-		// phrase = strings.Replace(phrase, "а", "@", 1)
-		// phrase = strings.Replace(phrase, "А", "@", 1)
-		// phrase = strings.Replace(phrase, "О", "0", 1)
 	}
 	return phrase, nil
 }
@@ -83,5 +82,7 @@ func GenerateBytes(n int) ([]byte, error) {
 
 func GeneratePassword(length int) (string, error) {
 	b, err := GenerateBytes(length)
-	return base64.URLEncoding.EncodeToString(b), err
+	p := Base64Encode(string(b))
+	p = strings.ReplaceAll(p, "=", "")
+	return p, err
 }

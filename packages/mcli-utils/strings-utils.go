@@ -1,6 +1,10 @@
 package mcliutils
 
-import "strings"
+import (
+	"strings"
+
+	"golang.org/x/exp/slices"
+)
 
 func RemoveDuplicatesStr(strSlice []string) []string {
 	allKeys := make(map[string]bool)
@@ -74,4 +78,23 @@ func SliceStringByPositions(stringToSlice string, positions []int) []string {
 		row = append(row, strings.TrimSpace(cell))
 	}
 	return row
+}
+
+var cyrAlfabet []string = []string{"а", "б", "в", "г", "д", "е", "ё", "ж", "з", "и", "й", "к", "л", "м", "н", "о", "п", "р", "с", "т", "у", "ф", "х", "ц", "ч", "ш", "щ", "ь", "ъ", "ы", "э", "ю", "я"}
+var latAlfabet []string = []string{"a", "b", "v", "g", "d", "e", "yo", "zh", "z", "i", "y", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "f", "h", "c", "ch", "sh", "sch", "", "", "y", "e", "yu", "ya"}
+var cyrBigAlfabet []string = []string{"А", "Б", "В", "Г", "Д", "Е", "Ё", "Ж", "З", "И", "Й", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ь", "Ъ", "Ы", "Э", "Ю", "Я"}
+var latBigAlfabet []string = []string{"A", "B", "V", "G", "D", "E", "Yo", "Zh", "Z", "I", "Y", "K", "L", "M", "N", "O", "P", "R", "S", "T", "U", "F", "H", "C", "Ch", "Sh", "Sch", "", "", "Y", "E", "Yu", "Ya"}
+
+func TranslitToLatFromCyr(stringToConvert string) string {
+
+	output := ""
+	cyr := append(cyrAlfabet, cyrBigAlfabet...)
+	lat := append(latAlfabet, latBigAlfabet...)
+	for _, r := range stringToConvert {
+		s := string(r)
+		if ind := slices.Index(cyr, s); ind >= 0 {
+			output += lat[ind]
+		}
+	}
+	return string(output)
 }

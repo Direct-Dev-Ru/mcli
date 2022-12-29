@@ -174,9 +174,9 @@ var listCmd = &cobra.Command{
 					if err != nil {
 						Elogger.Fatal().Msgf("decription secret error: %v", err)
 					}
-					fmt.Println(v.Login + ":" + secretString)
+					fmt.Println(v.Name + "#" + v.Login + ":" + secretString)
 				} else {
-					fmt.Println(v.Login)
+					fmt.Println(v.Name + "#" + v.Login)
 				}
 
 			}
@@ -208,6 +208,7 @@ func init() {
 	listCmd.Flags().StringP("keyfile-path", "k", "", "path to file to get access key")
 	listCmd.Flags().StringP("output", "o", "table", "output format (default - table, optional - json, plain)")
 	listCmd.Flags().BoolP("show-secret", "s", false, "show secrets or not")
+	listCmd.Flags().BoolP("show-plain-secret", "z", false, "zero encription in output")
 	listCmd.Flags().BoolP("color", "c", false, "show with colorzzz")
 	listCmd.Flags().BoolP("secret-only", "p", false, "show only secret then plain output - usefull to store into variable: VAR1=$(mcli secrets list secret-001 -p)")
 }

@@ -7,3 +7,4 @@ mcli.exe
 *.tmp
 .vagrant
 cert
+.test-data/*.tkt

@@ -92,6 +92,7 @@ func ToggleColors(showColor bool) {
 		ColorPurple = ""
 		ColorCyan = ""
 		ColorWhite = ""
+		ColorReset = ""
 	} else {
 		ColorRed = "\033[31m"
 		ColorGreen = "\033[32m"
@@ -131,6 +132,7 @@ func GetRootAndDefaultConfigPaths() (configPath string, rootPath string, err err
 		_, err = os.Stat(configPathCandidate)
 		if err == nil && len(configPath) == 0 {
 			configPath = configPathCandidate
+			return configPath, rootPath, nil
 		}
 	}
 
