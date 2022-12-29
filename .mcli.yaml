@@ -13,6 +13,9 @@ http:
   server:
     timeout: 3000
     port:
+    json-path: http-data/json
+    tmpl-path: http-data/templates
+    tmpl-prefix: tmpl
     static-path: http-static
     static-prefix: static
   request:

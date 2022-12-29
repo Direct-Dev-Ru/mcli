@@ -10,6 +10,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	mcli_crypto "mcli/packages/mcli-crypto"
+	mclihttp "mcli/packages/mcli-http"
 	"os"
 	"strings"
 
@@ -21,7 +22,7 @@ var testCmd = &cobra.Command{
 	Use:   "test",
 	Short: "just test command for debuging",
 	Long:  `useful only when DEBUG variable set to true`,
-	Run:   RSAEncDecTest,
+	Run:   TestHttptemplCache,
 }
 
 func init() {
@@ -36,6 +37,15 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// testCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func TestHttptemplCache(cmd *cobra.Command, args []string) {
+	ENV_DEBUG := strings.ToLower(os.Getenv("DEBUG"))
+	if ENV_DEBUG != "true" {
+		os.Exit(1)
+	}
+	cache, err := mclihttp.LoadTemplatesCache("http-data/templates")
+	fmt.Printf("|%+v| <%+v>\n", cache, err)
 }
 
 func RSAEncDecTest(cmd *cobra.Command, args []string) {
