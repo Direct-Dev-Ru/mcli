@@ -8,6 +8,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -165,4 +166,117 @@ func GenRsa() ([]*rsa.PrivateKey, error) {
 	// secondPublicKey := &secondPrivateKey.PublicKey
 
 	return []*rsa.PrivateKey{firstPrivateKey, secondPrivateKey}, nil
+}
+
+func GetPublicKeyFromFile(path string) (*rsa.PublicKey, error) {
+
+	certpem, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	block, _ := pem.Decode(certpem)
+	var cert *x509.Certificate
+	cert, _ = x509.ParseCertificate(block.Bytes)
+	rsaPublicKey := cert.PublicKey.(*rsa.PublicKey)
+	fmt.Println(rsaPublicKey.N)
+	fmt.Println(rsaPublicKey.E)
+	return rsaPublicKey, nil
+}
+
+func GetPrivateKeyFromFile(path string) (*rsa.PrivateKey, error) {
+
+	privpem, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	block, _ := pem.Decode(privpem)
+	key, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	if err != nil {
+		key8, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+		if err != nil {
+			return nil, err
+		}
+		key = key8.(*rsa.PrivateKey)
+	}
+	fmt.Println(key.N)
+	return key, nil
+}
+
+func RSAConfigSetup(rsaPrivateKeyLocation, privatePassphrase, rsaPublicKeyLocation string) (*rsa.PrivateKey, error) {
+	if rsaPrivateKeyLocation == "" {
+		// println("No RSA Key given, generating temp one")
+		return GenRSA(4096)
+	}
+
+	priv, err := os.ReadFile(rsaPrivateKeyLocation)
+	if err != nil {
+		// println("No RSA private key found, generating temp one")
+		return GenRSA(4096)
+	}
+
+	privPem, _ := pem.Decode(priv)
+
+	if privPem.Type != "RSA PRIVATE KEY" {
+		return nil, fmt.Errorf("RSA private key is of the wrong type. %v", privPem.Type)
+	}
+
+	if x509.IsEncryptedPEMBlock(privPem) && privatePassphrase == "" {
+		return nil, fmt.Errorf("passphrase is required to open private pem file")
+	}
+
+	var privPemBytes []byte
+
+	if privatePassphrase != "" {
+		privPemBytes, err = x509.DecryptPEMBlock(privPem, []byte(privatePassphrase))
+	} else {
+		privPemBytes = privPem.Bytes
+	}
+
+	var parsedKey interface{}
+	//PKCS1
+	if parsedKey, err = x509.ParsePKCS1PrivateKey(privPemBytes); err != nil {
+		//If what you are sitting on is a PKCS#8 encoded key
+		if parsedKey, err = x509.ParsePKCS8PrivateKey(privPemBytes); err != nil { // note this returns type `interface{}`
+			return nil, fmt.Errorf("unable to parse RSA private key")
+		}
+	}
+
+	var privateKey *rsa.PrivateKey
+	var ok bool
+	privateKey, ok = parsedKey.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("unable to parse RSA private key")
+	}
+
+	pub, err := os.ReadFile(rsaPublicKeyLocation)
+	if err != nil {
+		return nil, fmt.Errorf("no RSA public key found, generating temp one")
+	}
+
+	pubPem, _ := pem.Decode(pub)
+	if pubPem == nil {
+		return nil, fmt.Errorf("use `ssh-keygen -f id_rsa.pub -e -m pem > id_rsa.pem` to generate the pem encoding of your RSA public key - rsa public key not in pem format")
+	}
+
+	if pubPem.Type != "RSA PUBLIC KEY" {
+		return nil, fmt.Errorf("rsa public key is of the wrong type")
+	}
+
+	if parsedKey, err = x509.ParsePKIXPublicKey(pubPem.Bytes); err != nil {
+		return nil, fmt.Errorf("unable to parse RSA public key, generating a temp one")
+	}
+
+	var pubKey *rsa.PublicKey
+	if pubKey, ok = parsedKey.(*rsa.PublicKey); !ok {
+		return nil, fmt.Errorf("unable to parse RSA public key, generating a temp one")
+	}
+	privateKey.PublicKey = *pubKey
+
+	return privateKey, nil
+}
+
+// GenRSA returns a new RSA key of bits length
+func GenRSA(bits int) (*rsa.PrivateKey, error) {
+	key, err := rsa.GenerateKey(rand.Reader, bits)
+	return key, err
 }

@@ -36,9 +36,10 @@ var httpCmd = &cobra.Command{
 		staticPath, _ = cmd.Flags().GetString("static-path")
 		isStaticPathSet := cmd.Flags().Lookup("static-path").Changed
 		staticPrefix, _ = cmd.Flags().GetString("static-prefix")
+		isStaticPrefix := cmd.Flags().Lookup("static-prefix").Changed
+
 		tlsKey, _ = cmd.Flags().GetString("tls-key")
 		tlsCert, _ = cmd.Flags().GetString("tls-cert")
-		isStaticPrefix := cmd.Flags().Lookup("static-prefix").Changed
 		timeout, _ = cmd.Flags().GetInt64("timeout")
 		isTimeoutSet := cmd.Flags().Lookup("timeout").Changed
 
@@ -57,6 +58,10 @@ var httpCmd = &cobra.Command{
 		if !isStaticPrefix && len(Config.Http.Server.StaticPrefix) > 0 {
 			staticPrefix = Config.Http.Server.StaticPrefix
 		}
+
+		tmplPath, _ := GetStringParam("tmpl-path", cmd, Config.Http.Server.TmplPath)
+		tmplPrefix, _ := GetStringParam("tmpl-prefix", cmd, Config.Http.Server.TmplPrefix)
+
 		// Wait for interrupt signal
 		StopHttpChan := make(chan os.Signal, 1)
 
@@ -87,6 +92,44 @@ var httpCmd = &cobra.Command{
 			}
 		})
 		r.AddRoute(rootRoute)
+
+		// templates
+		tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "/", "/", -1)
+		tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "\\", "\\", -1)
+		tmplPath = strings.TrimSpace(tmplPath)
+		tmplPath = strings.TrimRight(tmplPath, "/")
+
+		if e, _ := IsPathExists(tmplPath); e {
+			cache, err := mcli_http.LoadTemplatesCache("http-data/templates")
+			if err != nil {
+				Elogger.Fatal().Msgf("template caching error: %v", err)
+			}
+			Ilogger.Trace().Msg(tmplPath + " " + tmplPrefix)
+			tmplPrefix = "/" + tmplPrefix + "/"
+
+			tmplRoute := mcli_http.NewRoute(tmplPrefix, mcli_http.Prefix)
+			tmplRoute.SetHandler(func(res http.ResponseWriter, req *http.Request) {
+				url := req.URL.Path
+				tmplName := strings.TrimLeft(url, tmplPrefix)
+				tmplKey := tmplPath + "/" + tmplName
+				tmpl, ok := cache[tmplKey]
+				if !ok {
+					http.Error(res, "404 Not Found Template "+tmplKey, 404)
+					return
+				}
+				queryData := req.URL.Query().Get("data")
+				err = tmpl.Execute(res, struct {
+					Req  *http.Request
+					Data interface{}
+				}{Req: req, Data: struct{ Dummy string }{"Hello world !!!"}})
+				if err != nil {
+					http.Error(res, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				Ilogger.Trace().Msg(url + " : " + queryData)
+			})
+			r.AddRoute(tmplRoute)
+		}
 
 		r.AddRouteWithHandler("/echo", mcli_http.Prefix, mcli_http.Http_Echo)
 
@@ -153,13 +196,13 @@ func init() {
 
 	// setup flags
 	var port, staticPath, staticPrefix string = "8080", "http-static", "static"
-	var tmplPath, tmplPrefix string = "http-static", "static"
+	var tmplPath, tmplPrefix string = "http-data/templates", "tmpl"
 
 	httpCmd.Flags().StringP("port", "p", port, "Specify port for test http server.")
-	httpCmd.Flags().String("static-path", staticPath, "Specify relative part of path to static folder")
+	httpCmd.Flags().String("static-path", staticPath, "Specify relative path to static folder")
 	httpCmd.Flags().String("static-prefix", staticPrefix, "Specify url prefix part to static content")
-	httpCmd.Flags().String("tmpl-path", staticPath, "Specify relative part of path to template folder")
-	httpCmd.Flags().String("tmpl-prefix", staticPath, "Specify url prefix part to template content")
+	httpCmd.Flags().String("tmpl-path", tmplPath, "Specify relative path to template folder")
+	httpCmd.Flags().String("tmpl-prefix", tmplPrefix, "Specify url prefix part to handle template content")
 	httpCmd.Flags().String("tls-cert", "", "Specify tls-cert file")
 	httpCmd.Flags().String("tls-key", "", "Specify tls-key file")
 }

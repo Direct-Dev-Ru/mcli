@@ -12,6 +12,8 @@ type ConfigData struct {
 			Port         string `yaml:"port"`
 			StaticPath   string `yaml:"static-path"`
 			StaticPrefix string `yaml:"static-prefix"`
+			TmplPath     string `yaml:"tmpl-path"`
+			TmplPrefix   string `yaml:"tmpl-prefix"`
 		}
 
 		Request struct {

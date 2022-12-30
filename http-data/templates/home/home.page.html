@@ -1,34 +1,15 @@
 {{template "base" .}}
 
-{{define "title"}} Let's Vote! Home Page {{end}}
+{{define "title"}} Home Page {{end}}
 
 {{define "main"}}
 
 <div class="text-center from-navbar-margin">
-    <h2> We're going to vote for Question: </h2>
-    <h1 class="text-danger border border-dark rounded p-3"> {{.Info.Title}}</h1>
-    {{ if .IsAuthenticated}}
-    <h2>{{ .UserName}}, YOU are the member of our deal!</h2>
-    {{ else }}
-    <h2>And YOU are the member of our deal!</h2>
-    {{ end }}
-    <div class="text-wrap border border-dark rounded p-3" style="margin: 0.5rem; font-size: 1.5rem;">
-        {{.Info.Description}}
-    </div>
-    <div>
-        {{ if .IsAuthenticated}}
-
-        <a class="btn btn-success" href="/form" style="width: 30%">
-            Vote Now
-        </a>
-
-        {{else}}
-
-        <a class="btn btn-primary" href="/login" style="width: 30%">
-            Log In
-        </a>
-    </div>
-    {{end}}
+    <h2> We writes some amazing posts for you ! </h2>
+    <h1 class="text-danger border border-dark rounded p-3"> {{.Data.Dummy}}</h1>
+    <a class="btn btn-primary" href="/login" style="width: 30%">
+        Log In
+    </a>
 </div>
 
 {{end}}

@@ -1,0 +1,18 @@
+{{template "base" .}}
+
+{{define "title"}} Let's Vote! You say No ... {{end}}
+
+{{define "main"}}
+
+<div class="text-center">
+    <h1>Ok, your answer is No, {{ . }}!</h1>
+    <div>Thanks for letting us know.</div>
+    <div>
+        Click <a href="/list?answer=-1">list No</a> to see who say No too.
+    </div>
+    <div>
+        Click <a href="/form">Vote Form</a> in case you change your mind.
+    </div>
+</div>
+
+{{ end }}

@@ -1,5 +1,5 @@
 /*
-Copyright © 2022 NAME HERE <EMAIL ADDRESS>
+Copyright © 2022 DIRECT-DEV.RU <INFO@DIRECT-DEV.RU>
 */
 package cmd
 
@@ -22,21 +22,22 @@ var testCmd = &cobra.Command{
 	Use:   "test",
 	Short: "just test command for debuging",
 	Long:  `useful only when DEBUG variable set to true`,
-	Run:   TestHttptemplCache,
+	Run:   RsaReadFromFile,
 }
 
 func init() {
 	rootCmd.AddCommand(testCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// testCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
 	// testCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+}
+
+func RsaReadFromFile(cmd *cobra.Command, args []string) {
+	ENV_DEBUG := strings.ToLower(os.Getenv("DEBUG"))
+	if ENV_DEBUG != "true" {
+		os.Exit(1)
+	}
+	mcli_crypto.GetPublicKeyFromFile("./cert/mcli-cert.pem")
+	fmt.Println("----------private---------------")
+	mcli_crypto.GetPrivateKeyFromFile("./cert/mcli-key.pem")
 }
 
 func TestHttptemplCache(cmd *cobra.Command, args []string) {
