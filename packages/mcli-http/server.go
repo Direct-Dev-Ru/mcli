@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+
+	"github.com/rs/zerolog"
 )
 
 type RouteType int
@@ -55,12 +57,14 @@ func (r *Route) SetHandler(f HandleFunc) http.Handler {
 type Router struct {
 	sPath         string
 	sPrefix       string
+	infoLog       zerolog.Logger
+	errorLog      zerolog.Logger
 	staticHandler http.Handler
 	routes        []*Route
 	middleware    []http.Handler
 }
 
-func NewRouter(sPath string, sPrefix string) *Router {
+func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, eLog zerolog.Logger) *Router {
 	sPath = strings.TrimPrefix(sPath, "./")
 	sPath = strings.TrimSuffix(sPath, "/")
 	sPrefix = strings.TrimPrefix(sPrefix, "/")
@@ -76,8 +80,22 @@ func NewRouter(sPath string, sPrefix string) *Router {
 		fileServer = http.FileServer(http.Dir(fileServerResultPath))
 	}
 
-	return &Router{sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer,
+	return &Router{infoLog: iLog, errorLog: eLog, sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer,
 		middleware: make([]http.Handler, 0, 3), routes: make([]*Route, 0, 3)}
+}
+
+func (r *Router) Use(mw interface{}) error {
+	newMiddleware, ok := mw.(http.Handler)
+	if !ok {
+		return fmt.Errorf("given middleware doesnt implement http.Handler")
+	}
+	// _, ok = interface{}(mw).(InnerHandler)
+	// if !ok {
+	// 	return fmt.Errorf("given middleware doesnt implement InnerHandler")
+	// }
+
+	r.middleware = append(r.middleware, newMiddleware)
+	return nil
 }
 
 func (r *Router) AddRoute(route *Route) error {
@@ -97,11 +115,11 @@ func (r *Router) AddRouteWithHandler(pattern string, routeType RouteType, f Hand
 	return nil
 }
 
-func (r *Router) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 	reqPath := strings.TrimSpace(req.URL.Path)
 	// static paths
 	if strings.HasPrefix(reqPath, "/"+r.sPrefix+"/") && r.staticHandler != nil {
-		fmt.Println(reqPath)
+
 		http.StripPrefix("/"+r.sPrefix, r.staticHandler).ServeHTTP(res, req)
 		return
 	}
@@ -131,43 +149,32 @@ func (r *Router) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	}
 	http.Error(res, "404 Not Found", 404)
 
-	// switch {
-	// case strings.HasPrefix(req.URL.Path, "/"+r.sPrefix+"/"):
-	// 	http.StripPrefix("/"+r.sPrefix, r.staticHandler).ServeHTTP(res, req)
-	// case req.URL.Path == "/":
-	// 	staticPath := "./" + r.sPath
-	// 	if strings.HasPrefix(r.sPath, "/") {
-	// 		// given absolute path to static content
-	// 		staticPath = r.sPath
-	// 	}
-	// 	mainPagePath := ""
-	// 	mainPagePathCandidate := staticPath + "/index.html"
-	// 	if _, err := os.Stat(mainPagePathCandidate); err != nil {
-	// 		mainPagePathCandidate = staticPath + "/html/index.html"
-	// 		if _, err := os.Stat(mainPagePathCandidate); err != nil {
-	// 			mainPagePathCandidate = ""
-	// 		}
-	// 	}
-	// 	mainPagePath = mainPagePathCandidate
+}
 
-	// 	if len(mainPagePath) > 0 {
-	// 		http.ServeFile(res, req, mainPagePath)
-	// 	} else {
-	// 		http.Error(res, "404 Not Found Root Index.html", 404)
-	// 	}
-	// case req.URL.Path == "/service/exit":
-	// 	r.SetRouteHandler(req.URL.Path, "/service/exit", func(res http.ResponseWriter, req *http.Request) {
-	// 		fmt.Println("Server is shutting down")
-	// 		fmt.Fprint(res, "Server is shutting down")
-	// 		syscall.Kill(syscall.Getpid(), syscall.SIGINT)
-	// 	}).ServeHTTP(res, req)
-	// case req.URL.Path == "/echo":
-	// 	r.SetRouteHandler(req.URL.Path, "/echo", http_echo).ServeHTTP(res, req)
-	// case strings.HasPrefix(req.URL.Path, "/json/listfiles"):
-	// 	r.SetRouteHandler(req.URL.Path, "/json/listfiles", handleJsonRequest).ServeHTTP(res, req)
-	// default:
-	// 	http.Error(res, "404 Not Found", 404)
-	// }
+func (r *Router) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	if len(r.middleware) > 0 {
+		var serve http.Handler
+		for i := 0; i < len(r.middleware); i++ {
+			mw := r.middleware[i]
+			mwInner, ok := mw.(InnerHandler)
+			if !ok {
+				panic("wrong middleware definition")
+			}
+
+			if i == 0 {
+				mwInner.InnerHandler(http.HandlerFunc(r.innerHandler), mw)
+			} else {
+				mwInner.InnerHandler(serve, mw)
+			}
+			serve, ok = mwInner.(http.Handler)
+			if !ok {
+				panic("wrong middleware definition")
+			}
+		}
+		serve.ServeHTTP(res, req)
+	} else {
+		http.HandlerFunc(r.innerHandler).ServeHTTP(res, req)
+	}
 }
 
 /***

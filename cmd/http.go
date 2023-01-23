@@ -66,7 +66,13 @@ var httpCmd = &cobra.Command{
 		StopHttpChan := make(chan os.Signal, 1)
 
 		// mcli_http.InitMainRoutes(staticPath, staticPrefix)
-		r := mcli_http.NewRouter(staticPath, staticPrefix)
+		r := mcli_http.NewRouter(staticPath, staticPrefix, Ilogger, Elogger)
+
+		// setting up middleware
+		// err := r.Use(mcli_http.NewLogger(Ilogger, Elogger))
+		// if err != nil {
+		// 	fmt.Println(err)
+		// }
 
 		// root route
 		rootRoute := mcli_http.NewRoute("/", mcli_http.Equal)

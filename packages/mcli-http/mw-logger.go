@@ -1,16 +1,32 @@
 package mclihttp
 
 import (
-	"log"
 	"net/http"
+	"time"
+
+	"github.com/rs/zerolog"
+	// "github.com/rs/zerolog/pkgerrors"
 )
 
-type logger struct {
-	Inner http.Handler
+type Logger struct {
+	infoLog  zerolog.Logger
+	errorLog zerolog.Logger
+	Inner    http.Handler
 }
 
-func (l *logger) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Println("start")
+func NewLogger(inner http.Handler, outInfoLogger zerolog.Logger, outErrorLogger zerolog.Logger) Logger {
+	infoLog := outInfoLogger
+	errorLog := outErrorLogger
+
+	return Logger{infoLog: infoLog, errorLog: errorLog, Inner: inner}
+}
+
+func (l Logger) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	l.Inner.ServeHTTP(w, r)
-	log.Println("finish")
+	l.infoLog.Trace().Msgf("Request time: %v\n", time.Since(start))
+}
+
+func (l Logger) GetHandler(next http.Handler) http.Handler {
+	return l.Inner
 }
