@@ -66,8 +66,14 @@ func NewRouter(sPath string, sPrefix string) *Router {
 	sPrefix = strings.TrimPrefix(sPrefix, "/")
 	sPrefix = strings.TrimSuffix(sPrefix, "/")
 	var fileServer http.Handler
+
 	if !(len(sPath) == 0 || len(sPrefix) == 0) {
-		fileServer = http.FileServer(http.Dir("./" + sPath))
+		fileServerResultPath := sPath
+		if !strings.HasPrefix(sPath, "/") {
+			fileServerResultPath = "./" + sPath
+		}
+		// fmt.Println(fileServerResultPath)
+		fileServer = http.FileServer(http.Dir(fileServerResultPath))
 	}
 
 	return &Router{sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer,
@@ -95,6 +101,7 @@ func (r *Router) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	reqPath := strings.TrimSpace(req.URL.Path)
 	// static paths
 	if strings.HasPrefix(reqPath, "/"+r.sPrefix+"/") && r.staticHandler != nil {
+		fmt.Println(reqPath)
 		http.StripPrefix("/"+r.sPrefix, r.staticHandler).ServeHTTP(res, req)
 		return
 	}
