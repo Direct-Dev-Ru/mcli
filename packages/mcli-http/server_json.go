@@ -2,40 +2,20 @@ package mclihttp
 
 import (
 	"errors"
-	"log"
 	"net/http"
-	"os"
-	"strings"
 )
 
-func handleJsonRequest(w http.ResponseWriter, request *http.Request) {
-	url, err := request.URL.Parse(request.RequestURI)
+func HandleJsonRequest(res http.ResponseWriter, req *http.Request) {
+	url, err := req.URL.Parse(req.RequestURI)
 	if err != nil {
-		RenderErrorJSON(w, err)
+		RenderErrorJSON(res, err)
 		return
 	}
-	log.Println(url)
 	q := url.Query()
 
-	if path := q.Get("path"); path != "" {
-
-		path = strings.Trim(path, `"`)
-
-		files, err := os.ReadDir(path)
-		if err != nil {
-			RenderErrorJSON(w, err)
-			return
-		}
-
-		dirfiles := make([]string, 0, 10)
-		for _, file := range files {
-			if !file.IsDir() && !strings.HasSuffix(strings.ToLower(file.Name()), ".exe") {
-				dirfiles = append(dirfiles, file.Name())
-			}
-		}
-		RenderJSON(w, dirfiles, true)
+	if data := q.Get("data"); data != "" {
+		RenderJSON(res, data, true)
 	} else {
-		RenderErrorJSON(w, errors.New("no path specified"))
+		RenderErrorJSON(res, errors.New("no data specified"))
 	}
-
 }

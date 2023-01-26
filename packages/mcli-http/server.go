@@ -18,6 +18,8 @@ const (
 )
 
 type HandleFunc func(http.ResponseWriter, *http.Request)
+
+// Route
 type Route struct {
 	url       string
 	pattern   string
@@ -54,6 +56,7 @@ func (r *Route) SetHandler(f HandleFunc) http.Handler {
 	return r
 }
 
+// Router
 type Router struct {
 	sPath         string
 	sPrefix       string
