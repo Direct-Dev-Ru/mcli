@@ -4,6 +4,7 @@ import (
 	"net/http"
 )
 
-type MIddleware interface {
-	GetHandler(next http.Handler)
+type Middleware interface {
+	http.Handler
+	SetInnerHandler(http.Handler)
 }

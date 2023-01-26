@@ -14,19 +14,20 @@ type Logger struct {
 	Inner    http.Handler
 }
 
-func NewLogger(inner http.Handler, outInfoLogger zerolog.Logger, outErrorLogger zerolog.Logger) Logger {
+func NewLogger(outInfoLogger zerolog.Logger, outErrorLogger zerolog.Logger) *Logger {
 	infoLog := outInfoLogger
 	errorLog := outErrorLogger
 
-	return Logger{infoLog: infoLog, errorLog: errorLog, Inner: inner}
+	return &Logger{infoLog: infoLog, errorLog: errorLog}
 }
 
-func (l Logger) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (l *Logger) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	l.Inner.ServeHTTP(w, r)
 	l.infoLog.Trace().Msgf("Request time: %v\n", time.Since(start))
+	// fmt.Printf("Request time: %v\n", time.Since(start))
 }
 
-func (l Logger) GetHandler(next http.Handler) http.Handler {
-	return l.Inner
+func (l *Logger) SetInnerHandler(next http.Handler) {
+	l.Inner = next
 }

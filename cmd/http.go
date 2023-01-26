@@ -68,12 +68,6 @@ var httpCmd = &cobra.Command{
 		// mcli_http.InitMainRoutes(staticPath, staticPrefix)
 		r := mcli_http.NewRouter(staticPath, staticPrefix, Ilogger, Elogger)
 
-		// setting up middleware
-		// err := r.Use(mcli_http.NewLogger(Ilogger, Elogger))
-		// if err != nil {
-		// 	fmt.Println(err)
-		// }
-
 		// root route
 		rootRoute := mcli_http.NewRoute("/", mcli_http.Equal)
 		rootRoute.SetHandler(func(res http.ResponseWriter, req *http.Request) {
@@ -139,8 +133,13 @@ var httpCmd = &cobra.Command{
 
 		r.AddRouteWithHandler("/echo", mcli_http.Prefix, mcli_http.Http_Echo)
 
+		// setting up middleware
+		err := r.Use(mcli_http.NewLogger(Ilogger, Elogger))
+		if err != nil {
+			fmt.Println(err)
+		}
+		r.ConstructFinalHandler()
 		var srv *http.Server
-
 		if len(tlsCert) > 0 && len(tlsKey) > 0 {
 
 			srv = &http.Server{

@@ -13,7 +13,10 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o mcli
 
 #FROM alpine:latest
 FROM scratch
+COPY --from=busybox:1.35 /bin/busybox /bin/busybox
 WORKDIR /app/
-COPY --from=builder /usr/src/app .
+# COPY --from=builder /usr/src/app .
+COPY --from=builder /usr/src/app/mcli mcli 
+COPY --from=builder /usr/src/app/.mcli.yaml .mcli.yaml
 ENTRYPOINT [ "./mcli"]
 

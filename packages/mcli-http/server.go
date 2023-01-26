@@ -61,7 +61,8 @@ type Router struct {
 	errorLog      zerolog.Logger
 	staticHandler http.Handler
 	routes        []*Route
-	middleware    []http.Handler
+	middleware    []Middleware
+	finalHandler  http.Handler
 }
 
 func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, eLog zerolog.Logger) *Router {
@@ -81,20 +82,26 @@ func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, eLog zerolog.L
 	}
 
 	return &Router{infoLog: iLog, errorLog: eLog, sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer,
-		middleware: make([]http.Handler, 0, 3), routes: make([]*Route, 0, 3)}
+		middleware: make([]Middleware, 0, 3), routes: make([]*Route, 0, 3)}
 }
 
-func (r *Router) Use(mw interface{}) error {
-	newMiddleware, ok := mw.(http.Handler)
-	if !ok {
-		return fmt.Errorf("given middleware doesnt implement http.Handler")
-	}
-	// _, ok = interface{}(mw).(InnerHandler)
-	// if !ok {
-	// 	return fmt.Errorf("given middleware doesnt implement InnerHandler")
-	// }
+func (r *Router) Use(mw Middleware) error {
+	r.middleware = append(r.middleware, mw)
+	return nil
+}
 
-	r.middleware = append(r.middleware, newMiddleware)
+func (r *Router) ConstructFinalHandler() error {
+
+	r.finalHandler = http.HandlerFunc(r.innerHandler)
+
+	if len(r.middleware) > 0 {
+		var currentMw Middleware
+		for i := len(r.middleware) - 1; i >= 0; i-- {
+			currentMw = r.middleware[i]
+			currentMw.SetInnerHandler(r.finalHandler)
+			r.finalHandler = currentMw
+		}
+	}
 	return nil
 }
 
@@ -152,30 +159,34 @@ func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func (r *Router) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	if len(r.middleware) > 0 {
-		var serve http.Handler
-		for i := 0; i < len(r.middleware); i++ {
-			mw := r.middleware[i]
-			mwInner, ok := mw.(InnerHandler)
-			if !ok {
-				panic("wrong middleware definition")
-			}
-
-			if i == 0 {
-				mwInner.InnerHandler(http.HandlerFunc(r.innerHandler), mw)
-			} else {
-				mwInner.InnerHandler(serve, mw)
-			}
-			serve, ok = mwInner.(http.Handler)
-			if !ok {
-				panic("wrong middleware definition")
-			}
-		}
-		serve.ServeHTTP(res, req)
+	if r.finalHandler != nil {
+		r.finalHandler.ServeHTTP(res, req)
 	} else {
 		http.HandlerFunc(r.innerHandler).ServeHTTP(res, req)
 	}
 }
+
+// if len(r.middleware) > 0 {
+// 	var serve http.Handler = innerHandler
+// 	for i := 0; i < len(r.middleware); i++ {
+// 		mw := r.middleware[i]
+// 		mwInner, ok := mw.(Middleware)
+// 		if !ok {
+// 			r.errorLog.Fatal().Msg("wrong middleware definition")
+// 		}
+
+// 		if i == 0 {
+// 			mwInner.InnerHandler(http.HandlerFunc(r.innerHandler), mw)
+// 		} else {
+// 			mwInner.InnerHandler(serve, mw)
+// 		}
+// 		serve, ok = mwInner.(http.Handler)
+// 		if !ok {
+// 			r.errorLog.Fatal().Msg("wrong middleware definition")
+// 		}
+// 	}
+// 	serve.ServeHTTP(res, req)
+// }
 
 /***
 func InitMainRoutes(sPath string, sPrefix string) {
