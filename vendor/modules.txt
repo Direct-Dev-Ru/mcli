@@ -39,6 +39,10 @@ golang.org/x/sys/windows
 # golang.org/x/term v0.2.0
 ## explicit; go 1.17
 golang.org/x/term
+# gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22
+## explicit
+gopkg.in/mgo.v2/bson
+gopkg.in/mgo.v2/internal/json
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3

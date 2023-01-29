@@ -201,13 +201,14 @@ func init() {
 
 	// setup flags
 	var port, staticPath, staticPrefix string = "8080", "http-static", "static"
-	var tmplPath, tmplPrefix string = "http-data/templates", "tmpl"
+	var tmplPath, tmplPrefix, tmplDataPath string = "http-data/templates", "tmpl", "http-data/bjson"
 
 	httpCmd.Flags().StringP("port", "p", port, "Specify port for test http server.")
 	httpCmd.Flags().String("static-path", staticPath, "Specify relative path to static folder")
 	httpCmd.Flags().String("static-prefix", staticPrefix, "Specify url prefix part to static content")
-	httpCmd.Flags().String("tmpl-path", tmplPath, "Specify relative path to template folder")
+	httpCmd.Flags().String("tmpl-path", tmplPath, "Specify relative or absolute path to template folder")
 	httpCmd.Flags().String("tmpl-prefix", tmplPrefix, "Specify url prefix part to handle template content")
+	httpCmd.Flags().String("tmpl-datapath", tmplDataPath, "Specify relative or absolute path to bson or json files for templates")
 	httpCmd.Flags().String("tls-cert", "", "Specify tls-cert file")
 	httpCmd.Flags().String("tls-key", "", "Specify tls-key file")
 }
