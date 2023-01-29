@@ -37,6 +37,7 @@ func IsPathExists(path string) (bool, error) {
 // error if there is any
 // string value that tells whether the path is file or directory.
 func IsPathExistsAndCreate(path string, create bool) (bool, string, error) {
+
 	_, err := os.Stat(path)
 	if err == nil {
 		// path exists - returning now
