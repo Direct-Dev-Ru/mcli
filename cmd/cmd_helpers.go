@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"os"
+	"path"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -36,12 +38,12 @@ func IsPathExists(path string) (bool, error) {
 // bool value that tells whether the path exists or not
 // error if there is any
 // string value that tells whether the path is file or directory.
-func IsPathExistsAndCreate(path string, create bool) (bool, string, error) {
+func IsPathExistsAndCreate(pathParam string, create bool) (bool, string, error) {
 
-	_, err := os.Stat(path)
+	_, err := os.Stat(pathParam)
 	if err == nil {
 		// path exists - returning now
-		fileInfo, _ := os.Stat(path)
+		fileInfo, _ := os.Stat(pathParam)
 		if fileInfo.IsDir() {
 			return true, "directory", nil
 		} else {
@@ -52,12 +54,26 @@ func IsPathExistsAndCreate(path string, create bool) (bool, string, error) {
 	if os.IsNotExist(err) {
 		// path does not exist
 		if create {
+			// fist we must make make decision either it is dir or a file
+			pathToAnalyse := strings.TrimSpace(pathParam)
+			// pathToAnalyse = strings.TrimLeft(pathToAnalyse, ".")
+			pathToAnalyse = strings.ReplaceAll(pathToAnalyse, `\`, "/")
+			lastPart := path.Base(pathToAnalyse)
+			withoutLastPart := path.Dir(pathToAnalyse)
+			pathToCreate := pathToAnalyse
+			itemType := "directory"
+			// if there are extension - it is file and we should create only dir path
+			if strings.Contains(lastPart, ".") && !strings.HasSuffix(lastPart, ".d") {
+				pathToCreate = withoutLastPart
+				itemType = "file"
+			}
 			// create directory
-			err := os.MkdirAll(path, os.ModePerm)
+			println(pathToAnalyse, lastPart, withoutLastPart, pathToCreate)
+			err := os.MkdirAll(pathToCreate, os.ModePerm)
 			if err != nil {
 				return false, "", err
 			}
-			return true, "directory", nil
+			return true, itemType, nil
 		}
 		return false, "", nil
 	}

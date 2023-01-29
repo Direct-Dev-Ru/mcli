@@ -27,9 +27,10 @@ func convertRunFunc(cmd *cobra.Command, args []string) {
 		Elogger.Fatal().Msgf("someting goes wrong %v", err)
 	}
 
-	_, destType, err := IsPathExistsAndCreate(destPath, false)
+	_, destType, err := IsPathExistsAndCreate(destPath, true)
+	println(destType, err)
 	if err != nil {
-		Elogger.Fatal().Msgf("someting goes wrong %v", err)
+		Elogger.Fatal().Msgf("something goes wrong while creating dest directory: %v", err)
 	}
 
 	switch convertType {
