@@ -45,6 +45,7 @@ func NewRouteWithHandler(pattern string, routeType RouteType, f HandleFunc) *Rou
 }
 
 func (r *Route) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+
 	if r.Handler != nil {
 		r.Handler(res, req)
 	} else {
@@ -162,11 +163,11 @@ func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func (r *Router) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	if r.finalHandler != nil {
-		r.finalHandler.ServeHTTP(res, req)
-	} else {
-		http.HandlerFunc(r.innerHandler).ServeHTTP(res, req)
+	if r.finalHandler == nil {
+		r.ConstructFinalHandler()
+		// http.HandlerFunc(r.innerHandler).ServeHTTP(res, req)
 	}
+	r.finalHandler.ServeHTTP(res, req)
 }
 
 // if len(r.middleware) > 0 {

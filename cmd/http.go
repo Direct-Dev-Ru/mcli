@@ -92,53 +92,20 @@ var httpCmd = &cobra.Command{
 			}
 		})
 		r.AddRoute(rootRoute)
-
-		// templates
-		tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "/", "/", -1)
-		tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "\\", "\\", -1)
-		tmplPath = strings.TrimSpace(tmplPath)
-		tmplPath = strings.TrimRight(tmplPath, "/")
-
-		if e, _ := IsPathExists(tmplPath); e {
-			cache, err := mcli_http.LoadTemplatesCache("http-data/templates")
-			if err != nil {
-				Elogger.Fatal().Msgf("template caching error: %v", err)
-			}
-			Ilogger.Trace().Msg(tmplPath + " " + tmplPrefix)
-			tmplPrefix = "/" + tmplPrefix + "/"
-
-			tmplRoute := mcli_http.NewRoute(tmplPrefix, mcli_http.Prefix)
-			tmplRoute.SetHandler(func(res http.ResponseWriter, req *http.Request) {
-				url := req.URL.Path
-				tmplName := strings.TrimLeft(url, tmplPrefix)
-				tmplKey := tmplPath + "/" + tmplName
-				tmpl, ok := cache[tmplKey]
-				if !ok {
-					http.Error(res, "404 Not Found Template "+tmplKey, 404)
-					return
-				}
-				queryData := req.URL.Query().Get("data")
-				err = tmpl.Execute(res, struct {
-					Req  *http.Request
-					Data interface{}
-				}{Req: req, Data: struct{ Dummy string }{"Hello world !!!"}})
-				if err != nil {
-					http.Error(res, err.Error(), http.StatusInternalServerError)
-					return
-				}
-				Ilogger.Trace().Msg(url + " : " + queryData)
-			})
-			r.AddRoute(tmplRoute)
-		}
+		r.SetTmplRoutes(tmplPath, tmplPrefix)
 
 		r.AddRouteWithHandler("/echo", mcli_http.Prefix, mcli_http.Http_Echo)
 
 		// setting up middleware
-		err := r.Use(mcli_http.NewLogger(Ilogger, Elogger))
+		err := r.Use(mcli_http.NewLogger(Ilogger, Elogger, mcli_http.LoggerOpts{ShowUrl: false, ShowIp: false}))
 		if err != nil {
-			fmt.Println(err)
+			Elogger.Error().Err(err)
 		}
-		r.ConstructFinalHandler()
+		// err = r.Use(mcli_http.NewLogger(Ilogger, Elogger, mcli_http.LoggerOpts{ShowUrl: false, ShowIp: true}))
+		// if err != nil {
+		// 	Elogger.Error().Err(err)
+		// }
+
 		var srv *http.Server
 		if len(tlsCert) > 0 && len(tlsKey) > 0 {
 

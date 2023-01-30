@@ -1,8 +1,9 @@
 package mclihttp
 
 import (
-	"fmt"
 	"html/template"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -22,7 +23,7 @@ func exists(path string) (bool, error) {
 // var TemplatesCache = make(map[string]*template.Template, 10)
 
 func processDirectory(dir, base, part string, cache *map[string]*template.Template) error {
-	fmt.Println(dir, base, part)
+	// fmt.Println(dir, base, part)
 	pages, err := filepath.Glob(filepath.Join(dir, "*.page.html"))
 	if err != nil {
 		return err
@@ -95,12 +96,73 @@ func LoadTemplatesCache(rootTmpl string) (map[string]*template.Template, error) 
 			}
 		}
 		// if we got file, we do nothing
-		if wPath != rootTmpl && !info.IsDir() {
-			_ = fmt.Sprintf("[%s]\n", wPath)
-		}
+		// if wPath != rootTmpl && !info.IsDir() {
+		// _ = fmt.Sprintf("[%s]\n", wPath)
+		// }
 		return nil
 	})
 
 	return cache, nil
 
+}
+
+// Method to set up templates routes processing
+func (r *Router) SetTmplRoutes(tmplPath, tmplPrefix string) {
+	// adding templates to routes
+	tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "/", "/", -1)
+	tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "\\", "\\", -1)
+	tmplPath = strings.TrimSpace(tmplPath)
+	tmplPath = strings.TrimRight(tmplPath, "/")
+
+	if e, _ := exists(tmplPath); e {
+		// cache, err := LoadTemplatesCache("http-data/templates")
+		cache, err := LoadTemplatesCache(tmplPath)
+		if err != nil {
+			r.errorLog.Fatal().Msgf("template caching error: %v", err)
+		}
+		r.infoLog.Trace().Msg("Templates path:" + tmplPath + " Templates prefix:" + tmplPrefix)
+		tmplPrefix = "/" + tmplPrefix + "/"
+
+		// constucting new route
+		tmplRoute := NewRoute(tmplPrefix, Prefix)
+		// setting handler
+		tmplRoute.SetHandler(func(res http.ResponseWriter, req *http.Request) {
+			url := req.URL.Path
+			tmplName := strings.TrimLeft(url, tmplPrefix)
+			tmplKey := tmplPath + "/" + tmplName
+			tmpl, ok := cache[tmplKey]
+			if !ok {
+				http.Error(res, "404 Template Not Found: "+tmplKey, 404)
+				return
+			}
+			// Probably Headers processing
+			// for header, vals := range req.Header {
+			// 	fmt.Fprintf(writer, "Header: %v: %v\n", header, vals)
+			// }
+
+			var queryData string = ""
+			if req.Method == "GET" {
+				queryData = req.URL.Query().Get("data")
+			}
+			if req.Method == "POST" {
+				defer req.Body.Close()
+				byteData, err := io.ReadAll(req.Body)
+				if err != nil {
+					http.Error(res, "Internal Server Error: cannot read body of Post request", 500)
+				}
+				queryData = string(byteData)
+			}
+
+			err = tmpl.Execute(res, struct {
+				Req  *http.Request
+				Data interface{}
+			}{Req: req, Data: struct{ Dummy string }{"Hello world !!!"}})
+			if err != nil {
+				http.Error(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			r.infoLog.Trace().Msg(url + " : " + queryData)
+		})
+		r.AddRoute(tmplRoute)
+	}
 }
