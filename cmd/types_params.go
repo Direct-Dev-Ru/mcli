@@ -1,7 +1,8 @@
 package cmd
 
 type ConfigData struct {
-	Common struct {
+	ConfigVersion string `yaml:"config-version"`
+	Common        struct {
 		OutputFile   string `yaml:"output-file"`
 		OutputFormat string `yaml:"output-format"`
 	}
@@ -14,6 +15,7 @@ type ConfigData struct {
 			StaticPrefix string `yaml:"static-prefix"`
 			TmplPath     string `yaml:"tmpl-path"`
 			TmplPrefix   string `yaml:"tmpl-prefix"`
+			TmplDataPath string `yaml:"tmpl-datapath"`
 		}
 
 		Request struct {

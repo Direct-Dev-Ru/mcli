@@ -27,6 +27,11 @@ func PrettyJsonEncodeToString(data interface{}) (string, error) {
 	return buffer.String(), err
 }
 
+// TODO: write string to interface function. string is json object
+func StrToInterface(str string) (interface{}, error) {
+	return nil, nil
+}
+
 func ConvertJsonToBson(inputFilePath, outputFilePath string) error {
 	// Open the input file
 	inputFile, err := os.Open(inputFilePath)

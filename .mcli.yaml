@@ -1,3 +1,4 @@
+config-version: v1
 common:
   output-file: results.json
   output-format: json
@@ -12,10 +13,10 @@ secrets:
 http:
   server:
     timeout: 3000
-    port:
-    json-path: http-data/json
+    port:    
     tmpl-path: http-data/templates
     tmpl-prefix: tmpl
+    tmpl-datapath: http-data/bjson
     static-path: http-static
     static-prefix: static
   request:

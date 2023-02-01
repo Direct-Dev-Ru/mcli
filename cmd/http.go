@@ -61,6 +61,7 @@ var httpCmd = &cobra.Command{
 
 		tmplPath, _ := GetStringParam("tmpl-path", cmd, Config.Http.Server.TmplPath)
 		tmplPrefix, _ := GetStringParam("tmpl-prefix", cmd, Config.Http.Server.TmplPrefix)
+		tmplDataPath, _ := GetStringParam("tmpl-datapath", cmd, Config.Http.Server.TmplDataPath)
 
 		// Wait for interrupt signal
 		StopHttpChan := make(chan os.Signal, 1)
@@ -92,7 +93,8 @@ var httpCmd = &cobra.Command{
 			}
 		})
 		r.AddRoute(rootRoute)
-		r.SetTmplRoutes(tmplPath, tmplPrefix)
+		// route for template handling
+		r.SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath)
 
 		r.AddRouteWithHandler("/echo", mcli_http.Prefix, mcli_http.Http_Echo)
 

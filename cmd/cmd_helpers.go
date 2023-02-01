@@ -63,12 +63,12 @@ func IsPathExistsAndCreate(pathParam string, create bool) (bool, string, error) 
 			pathToCreate := pathToAnalyse
 			itemType := "directory"
 			// if there are extension - it is file and we should create only dir path
-			if strings.Contains(lastPart, ".") && !strings.HasSuffix(lastPart, ".d") {
+			if strings.Contains(lastPart, ".") && !(strings.HasSuffix(lastPart, ".d") && GlobalMap["OS"] == "linux") {
 				pathToCreate = withoutLastPart
 				itemType = "file"
 			}
 			// create directory
-			println(pathToAnalyse, lastPart, withoutLastPart, pathToCreate)
+			// println(pathToAnalyse, lastPart, withoutLastPart, pathToCreate)
 			err := os.MkdirAll(pathToCreate, os.ModePerm)
 			if err != nil {
 				return false, "", err

@@ -9,6 +9,14 @@ import (
 	"strings"
 )
 
+// struct to get data from request - to optionally change dafault path to data and optionally
+// set path to piece of data by JSONPath, e.g. key1.key2.key3ObjectArray[id=2] or key1.key2.key3StringArray[substring]
+// or in simple case key1.key2
+type QueryData struct {
+	DataFilePath string
+	JsonPath     string
+}
+
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -107,12 +115,16 @@ func LoadTemplatesCache(rootTmpl string) (map[string]*template.Template, error) 
 }
 
 // Method to set up templates routes processing
-func (r *Router) SetTmplRoutes(tmplPath, tmplPrefix string) {
+func (r *Router) SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath string) {
 	// adding templates to routes
 	tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "/", "/", -1)
 	tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "\\", "\\", -1)
 	tmplPath = strings.TrimSpace(tmplPath)
 	tmplPath = strings.TrimRight(tmplPath, "/")
+	tmplDataPath = strings.TrimSpace(tmplDataPath)
+	tmplDataPath = strings.TrimRight(tmplDataPath, "/")
+
+	_ = tmplDataPath
 
 	if e, _ := exists(tmplPath); e {
 		// cache, err := LoadTemplatesCache("http-data/templates")
@@ -153,10 +165,21 @@ func (r *Router) SetTmplRoutes(tmplPath, tmplPrefix string) {
 				queryData = string(byteData)
 			}
 
-			err = tmpl.Execute(res, struct {
+			if len(queryData) > 0 {
+
+			}
+
+			// Here we need define template data variable of type interface{} from suitable file
+			var templateData interface{} = struct {
 				Req  *http.Request
 				Data interface{}
-			}{Req: req, Data: struct{ Dummy string }{"Hello world !!!"}})
+			}{
+				Req:  req,
+				Data: struct{ Dummy string }{"Dummy Value"},
+			}
+
+			err = tmpl.Execute(res, templateData)
+
 			if err != nil {
 				http.Error(res, err.Error(), http.StatusInternalServerError)
 				return

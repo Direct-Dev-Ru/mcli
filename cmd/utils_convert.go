@@ -28,7 +28,7 @@ func convertRunFunc(cmd *cobra.Command, args []string) {
 	}
 
 	_, destType, err := IsPathExistsAndCreate(destPath, true)
-	println(destType, err)
+
 	if err != nil {
 		Elogger.Fatal().Msgf("something goes wrong while creating dest directory: %v", err)
 	}
