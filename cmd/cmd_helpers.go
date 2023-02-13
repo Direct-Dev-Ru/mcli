@@ -56,7 +56,7 @@ func IsPathExistsAndCreate(pathParam string, create bool) (bool, string, error) 
 		if create {
 			// fist we must make make decision either it is dir or a file
 			pathToAnalyse := strings.TrimSpace(pathParam)
-			// pathToAnalyse = strings.TrimLeft(pathToAnalyse, ".")
+			// pathToAnalyse = strings.TrimPrefix(pathToAnalyse, ".")
 			pathToAnalyse = strings.ReplaceAll(pathToAnalyse, `\`, "/")
 			lastPart := path.Base(pathToAnalyse)
 			withoutLastPart := path.Dir(pathToAnalyse)

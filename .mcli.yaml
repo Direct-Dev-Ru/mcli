@@ -16,7 +16,7 @@ http:
     port:    
     tmpl-path: http-data/templates
     tmpl-prefix: tmpl
-    tmpl-datapath: http-data/bjson
+    tmpl-datapath: http-data/templates-data
     static-path: http-static
     static-prefix: static
   request:

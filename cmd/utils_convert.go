@@ -36,7 +36,7 @@ func convertRunFunc(cmd *cobra.Command, args []string) {
 	switch convertType {
 	case "TO_BSON_FROM_JSON":
 		if sourceType == "directory" {
-			Elogger.Fatal().Msg("converter TO_BSON_FROM_JSON dont support directory source - specify path to file")
+			Elogger.Fatal().Msg("converter TO_BSON_FROM_JSON don't support directory source - specify path to file")
 		}
 		if destType == "directory" {
 			fileName := filepath.Base(sourcePath)
@@ -45,12 +45,26 @@ func convertRunFunc(cmd *cobra.Command, args []string) {
 			destPath = path.Join(destPath, fileNameWithoutExt+".bson")
 		}
 		err := mcli_utils.ConvertJsonToBson(sourcePath, destPath)
+		if err != nil {
+			Elogger.Fatal().Msgf("error occured in converter TO_BSON_FROM_JSON: %v", err)
+		}
+	case "TO_JSON_FROM_BSON":
 		if sourceType == "directory" {
-			Elogger.Fatal().Msgf("converter TO_BSON_FROM_JSON produced error: %v", err)
+			Elogger.Fatal().Msg("converter TO_JSON_FROM_BSON don't support directory source - specify path to file")
+		}
+		if destType == "directory" {
+			fileName := filepath.Base(sourcePath)
+			ext := filepath.Ext(fileName)
+			fileNameWithoutExt := fileName[:len(fileName)-len(ext)]
+			destPath = path.Join(destPath, fileNameWithoutExt+".json")
+		}
+		err := mcli_utils.ConvertBsonToJson(sourcePath, destPath)
+		if err != nil {
+			Elogger.Fatal().Msgf("error occured in converter TO_JSON_FROM_BSON: %v", err)
 		}
 
 	default:
-		Elogger.Fatal().Msg("converter with given type does't supported")
+		Elogger.Fatal().Msg("converter with given type doesn't supported yet")
 
 	}
 

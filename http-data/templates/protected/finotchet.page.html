@@ -1,0 +1,19 @@
+{{template "base" .}}
+
+{{define "title"}} {{.Data.Title}} {{end}}
+
+{{define "main"}}
+
+<div class="text-center">
+    <h1>Финансовый отчет по предприятию за 2022 год</h1>
+    <div>Баланс = {{.Data.Balance}}</div>
+    <div>Прибыль = {{.Data.Pribyl}}</div>
+    <div>
+        Нажмите <a href="/tmpl/home/home.page">Домашняя</a> чтобы перейти на домашнюю страницу.
+    </div>
+    <div>
+        Нажмите <a href="/">Главная</a> чтобы перейти на главную страницу.
+    </div>
+</div>
+
+{{ end }}

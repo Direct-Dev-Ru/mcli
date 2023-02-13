@@ -208,7 +208,11 @@ func init() {
 	cPath, rPath, _ := GetRootAndDefaultConfigPaths()
 
 	GlobalMap["RootPath"] = StandartPath(rPath)
+	os.Setenv("RootPath", GlobalMap["RootPath"])
 	GlobalMap["DefaultConfigPath"] = StandartPath(cPath)
+	os.Setenv("DefaultConfigPath", GlobalMap["DefaultConfigPath"])
+	// println(GlobalMap["RootPath"])
+	// println(GlobalMap["DefaultConfigPath"])
 
 	rootCmd.PersistentFlags().StringVar(&ConfigPath, "config", "", "specify path to config file *.yaml")
 

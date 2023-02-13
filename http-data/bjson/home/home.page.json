@@ -1,8 +1,0 @@
-{
-  "Version": "v1",
-  "Template": "home.page",
-  "TemplateData": {
-    "Title": "Home Page",
-    "Description": "Home page for home site. Look inside..."
-  }
-}

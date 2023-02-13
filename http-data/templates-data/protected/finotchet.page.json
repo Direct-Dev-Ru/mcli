@@ -1,0 +1,10 @@
+{
+  "Version": "v1",
+  "Template": "finotchet.page",
+  "TemplateData": {
+    "Title": "Annual Report",
+    "Balance": 100000000,
+    "Pribyl": 345897.97
+  },
+  "UnixNanoTimestamp": 0
+}

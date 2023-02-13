@@ -1,12 +1,13 @@
 {{template "base" .}}
 
-{{define "title"}} Home Page {{end}}
+{{define "title"}} {{.Data.Title}} {{end}}
 
 {{define "main"}}
 
 <div class="text-center from-navbar-margin">
-    <h2> We writes some amazing posts for you ! </h2>
-    <h1 class="text-danger border border-dark rounded p-3"> {{.Data.Dummy}}</h1>
+    <h1> {{.Data.Header}} </h1>
+    <!-- <h2 class="text-danger border border-dark rounded p-3"> {{.Data.Title}}</h2> -->
+    <h3 class="text-danger border border-dark rounded p-3"> {{.Data.MainText}}</h3>
     <a class="btn btn-primary" href="/login" style="width: 30%">
         Log In
     </a>

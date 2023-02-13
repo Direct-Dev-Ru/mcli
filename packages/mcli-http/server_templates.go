@@ -1,21 +1,16 @@
 package mclihttp
 
 import (
+	"fmt"
 	"html/template"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-)
 
-// struct to get data from request - to optionally change dafault path to data and optionally
-// set path to piece of data by JSONPath, e.g. key1.key2.key3ObjectArray[id=2] or key1.key2.key3StringArray[substring]
-// or in simple case key1.key2
-type QueryData struct {
-	DataFilePath string
-	JsonPath     string
-}
+	mcli_utils "mcli/packages/mcli-utils"
+)
 
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)
@@ -125,6 +120,20 @@ func (r *Router) SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath string) {
 	tmplDataPath = strings.TrimRight(tmplDataPath, "/")
 
 	_ = tmplDataPath
+	// by default all templates are free and not require authentication
+	// but if it contains "protected" subfolder in its path, then it should provided with json or bson data file
+	// and there must be auth tokens presented:
+	// {
+	// 	"Version": "1.0.0",
+	// 	"Timestamp": 1257894000000000000 //time.Now().UnixNano()
+	// 	"Templates": ["home.page","about.page","some.page"]
+	//	"AuthTokens": ["token1", "token2"]
+	// 	"TemplateData": {
+	// 	  "Title": "Direct-Dev.Ru Blog",
+	// 	  "Header": "This blog made for you interest. Look inside",
+	// 	  "MainText": "Here you can find a lot of interesting information about development processes"
+	// 	}
+	// }
 
 	if e, _ := exists(tmplPath); e {
 		// cache, err := LoadTemplatesCache("http-data/templates")
@@ -137,24 +146,27 @@ func (r *Router) SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath string) {
 
 		// constucting new route
 		tmplRoute := NewRoute(tmplPrefix, Prefix)
-		// setting handler
 		tmplRoute.SetHandler(func(res http.ResponseWriter, req *http.Request) {
 			url := req.URL.Path
-			tmplName := strings.TrimLeft(url, tmplPrefix)
+			tmplName := strings.TrimPrefix(url, tmplPrefix)
 			tmplKey := tmplPath + "/" + tmplName
 			tmpl, ok := cache[tmplKey]
 			if !ok {
 				http.Error(res, "404 Template Not Found: "+tmplKey, 404)
 				return
 			}
-			// Probably Headers processing
-			// for header, vals := range req.Header {
-			// 	fmt.Fprintf(writer, "Header: %v: %v\n", header, vals)
-			// }
+			var queryStrData, pathToData string = "", ""
+			var queryData interface{}
+			var err error
+			var xAccessTokens []string = make([]string, 0, 3)
+			header, ok := req.Header["X-Access-Tokens"]
+			if ok {
+				xAccessTokens = append(xAccessTokens, header...)
+			}
+			_ = xAccessTokens
 
-			var queryData string = ""
 			if req.Method == "GET" {
-				queryData = req.URL.Query().Get("data")
+				queryStrData = req.URL.Query().Get("data")
 			}
 			if req.Method == "POST" {
 				defer req.Body.Close()
@@ -162,29 +174,113 @@ func (r *Router) SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath string) {
 				if err != nil {
 					http.Error(res, "Internal Server Error: cannot read body of Post request", 500)
 				}
-				queryData = string(byteData)
+				queryStrData = string(byteData)
+			}
+			// we expect queryData is jsonString with specified fields:
+			// optional PathToJson:string - relative path to find json file contains required data
+			// optional header "X-Access-Tokens" (X-Access-Tokens:string,string,string) - for authenticate purposes //TODO:
+			// if PathToJson is empty or not specified it finds file as relative template path
+			// and name as template name without extension,
+			// for example  tmpl-path=http-data/templates , tmpl-datapath = http-data/templates-data
+			// and our template is http-data/templates/home/home.page.html
+			// if where are no JsonPath with request we firstly looking for a path http-data/templates-data/bson/home/home.page.bson
+			// if it exists we convert it to json and pass to template renderer
+			// if not exists we are looking for http-data/templates-data/home/home.page.bson
+			// if not exists we are looking for http-data/templates-data/home/home.page.json
+			// if not exists - we pass impty interface{} to template renderer
+			queryData, err = mcli_utils.JsonStringToInterface(queryStrData)
+			if err == nil {
+				typedQueryData, ok := queryData.(map[string]interface{})
+				if ok {
+					if v, ok := typedQueryData["PathToJson"]; ok {
+						pathToData = v.(string)
+						// only relative path from RootPath (where process starts) and only down in folder tree
+						pathToData = strings.TrimPrefix(strings.TrimSpace(pathToData), "/")
+						pathToData = strings.TrimPrefix(pathToData, "./")
+						pathToData = strings.TrimPrefix(pathToData, "../")
+					}
+				} else {
+					err = fmt.Errorf("wrong json object from query")
+					pathToData = ""
+				}
+			} else {
+				// dir := path.Dir(tmplName)
+				// base := path.Base(tmplName)
+				// ext := path.Ext(base)
+				// name := base[:len(base)-len(ext)]
+				// noExt := path.Join(dir, name)
+				// tmplName - e.g. "home/home.page"
+				// lets try first candidate tmplDataPath + "/bson/"+noExt+".bson"
+				candidatePath := tmplDataPath + "/bson/" + tmplName + ".bson"
+				isExist, _ := exists(candidatePath)
+				if isExist {
+					pathToData = candidatePath
+				}
+				if !isExist {
+					candidatePath = tmplDataPath + "/" + tmplName + ".bson"
+					isExist, _ = exists(candidatePath)
+					if isExist {
+						pathToData = candidatePath
+					}
+				}
+				if !isExist {
+					// candidatePath = os.Getenv("RootPath") + "/" + tmplDataPath + "/" + tmplName + ".json"
+					candidatePath = tmplDataPath + "/" + tmplName + ".json"
+					isExist, _ = exists(candidatePath)
+					if isExist {
+						pathToData = candidatePath
+					}
+				}
+			}
+			var bytesDataForTemplate []byte
+			var templateData interface{}
+
+			if len(pathToData) > 0 {
+				bytesDataForTemplate, err = os.ReadFile(pathToData)
+				if err != nil {
+					templateData, err = mcli_utils.JsonStringToInterface("{}")
+				} else {
+					if strings.HasSuffix(pathToData, ".bson") {
+						templateData, err = mcli_utils.BsonDataToInterfaceMap(bytesDataForTemplate)
+					} else {
+						templateData, err = mcli_utils.JsonStringToInterface(string(bytesDataForTemplate))
+					}
+				}
+			}
+			if err != nil {
+				http.Error(res, err.Error(), http.StatusInternalServerError)
+				return
 			}
 
-			if len(queryData) > 0 {
-
+			typedTemplateData, ok := templateData.(map[string]interface{})
+			if !ok {
+				http.Error(res, "error convert template data from interface", http.StatusInternalServerError)
+				return
+			}
+			if v, ok := typedTemplateData["TemplateData"]; ok {
+				templateData = v
+			} else {
+				http.Error(res, "error find TemplateData member in data map", http.StatusInternalServerError)
+				return
 			}
 
-			// Here we need define template data variable of type interface{} from suitable file
-			var templateData interface{} = struct {
+			// fmt.Println("request processing " + req.URL.String())
+
+			var bindData interface{} = struct {
 				Req  *http.Request
 				Data interface{}
 			}{
 				Req:  req,
-				Data: struct{ Dummy string }{"Dummy Value"},
+				Data: templateData,
 			}
 
-			err = tmpl.Execute(res, templateData)
+			err = tmpl.Execute(res, bindData)
 
 			if err != nil {
 				http.Error(res, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			r.infoLog.Trace().Msg(url + " : " + queryData)
+			r.infoLog.Trace().Msg(url + " : " + queryStrData)
 		})
 		r.AddRoute(tmplRoute)
 	}
