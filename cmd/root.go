@@ -183,7 +183,7 @@ func initConfig() {
 				}
 			}
 			// fmt.Println("Configuration content :", string(configContent))
-			Ilogger.Trace().Msg(fmt.Sprint("Configuration struct :", Config))
+			Ilogger.Trace().Msg(fmt.Sprintf("Configuration struct : %+v", Config))
 		} else if errors.Is(err, os.ErrNotExist) {
 			Ilogger.Trace().Msg("config file " + configFile + " does not exist")
 		} else {

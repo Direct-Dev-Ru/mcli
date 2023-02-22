@@ -5,9 +5,9 @@ common:
 secrets:
   common:
     use-words: false
-    vault-path: {{$HomeDir$}}/.mcli/secrets/defvault
-    keyfile-path: {{$HomeDir$}}/.ssh/id_rsa
-    dict-path: {{$HomeDir$}}/.mcli/pwdgen/dict.csv
+    vault-path: "{{$HomeDir$}}/.mcli/secrets/defvault"
+    keyfile-path: "{{$HomeDir$}}/.ssh/id_rsa"
+    dict-path: "{{$HomeDir$}}/.mcli/pwdgen/dict.csv"
     min-lenght: 14
     max-lenght: 32
 http:
@@ -17,6 +17,17 @@ http:
     tmpl-path: http-data/templates
     tmpl-prefix: tmpl
     tmpl-datapath: http-data/templates-data
+    templates:
+      - tmpl-name: common
+        tmpl-type: standart
+        tmpl-path: http-data/templates
+        tmpl-prefix: tmpl
+        tmpl-datapath: http-data/templates-data
+      - tmpl-name: markdowm
+        tmpl-type: markdowm
+        tmpl-path: http-data/markdown
+        tmpl-prefix: md
+        tmpl-datapath: http-data/markdown-data
     static-path: http-static
     static-prefix: static
   request:

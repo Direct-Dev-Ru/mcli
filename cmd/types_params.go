@@ -1,5 +1,13 @@
 package cmd
 
+type TemplateEntry struct {
+	Tmplname     string `yaml:"tmpl-name"`
+	TmplType     string `yaml:"tmpl-type"`
+	TmplPath     string `yaml:"tmpl-path"`
+	TmplPrefix   string `yaml:"tmpl-prefix"`
+	TmplDataPath string `yaml:"tmpl-datapath"`
+}
+
 type ConfigData struct {
 	ConfigVersion string `yaml:"config-version"`
 	Common        struct {
@@ -9,13 +17,14 @@ type ConfigData struct {
 
 	Http struct {
 		Server struct {
-			Timeout      int64  `yaml:"timeout"`
-			Port         string `yaml:"port"`
-			StaticPath   string `yaml:"static-path"`
-			StaticPrefix string `yaml:"static-prefix"`
-			TmplPath     string `yaml:"tmpl-path"`
-			TmplPrefix   string `yaml:"tmpl-prefix"`
-			TmplDataPath string `yaml:"tmpl-datapath"`
+			Timeout      int64           `yaml:"timeout"`
+			Port         string          `yaml:"port"`
+			StaticPath   string          `yaml:"static-path"`
+			StaticPrefix string          `yaml:"static-prefix"`
+			TmplPath     string          `yaml:"tmpl-path"`
+			TmplPrefix   string          `yaml:"tmpl-prefix"`
+			TmplDataPath string          `yaml:"tmpl-datapath"`
+			Templates    []TemplateEntry `yaml:"templates"`
 		}
 
 		Request struct {
