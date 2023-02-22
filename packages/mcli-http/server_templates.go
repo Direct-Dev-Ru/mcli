@@ -13,6 +13,14 @@ import (
 	mcli_utils "mcli/packages/mcli-utils"
 )
 
+type TemplateEntry struct {
+	Tmplname     string `yaml:"tmpl-name"`
+	TmplType     string `yaml:"tmpl-type"`
+	TmplPath     string `yaml:"tmpl-path"`
+	TmplPrefix   string `yaml:"tmpl-prefix"`
+	TmplDataPath string `yaml:"tmpl-datapath"`
+}
+
 func exists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {
@@ -121,8 +129,19 @@ func LoadMyTemplatesCache(rootTmpl string) (map[string]*MyTemplate, error) {
 
 }
 
+// Method to set multiply templates routes
+
+func (r *Router) SetTemplatesRoutes(templates []TemplateEntry) {
+	for _, t := range templates {
+		err := r.setTmplRoutes(t.TmplPath, t.TmplPrefix, t.TmplDataPath)
+		if err != nil {
+			r.infoLog.Error().Msgf("error load templates: %v", err)
+		}
+	}
+}
+
 // Method to set up templates routes processing
-func (r *Router) SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath string) {
+func (r *Router) setTmplRoutes(tmplPath, tmplPrefix, tmplDataPath string) error {
 	// adding templates to routes
 	tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "/", "/", -1)
 	tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "\\", "\\", -1)
@@ -131,7 +150,6 @@ func (r *Router) SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath string) {
 	tmplDataPath = strings.TrimSpace(tmplDataPath)
 	tmplDataPath = strings.TrimRight(tmplDataPath, "/")
 
-	_ = tmplDataPath
 	// by default all templates are free and not require authentication
 	// but if it contains "protected" subfolder in its path, then it should provided with json or bson data file
 	// and there must be auth tokens presented:
@@ -313,8 +331,9 @@ func (r *Router) SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath string) {
 			}
 			r.infoLog.Trace().Msg(url + " : " + queryStrData)
 		})
-		r.AddRoute(tmplRoute)
+		return r.AddRoute(tmplRoute)
 	}
+	return fmt.Errorf("path not exists %s", tmplPath)
 }
 
 // -----------------------------------------------------------------------------

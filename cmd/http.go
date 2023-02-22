@@ -95,6 +95,7 @@ var httpCmd = &cobra.Command{
 		r.AddRoute(rootRoute)
 		// route for template handling
 		r.SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath)
+		r.SetTemplatesRoutes(Config.Http.Server.Templates)
 
 		r.AddRouteWithHandler("/echo", mcli_http.Prefix, mcli_http.Http_Echo)
 
