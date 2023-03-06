@@ -94,8 +94,23 @@ var httpCmd = &cobra.Command{
 		})
 		r.AddRoute(rootRoute)
 		// route for template handling
-		r.SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath)
-		r.SetTemplatesRoutes(Config.Http.Server.Templates)
+		// r.SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath)
+
+		// Context to stop server and pass into other goroutines
+		ctx, cancel := context.WithCancel(context.Background())
+		defer func() {
+			// extra handling here
+			//fmt.Println("extra handling done")
+			cancel()
+			time.Sleep(5 * time.Second)
+		}()
+		serverTemplates := Config.Http.Server.Templates
+		if len(tmplPath) > 0 {
+			serverTemplates = make([]mcli_http.TemplateEntry, 1, 1)
+			serverTemplates[0] = mcli_http.TemplateEntry{TmplName: "fromcmdline", TmplType: "standart",
+				TmplPath: tmplPath, TmplPrefix: tmplPrefix, TmplDataPath: tmplDataPath}
+		}
+		r.SetTemplatesRoutes(ctx, serverTemplates)
 
 		r.AddRouteWithHandler("/echo", mcli_http.Prefix, mcli_http.Http_Echo)
 
@@ -104,10 +119,6 @@ var httpCmd = &cobra.Command{
 		if err != nil {
 			Elogger.Error().Err(err)
 		}
-		// err = r.Use(mcli_http.NewLogger(Ilogger, Elogger, mcli_http.LoggerOpts{ShowUrl: false, ShowIp: true}))
-		// if err != nil {
-		// 	Elogger.Error().Err(err)
-		// }
 
 		var srv *http.Server
 		if len(tlsCert) > 0 && len(tlsKey) > 0 {
@@ -149,18 +160,13 @@ var httpCmd = &cobra.Command{
 		Ilogger.Info().Msg(fmt.Sprintf("http server started on port %s", port))
 
 		<-StopHttpChan
-		Ilogger.Info().Msg(fmt.Sprintf("http server stopeed on port %s", port))
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer func() {
-			// extra handling here
-			cancel()
-		}()
+		Ilogger.Info().Msg(fmt.Sprintf("http server stopped on port %s", port))
 
 		if err := srv.Shutdown(ctx); err != nil {
-			Elogger.Fatal().Msg(fmt.Sprintf("server shutdown failed:%+v", err))
+			Elogger.Fatal().Msg(fmt.Sprintf("server shutdown failed: %+v", err))
 		}
-		Ilogger.Info().Msg("server exited properly")
+		Ilogger.Info().Msg("server shutting down properly")
 	},
 }
 

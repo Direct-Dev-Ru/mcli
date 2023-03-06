@@ -14,9 +14,6 @@ http:
   server:
     timeout: 3000
     port:    
-    tmpl-path: http-data/templates
-    tmpl-prefix: tmpl
-    tmpl-datapath: http-data/templates-data
     templates:
       - tmpl-name: common
         tmpl-type: standart

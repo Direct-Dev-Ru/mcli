@@ -1,6 +1,7 @@
 package mclihttp
 
 import (
+	"context"
 	"fmt"
 	"html/template"
 	"io"
@@ -14,7 +15,7 @@ import (
 )
 
 type TemplateEntry struct {
-	Tmplname     string `yaml:"tmpl-name"`
+	TmplName     string `yaml:"tmpl-name"`
 	TmplType     string `yaml:"tmpl-type"`
 	TmplPath     string `yaml:"tmpl-path"`
 	TmplPrefix   string `yaml:"tmpl-prefix"`
@@ -131,17 +132,41 @@ func LoadMyTemplatesCache(rootTmpl string) (map[string]*MyTemplate, error) {
 
 // Method to set multiply templates routes
 
-func (r *Router) SetTemplatesRoutes(templates []TemplateEntry) {
+func (r *Router) SetTemplatesRoutes(ctx context.Context, templates []TemplateEntry) {
 	for _, t := range templates {
-		err := r.setTmplRoutes(t.TmplPath, t.TmplPrefix, t.TmplDataPath)
+		err := r.setTmplRoutes(ctx, t.TmplPath, t.TmplPrefix, t.TmplDataPath)
 		if err != nil {
 			r.infoLog.Error().Msgf("error load templates: %v", err)
+		}
+		r.infoLog.Info().Msgf("setting up template cache: %v is successfull", t.TmplName)
+	}
+}
+
+func (r *Router) refreshTemplateCache(ctx context.Context, d time.Duration) {
+	ticker := time.NewTicker(d)
+	defer func() {
+		r.infoLog.Trace().Msg("Ticker stopped.")
+		ticker.Stop()
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			r.infoLog.Trace().Msg("Refresh Task stopped.")
+			ticker.Stop()
+			return
+		case <-ticker.C:
+			r.infoLog.Trace().Msg("Refresh Task running ... ")
+
+			// default:
+			// fmt.Println("Task undefined ...")
+			// time.Sleep(5 * time.Second)
 		}
 	}
 }
 
 // Method to set up templates routes processing
-func (r *Router) setTmplRoutes(tmplPath, tmplPrefix, tmplDataPath string) error {
+func (r *Router) setTmplRoutes(ctx context.Context, tmplPath, tmplPrefix, tmplDataPath string) error {
 	// adding templates to routes
 	tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "/", "/", -1)
 	tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "\\", "\\", -1)
@@ -166,11 +191,17 @@ func (r *Router) setTmplRoutes(tmplPath, tmplPrefix, tmplDataPath string) error 
 	// }
 
 	if e, _ := exists(tmplPath); e {
-		// cache, err := LoadTemplatesCache("http-data/templates")
+
+		// ctx, cancel := context.WithCancel(context.Background())
+		// defer cancel()
+
 		cache, err := LoadMyTemplatesCache(tmplPath)
 		if err != nil {
 			r.errorLog.Fatal().Msgf("template caching error: %v", err)
 		}
+
+		go r.refreshTemplateCache(ctx, 3*time.Second)
+
 		r.infoLog.Trace().Msg("Templates path:" + tmplPath + " Templates prefix:" + tmplPrefix)
 		tmplPrefix = "/" + tmplPrefix + "/"
 
