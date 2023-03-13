@@ -177,7 +177,7 @@ func init() {
 
 	// setup flags
 	var port, staticPath, staticPrefix string = "8080", "http-static", "static"
-	var tmplPath, tmplPrefix, tmplDataPath string = "http-data/templates", "tmpl", "http-data/bjson"
+	var tmplPath, tmplPrefix, tmplDataPath string = "", "", ""
 
 	httpCmd.Flags().StringP("port", "p", port, "Specify port for test http server.")
 	httpCmd.Flags().String("static-path", staticPath, "Specify relative path to static folder")

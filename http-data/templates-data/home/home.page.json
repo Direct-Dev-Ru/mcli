@@ -3,7 +3,7 @@
   "Template": "home.page",  
   "TemplateData": {
     "Title": "Direct-Dev.Ru Blog",
-    "Header": "This blog made for you interest. Look inside",
+    "Header": "Blog made for you interest. Look inside",
     "MainText": "From Json: Here you can find a lot of interesting information about development process."
   },
   "UnixNanoTimestamp": 0

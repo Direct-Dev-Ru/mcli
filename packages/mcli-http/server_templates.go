@@ -8,18 +8,22 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	mcli_utils "mcli/packages/mcli-utils"
 )
 
 type TemplateEntry struct {
-	TmplName     string `yaml:"tmpl-name"`
-	TmplType     string `yaml:"tmpl-type"`
-	TmplPath     string `yaml:"tmpl-path"`
-	TmplPrefix   string `yaml:"tmpl-prefix"`
-	TmplDataPath string `yaml:"tmpl-datapath"`
+	TmplName            string `yaml:"tmpl-name"`
+	TmplType            string `yaml:"tmpl-type"`
+	TmplPath            string `yaml:"tmpl-path"`
+	TmplPrefix          string `yaml:"tmpl-prefix"`
+	TmplDataPath        string `yaml:"tmpl-datapath"`
+	TmplRefreshType     string `yaml:"tmpl-refresh-type"`
+	TmplRefreshInterval string `yaml:"tmpl-refresh-interval"`
 }
 
 func exists(path string) (bool, error) {
@@ -38,6 +42,12 @@ type MyTemplate struct {
 	template     *template.Template
 	templatePath string
 	timestamp    time.Time
+}
+type MyTemplateCache struct {
+	sync.RWMutex
+	cache    map[string]*MyTemplate
+	tmplName string
+	tmplPath string
 }
 
 func processTemplDir(dir, base, part string, cache *map[string]*MyTemplate) error {
@@ -75,7 +85,7 @@ func processTemplDir(dir, base, part string, cache *map[string]*MyTemplate) erro
 			return err
 		}
 
-		(*cache)[filepath.Join(dir, filename)] = &MyTemplate{ts, page, pageFileStats.ModTime()}
+		(*cache)[filepath.Join(dir, filename)] = &MyTemplate{template: ts, templatePath: page, timestamp: pageFileStats.ModTime()}
 	}
 	return nil
 }
@@ -134,15 +144,16 @@ func LoadMyTemplatesCache(rootTmpl string) (map[string]*MyTemplate, error) {
 
 func (r *Router) SetTemplatesRoutes(ctx context.Context, templates []TemplateEntry) {
 	for _, t := range templates {
-		err := r.setTmplRoutes(ctx, t.TmplPath, t.TmplPrefix, t.TmplDataPath)
+		err := r.setTmplRoutes(ctx, t)
 		if err != nil {
 			r.infoLog.Error().Msgf("error load templates: %v", err)
+		} else {
+			r.infoLog.Trace().Msgf("setting up template cache: %v is successfull", t.TmplName)
 		}
-		r.infoLog.Info().Msgf("setting up template cache: %v is successfull", t.TmplName)
 	}
 }
 
-func (r *Router) refreshTemplateCache(ctx context.Context, d time.Duration) {
+func (r *Router) refreshTemplateCache(ctx context.Context, d time.Duration, myTmplCache *MyTemplateCache) {
 	ticker := time.NewTicker(d)
 	defer func() {
 		r.infoLog.Trace().Msg("Ticker stopped.")
@@ -156,8 +167,18 @@ func (r *Router) refreshTemplateCache(ctx context.Context, d time.Duration) {
 			ticker.Stop()
 			return
 		case <-ticker.C:
-			r.infoLog.Trace().Msg("Refresh Task running ... ")
-
+			// r.infoLog.Trace().Msg("Refresh Task running ... ")
+			myTmplCache.Lock()
+			cache, err := LoadMyTemplatesCache(myTmplCache.tmplPath)
+			myTmplCache.Unlock()
+			if err != nil {
+				r.errorLog.Error().Msgf("refreshing of template caching %v got error: %v", myTmplCache.tmplName, err)
+				ticker.Stop()
+				return
+			} else {
+				myTmplCache.cache = cache
+				r.infoLog.Trace().Msgf("refreshing of template cache: %v is successfull", myTmplCache.tmplName)
+			}
 			// default:
 			// fmt.Println("Task undefined ...")
 			// time.Sleep(5 * time.Second)
@@ -166,13 +187,13 @@ func (r *Router) refreshTemplateCache(ctx context.Context, d time.Duration) {
 }
 
 // Method to set up templates routes processing
-func (r *Router) setTmplRoutes(ctx context.Context, tmplPath, tmplPrefix, tmplDataPath string) error {
+func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 	// adding templates to routes
-	tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "/", "/", -1)
+	tmplPrefix := strings.Replace(strings.TrimSpace(t.TmplPrefix), "/", "/", -1)
 	tmplPrefix = strings.Replace(strings.TrimSpace(tmplPrefix), "\\", "\\", -1)
-	tmplPath = strings.TrimSpace(tmplPath)
+	tmplPath := strings.TrimSpace(t.TmplPath)
 	tmplPath = strings.TrimRight(tmplPath, "/")
-	tmplDataPath = strings.TrimSpace(tmplDataPath)
+	tmplDataPath := strings.TrimSpace(t.TmplDataPath)
 	tmplDataPath = strings.TrimRight(tmplDataPath, "/")
 
 	// by default all templates are free and not require authentication
@@ -197,10 +218,20 @@ func (r *Router) setTmplRoutes(ctx context.Context, tmplPath, tmplPrefix, tmplDa
 
 		cache, err := LoadMyTemplatesCache(tmplPath)
 		if err != nil {
-			r.errorLog.Fatal().Msgf("template caching error: %v", err)
+			r.errorLog.Error().Msgf("template caching error: %v", err)
+			return err
 		}
-
-		go r.refreshTemplateCache(ctx, 3*time.Second)
+		myTemplateCache := &MyTemplateCache{cache: cache, tmplName: t.TmplName, tmplPath: tmplPath}
+		if t.TmplRefreshType == "on-interval" {
+			interval, err := strconv.Atoi(t.TmplRefreshInterval)
+			if err != nil || interval == 0 {
+				r.errorLog.Info().Msgf("Error with refresh interval in config: %v", err)
+				r.infoLog.Info().Msg("Refresh interval sets to 30 sec")
+				interval = 30
+			}
+			duration := time.Duration(int64(interval) * int64(time.Second))
+			go r.refreshTemplateCache(ctx, duration, myTemplateCache)
+		}
 
 		r.infoLog.Trace().Msg("Templates path:" + tmplPath + " Templates prefix:" + tmplPrefix)
 		tmplPrefix = "/" + tmplPrefix + "/"
@@ -211,11 +242,43 @@ func (r *Router) setTmplRoutes(ctx context.Context, tmplPath, tmplPrefix, tmplDa
 			url := req.URL.Path
 			tmplName := strings.TrimPrefix(url, tmplPrefix)
 			tmplKey := tmplPath + "/" + tmplName
-			tmpl, ok := cache[tmplKey]
-			if !ok {
+			tmpl, ok := myTemplateCache.cache[tmplKey]
+			if !ok && !(t.TmplRefreshType == "on-change") {
 				http.Error(res, "404 Template Not Found: "+tmplKey, 404)
 				return
 			}
+
+			if t.TmplRefreshType == "on-change" && ok {
+				tmplFileStats, err := os.Stat(tmpl.templatePath)
+				if err != nil {
+					http.Error(res, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				if modtime := tmplFileStats.ModTime(); modtime.UnixNano() > tmpl.timestamp.UnixNano() {
+					myTemplateCache.cache, err = LoadMyTemplatesCache(tmplPath)
+					if err != nil {
+						http.Error(res, fmt.Sprintf("template caching error: %v", err), http.StatusInternalServerError)
+					}
+				}
+				tmpl, ok = myTemplateCache.cache[tmplKey]
+				if !ok {
+					http.Error(res, "404 Template Not Found: "+tmplKey, 404)
+					return
+				}
+			}
+			if t.TmplRefreshType == "on-change" && !ok {
+				myTemplateCache.cache, err = LoadMyTemplatesCache(tmplPath)
+				if err != nil {
+					http.Error(res, fmt.Sprintf("template caching error: %v", err), http.StatusInternalServerError)
+				}
+				tmpl, ok = myTemplateCache.cache[tmplKey]
+				if !ok {
+					http.Error(res, "404 Template Not Found: "+tmplKey, 404)
+					return
+				}
+			}
+
 			var queryStrData, pathToData string = "", ""
 			var queryData interface{}
 			var err error
@@ -263,8 +326,13 @@ func (r *Router) setTmplRoutes(ctx context.Context, tmplPath, tmplPrefix, tmplDa
 				} else {
 					err = fmt.Errorf("wrong json object from query")
 					pathToData = ""
+					if err != nil {
+						http.Error(res, "error converting json from query: "+err.Error(), http.StatusInternalServerError)
+						return
+					}
 				}
 			} else {
+				err = nil
 				// dir := path.Dir(tmplName)
 				// base := path.Base(tmplName)
 				// ext := path.Ext(base)
@@ -295,6 +363,17 @@ func (r *Router) setTmplRoutes(ctx context.Context, tmplPath, tmplPrefix, tmplDa
 			}
 			var bytesDataForTemplate []byte
 			var templateData interface{}
+			var bindData interface{}
+
+			bindData = struct {
+				Req  *http.Request
+				Data interface{}
+			}{
+				Req:  req,
+				Data: struct{}{},
+			}
+
+			r.infoLog.Trace().Msgf("overall pathToData: %v ", pathToData)
 
 			if len(pathToData) > 0 {
 				bytesDataForTemplate, err = os.ReadFile(pathToData)
@@ -307,56 +386,39 @@ func (r *Router) setTmplRoutes(ctx context.Context, tmplPath, tmplPrefix, tmplDa
 						templateData, err = mcli_utils.JsonStringToInterface(string(bytesDataForTemplate))
 					}
 				}
-			}
-			if err != nil {
-				http.Error(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
 
-			typedTemplateData, ok := templateData.(map[string]interface{})
-			if !ok {
-				http.Error(res, "error convert template data from interface", http.StatusInternalServerError)
-				return
-			}
-			if v, ok := typedTemplateData["TemplateData"]; ok {
-				templateData = v
-			} else {
-				http.Error(res, "error find TemplateData member in data map", http.StatusInternalServerError)
-				return
-			}
-
-			// fmt.Println("request processing " + req.URL.String())
-
-			var bindData interface{} = struct {
-				Req  *http.Request
-				Data interface{}
-			}{
-				Req:  req,
-				Data: templateData,
-			}
-
-			tmplFileStats, err := os.Stat(tmpl.templatePath)
-			if err != nil {
-				http.Error(res, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			if modtime := tmplFileStats.ModTime(); modtime.UnixNano() > tmpl.timestamp.UnixNano() {
-				cache, err = LoadMyTemplatesCache(tmplPath)
 				if err != nil {
-					http.Error(res, fmt.Sprintf("template caching error: %v", err), http.StatusInternalServerError)
-					// r.errorLog.Fatal().Msgf("template caching error: %v", err)
-				}
-				tmpl, ok = cache[tmplKey]
-				if !ok {
-					http.Error(res, "404 Template Not Found: "+tmplKey, 404)
+					http.Error(res, "error converting json to interface: "+err.Error(), http.StatusInternalServerError)
 					return
 				}
+
+				typedTemplateData, ok := templateData.(map[string]interface{})
+				if !ok {
+					http.Error(res, "error convert template data from interface", http.StatusInternalServerError)
+					return
+				}
+				if v, ok := typedTemplateData["TemplateData"]; ok {
+					templateData = v
+				} else {
+					http.Error(res, "error find TemplateData member in data map", http.StatusInternalServerError)
+					return
+				}
+
+				bindData = struct {
+					Req  *http.Request
+					Data interface{}
+				}{
+					Req:  req,
+					Data: templateData,
+				}
+
 			}
+			// fmt.Println("request processing " + req.URL.String())
 
 			err = tmpl.template.Execute(res, bindData)
 
 			if err != nil {
+				r.infoLog.Trace().Msgf("url : %v", err)
 				http.Error(res, err.Error(), http.StatusInternalServerError)
 				return
 			}

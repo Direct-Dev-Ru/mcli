@@ -1,0 +1,10 @@
+{
+  "Version": "v1",
+  "Template": "home.page",  
+  "TemplateData": {
+    "Title": "Direct-Dev.Ru Markdown Docs",
+    "Header": "Markdown Docs Are Here",
+    "MainText": "Read markdowm as html in easy way."
+  },
+  "UnixNanoTimestamp": 0
+}

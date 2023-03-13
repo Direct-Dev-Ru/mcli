@@ -1,0 +1,16 @@
+{{template "base" .}}
+
+{{define "title"}} {{.Data.Title}} {{end}}
+
+{{define "main"}}
+
+<div class="text-center">
+    <!-- <h1 class="text-primary"> {{.Data.Header}} </h1> -->
+    <h1 class="text-primary"> Markdown Home Page </h1>
+    <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Sapiente facilis autem, ipsum, maxime numquam eos
+        dolores accusantium temporibus debitis corrupti iusto repellendus quae sint rem quibusdam! Non quibusdam facere
+        eius.</p>
+    {{.Data.Content}}    
+</div>
+
+{{end}}
