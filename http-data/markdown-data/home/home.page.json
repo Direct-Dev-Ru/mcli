@@ -4,7 +4,8 @@
   "TemplateData": {
     "Title": "Direct-Dev.Ru Markdown Docs",
     "Header": "Markdown Docs Are Here",
-    "MainText": "Read markdowm as html in easy way."
+    "MainText": "Read markdowm as html in easy way.",
+    "Content": "home.page.md"
   },
   "UnixNanoTimestamp": 0
 }

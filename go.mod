@@ -8,6 +8,7 @@ require (
 )
 
 require (
+	github.com/gomarkdown/markdown v0.0.0-20230313173142-2ced44d5b584 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
 	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9 // indirect
