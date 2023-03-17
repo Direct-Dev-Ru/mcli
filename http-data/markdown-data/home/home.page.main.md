@@ -3,6 +3,6 @@
 
 ## Part 1. Basic using
 
-**Go** is a very popular programming language. Syntax is very siple but right using is hard.
+**Go** is a very popular programming language. Syntax is very simple, but right using is hard.
 
 More info on [Golang Dev](https:/go.dev/)

@@ -103,7 +103,7 @@ func LoadMyTemplatesCache(rootTmpl string) (map[string]*MyTemplate, error) {
 		mainPartialPath = filepath.Join(rootTmpl, "__partial")
 	}
 
-	filepath.Walk(rootTmpl, func(wPath string, info os.FileInfo, err error) error {
+	e := filepath.Walk(rootTmpl, func(wPath string, info os.FileInfo, err error) error {
 		// if the same path
 		if wPath == rootTmpl {
 			err := processTemplDir(wPath, mainLayoutPath, mainPartialPath, &cache)
@@ -136,7 +136,7 @@ func LoadMyTemplatesCache(rootTmpl string) (map[string]*MyTemplate, error) {
 		return nil
 	})
 
-	return cache, nil
+	return cache, e
 
 }
 
@@ -324,10 +324,10 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 						pathToData = strings.TrimPrefix(pathToData, "../")
 					}
 				} else {
-					err = fmt.Errorf("wrong json object from query")
+					err = fmt.Errorf("incorrect json object from query")
 					pathToData = ""
 					if err != nil {
-						http.Error(res, "error converting json from query: "+err.Error(), http.StatusInternalServerError)
+						http.Error(res, "error converting json object, received from query: "+err.Error(), http.StatusInternalServerError)
 						return
 					}
 				}
@@ -372,8 +372,17 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 				Req:  req,
 				Data: struct{}{},
 			}
-
-			r.infoLog.Trace().Msgf("overall pathToData: %v ", pathToData)
+			if t.TmplType == "markdowm" {
+				bindData = struct {
+					Req      *http.Request
+					Data     interface{}
+					Contents map[string]template.HTML
+				}{
+					Req:      req,
+					Data:     struct{}{},
+					Contents: make(map[string]template.HTML),
+				}
+			}
 
 			if len(pathToData) > 0 {
 				bytesDataForTemplate, err = os.ReadFile(pathToData)
@@ -386,7 +395,6 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 						templateData, err = mcli_utils.JsonStringToInterface(string(bytesDataForTemplate))
 					}
 				}
-
 				if err != nil {
 					http.Error(res, "error converting json to interface: "+err.Error(), http.StatusInternalServerError)
 					return
@@ -411,7 +419,52 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 					Req:  req,
 					Data: templateData,
 				}
+				if t.TmplType == "markdowm" {
+					bindData = struct {
+						Req      *http.Request
+						Data     interface{}
+						Contents map[string]template.HTML
+					}{
+						Req:      req,
+						Data:     templateData,
+						Contents: make(map[string]template.HTML),
+					}
+					if mdValue, ok := typedTemplateData["MarkdownContents"]; ok {
+						markdownSources, ok := mdValue.(map[string]interface{})
+						if !ok {
+							http.Error(res, "error convert md sources to map[string]interface", http.StatusInternalServerError)
+							return
+						}
+						mdMap := make(map[string]template.HTML)
+						for key, source := range markdownSources {
+							pathToMd, ok := source.(string)
+							if !ok {
+								http.Error(res, "error convert md source to string", http.StatusInternalServerError)
+								return
+							}
+							htmlContent, err := ConvertMdToHtml(t.TmplDataPath + "/" + pathToMd)
+							if err != nil {
+								http.Error(res, "error convert md to html: "+err.Error(), http.StatusInternalServerError)
+								return
+							}
+							mdMap[key] = template.HTML(string(htmlContent))
+						}
+						bindData = struct {
+							Req      *http.Request
+							Data     interface{}
+							Contents map[string]template.HTML
+						}{
+							Req:      req,
+							Data:     templateData,
+							Contents: mdMap,
+						}
 
+					} else {
+						http.Error(res, "error find MarkdownContents member in template map", http.StatusInternalServerError)
+						return
+					}
+
+				}
 			}
 			// fmt.Println("request processing " + req.URL.String())
 

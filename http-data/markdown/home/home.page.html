@@ -10,7 +10,11 @@
     <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Sapiente facilis autem, ipsum, maxime numquam eos
         dolores accusantium temporibus debitis corrupti iusto repellendus quae sint rem quibusdam! Non quibusdam facere
         eius.</p>
-    {{.Data.Content}}    
+    <div class="container">
+        
+        {{ index .Contents "MainContent" }}
+        
+    </div>
 </div>
 
 {{end}}
