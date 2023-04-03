@@ -34,6 +34,10 @@ type OutputData struct {
 	OutputTable []map[string]string
 }
 
+func (d InputData) NormalizeInputSlice(strJoin string, removeLineBreaks bool) (string, error) {
+	return "", nil
+}
+
 func (d InputData) GetJoinedString(strJoin string, removeLineBreaks bool) (string, error) {
 	joinedInput := strings.Join(d.InputSlice, strJoin)
 

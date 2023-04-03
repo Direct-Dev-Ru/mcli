@@ -111,6 +111,11 @@ type outWalker struct {
 	lineNumber  int
 }
 
+type border struct {
+	startPos int
+	endPos   int
+}
+
 func ProcessOneInputFile(filepath string, filterTokens [][]string, fnameFilterTokens [][]string, fs os.FileInfo) []outWalker {
 	result := make([]outWalker, 0, 10)
 	fmt.Println(filepath, filterTokens)
@@ -278,20 +283,23 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 		return fmt.Sprintf("%#v %#v %#v", filter, source, dest)
 	})
 
-	InputForGrep := InputData{InputSlice: Input.InputSlice,
-		InputMap:   make(map[string][]string),
-		InputTable: make([]map[string]string, 0),
-	}
-
 	OutPut := OutputData{OutputSlice: make([]string, 0, 10)}
 
-	// Process if input througth pipe entered
+	// Process if input througth pipe received
+	var InputForGrep InputData
 	if IsCommandInPipe() {
+		InputForGrep = InputData{InputSlice: Input.InputSlice,
+			InputMap:   make(map[string][]string),
+			InputTable: make([]map[string]string, 0),
+		}
+		fmt.Println(InputForGrep.InputSlice)
+
 		if len(InputForGrep.InputSlice) > 0 {
 			switch inputType {
 			case "table":
 				var headers []string = make([]string, 0, 5)
 				var headersPositions []int = make([]int, 0, 5)
+				// var headersBorders []border = make([]border, 0, 5)
 				var isHeadersSet bool = false
 				for _, inputLine := range InputForGrep.InputSlice {
 					currentLine := strings.ReplaceAll(inputLine, GlobalMap["LineBreak"], "")
@@ -303,6 +311,7 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 
 					if !isHeadersSet {
 						hs := splitRX.Split(currentLine, -1)
+						//fmt.Println(hs)
 						for _, h := range hs {
 							InputForGrep.InputMap[h] = make([]string, 0, len(InputForGrep.InputSlice)-1)
 							headers = append(headers, strings.ToUpper(h))
@@ -404,7 +413,7 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 var grepCmd = &cobra.Command{
 	Use:   "grep",
 	Short: "analog of grep command",
-	Long: `Linux has grep command - this command can grep input from pipe or file or source can be specified 
+	Long: `Linux has grep command this command can grep input from pipe or file or source can be specified 
 		througth param --source. For example: mcli grep --source ./myfile1 ./mydir2 --filter Hello
 		--filter is a regular expression if starts with regexp: --filter regexp:^Hello
 	`,
