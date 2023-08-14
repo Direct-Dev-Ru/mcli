@@ -143,7 +143,7 @@ func initConfig() {
 			}
 		}
 		Input.InputSlice = inputSlice
-
+		// Input.DivideInputSlice("||", ' ')
 	}
 
 	// read config

@@ -111,11 +111,6 @@ type outWalker struct {
 	lineNumber  int
 }
 
-type border struct {
-	startPos int
-	endPos   int
-}
-
 func ProcessOneInputFile(filepath string, filterTokens [][]string, fnameFilterTokens [][]string, fs os.FileInfo) []outWalker {
 	result := make([]outWalker, 0, 10)
 	fmt.Println(filepath, filterTokens)
@@ -228,8 +223,8 @@ func ListSourceByWalk(source, filter string) (result []outWalker, err error) {
 
 var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	var inputType, outputType, filter, source, dest, out_cols string
+	var showColor, isNoHeaders, isShowInputFromPipe bool = false, false, false
 
-	var showColor, isNoHeaders bool = false, false
 	showColor, _ = cmd.Flags().GetBool("color")
 	ToggleColors(showColor)
 
@@ -278,6 +273,7 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	out_cols = strings.ToUpper(out_cols)
 	outColumns := strings.Split(out_cols, ",")
 	isNoHeaders, _ = cmd.Flags().GetBool("no-headers")
+	isShowInputFromPipe, _ = cmd.Flags().GetBool("viewpipe")
 
 	Ilogger.Trace().MsgFunc(func() string {
 		return fmt.Sprintf("%#v %#v %#v", filter, source, dest)
@@ -285,14 +281,31 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 
 	OutPut := OutputData{OutputSlice: make([]string, 0, 10)}
 
-	// Process if input througth pipe received
+	// Process if input passed througth pipe
 	var InputForGrep InputData
+
 	if IsCommandInPipe() {
-		InputForGrep = InputData{InputSlice: Input.InputSlice,
-			InputMap:   make(map[string][]string),
-			InputTable: make([]map[string]string, 0),
+		if v, e := Input.DivideInputSlice("||", ' '); e != nil {
+			InputForGrep = InputData{InputSlice: Input.InputSlice,
+				InputMap:   make(map[string][]string),
+				InputTable: make([]map[string]string, 0),
+			}
+		} else {
+			InputForGrep = InputData{InputSlice: v,
+				InputMap:   make(map[string][]string),
+				InputTable: make([]map[string]string, 0),
+			}
 		}
-		fmt.Println(InputForGrep.InputSlice)
+		if isShowInputFromPipe {
+			fmt.Println("----------------start input from pipe passed to command--------------------")
+			fmt.Println("")
+			for _, line := range Input.InputSlice {
+				fmt.Print(line)
+			}
+			fmt.Println("")
+			fmt.Println("----------------end input from pipe passed to command--------------------")
+		}
+		// fmt.Println(InputForGrep.InputSlice)
 
 		if len(InputForGrep.InputSlice) > 0 {
 			switch inputType {
@@ -307,14 +320,15 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 						continue
 					}
 					// splits by two or more spaces or one or more tabs
-					splitRX := regexp.MustCompile(`([ ]{2,})|([\t]{1,})`)
+					// splitRX := regexp.MustCompile(`([ ]{2,})|([\t]{1,})`)
+					splitRX := regexp.MustCompile(`([|]{2,})|([\t]{1,})`)
 
 					if !isHeadersSet {
 						hs := splitRX.Split(currentLine, -1)
 						//fmt.Println(hs)
 						for _, h := range hs {
 							InputForGrep.InputMap[h] = make([]string, 0, len(InputForGrep.InputSlice)-1)
-							headers = append(headers, strings.ToUpper(h))
+							headers = append(headers, strings.TrimSpace(strings.ToUpper(h)))
 							headersPositions = append(headersPositions, strings.Index(currentLine, h))
 						}
 						isHeadersSet = true
@@ -323,6 +337,9 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 					var row []string
 
 					row = splitRX.Split(currentLine, -1)
+					for i, f := range row {
+						row[i] = strings.TrimSpace(f)
+					}
 					if len(row) != len(headers) {
 						row = mcli_utils.SliceStringByPositions(currentLine, headersPositions)
 					}
@@ -330,11 +347,12 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 					currentRowMap := make(map[string]string, 0)
 
 					for k, h := range headers {
-						if k < len(row) {
+						if k < len(row) && len(h) > 0 {
 							InputForGrep.InputMap[h] = append(InputForGrep.InputMap[h], row[k])
 							currentRowMap[h] = row[k]
 						}
 					}
+
 					InputForGrep.InputTable = append(InputForGrep.InputTable, currentRowMap)
 
 				}
@@ -413,7 +431,7 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 var grepCmd = &cobra.Command{
 	Use:   "grep",
 	Short: "analog of grep command",
-	Long: `Linux has grep command this command can grep input from pipe or file or source can be specified 
+	Long: `Linux has grep command. This command is analog - it can get input from pipe or file or source can be specified 
 		througth param --source. For example: mcli grep --source ./myfile1 ./mydir2 --filter Hello
 		--filter is a regular expression if starts with regexp: --filter regexp:^Hello
 	`,
@@ -424,6 +442,7 @@ func init() {
 	rootCmd.AddCommand(grepCmd)
 
 	grepCmd.Flags().StringP("input-type", "i", "plain", "how parse input: as plain or json or table")
+	grepCmd.Flags().BoolP("viewpipe", "v", false, "set if you want see input pipe passed to command")
 	grepCmd.Flags().StringP("output-type", "o", "plain", "how format output: as plain or json or table")
 	grepCmd.Flags().StringP("out-cols", "l", "", "output columns when table outputs: if omits  - all columns printed")
 	grepCmd.Flags().BoolP("no-headers", "n", false, "then outputs as table omit headers or not")

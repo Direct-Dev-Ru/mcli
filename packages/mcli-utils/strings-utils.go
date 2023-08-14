@@ -1,6 +1,7 @@
 package mcliutils
 
 import (
+	"fmt"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -62,6 +63,11 @@ func SubStringFind(str, start, end string) string {
 }
 
 func SliceStringByPositions(stringToSlice string, positions []int) []string {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in SliceStringByPositions", r)
+		}
+	}()
 	row := make([]string, 0, len(positions))
 	runeSlice := []rune(stringToSlice)
 	for p := 0; p < len(positions); p++ {

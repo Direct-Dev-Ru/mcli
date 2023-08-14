@@ -106,7 +106,7 @@ var httpCmd = &cobra.Command{
 		}()
 		serverTemplates := Config.Http.Server.Templates
 		if len(tmplPath) > 0 {
-			serverTemplates = make([]mcli_http.TemplateEntry, 1, 1)
+			serverTemplates = make([]mcli_http.TemplateEntry, 0, 1)
 			serverTemplates[0] = mcli_http.TemplateEntry{TmplName: "fromcmdline", TmplType: "standart",
 				TmplPath: tmplPath, TmplPrefix: tmplPrefix, TmplDataPath: tmplDataPath}
 		}

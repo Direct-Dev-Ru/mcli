@@ -7,85 +7,10 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )
-
-type TerminalParams struct {
-	TermWidth  int
-	TermHeight int
-	IsTerminal bool
-}
-
-type InputData struct {
-	// slice of input lines separatated by \n
-	InputSlice []string
-	// map then input is a table
-	InputMap   map[string][]string
-	InputTable []map[string]string
-}
-
-type OutputData struct {
-	OutputSlice []string
-	OutputMap   map[string]interface{}
-	OutputTable []map[string]string
-}
-
-func (d InputData) NormalizeInputSlice(strJoin string, removeLineBreaks bool) (string, error) {
-	return "", nil
-}
-
-func (d InputData) GetJoinedString(strJoin string, removeLineBreaks bool) (string, error) {
-	joinedInput := strings.Join(d.InputSlice, strJoin)
-
-	if removeLineBreaks {
-		joinedInput = strings.ReplaceAll(joinedInput, "\r\n", "")
-		joinedInput = strings.ReplaceAll(joinedInput, "\n", "")
-	}
-	return joinedInput, nil
-}
-
-type runFunc func(cmd *cobra.Command, args []string)
-
-type SomeData struct {
-	payload int
-	// err     error
-}
-type AccumData struct {
-	sync.Mutex
-	data map[string]SomeData
-}
-
-// Global Vars
-var Ilogger, Elogger zerolog.Logger
-var TermWidth, TermHeight int = 0, 0
-var IsTerminal bool = false
-var OS string
-var WgGlb sync.WaitGroup
-var ConfigPath string
-var RootPath string
-
-var GlobalMap map[string]string = make(map[string]string)
-
-var Version string = "0.1.0"
-var Input InputData = InputData{InputSlice: []string{},
-	InputMap:   make(map[string][]string),
-	InputTable: make([]map[string]string, 0),
-}
-
-// https://habr.com/ru/company/macloud/blog/558316/
-var ColorReset string = "\033[0m"
-
-var ColorRed string = "\033[31m"
-var ColorGreen string = "\033[32m"
-var ColorYellow string = "\033[33m"
-var ColorBlue string = "\033[34m"
-var ColorPurple string = "\033[35m"
-var ColorCyan string = "\033[36m"
-var ColorWhite string = "\033[37m"
 
 func ToggleColors(showColor bool) {
 	if !showColor {

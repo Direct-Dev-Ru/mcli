@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v3"
 )
 
 func PrettyJsonEncode(data interface{}, out io.Writer) error {
@@ -112,19 +113,60 @@ func ConvertJsonToBson(inputFilePath, outputFilePath string) error {
 	// Write the BSON data to the destination file
 	err = os.WriteFile(outputFilePath, bsonData, 0644)
 	if err != nil {
-		return fmt.Errorf("error writing bson data to output file: %v", err)
+		return fmt.Errorf("error writing bson data to output file: %w", err)
 	}
 
 	// Get the permissions of the source file
 	srcInfo, err := os.Stat(inputFilePath)
 	if err != nil {
-		return fmt.Errorf("error reading stats for input file: %v", err)
+		return fmt.Errorf("error reading stats for input file: %w", err)
 	}
 	srcMode := srcInfo.Mode()
 
 	err = os.Chmod(outputFilePath, srcMode)
 	if err != nil {
-		return fmt.Errorf("error chmod for output file: %v", err)
+		return fmt.Errorf("error chmod for output file: %w", err)
+	}
+	return nil
+}
+
+func ConvertJsonToYaml(inputFilePath, outputFilePath string) error {
+	// Open the input file
+	inputFile, err := os.Open(inputFilePath)
+	if err != nil {
+		return fmt.Errorf("error opening input file: %w", err)
+	}
+	defer inputFile.Close()
+
+	// Decode the input file's JSON data
+	var data interface{}
+	err = json.NewDecoder(inputFile).Decode(&data)
+	if err != nil {
+		return fmt.Errorf("error decoding input file: %w", err)
+	}
+
+	// Marshal the Go object into BSON data
+	yamlData, err := yaml.Marshal(data)
+	if err != nil {
+		return fmt.Errorf("error marshalling json data to yaml: %w", err)
+	}
+
+	// Write YAML data to the destination file
+	err = os.WriteFile(outputFilePath, yamlData, 0644)
+	if err != nil {
+		return fmt.Errorf("error writing yaml data to output file: %w", err)
+	}
+
+	// Get the permissions of the source file
+	srcInfo, err := os.Stat(inputFilePath)
+	if err != nil {
+		return fmt.Errorf("error reading stats for input json file: %w", err)
+	}
+	srcMode := srcInfo.Mode()
+
+	err = os.Chmod(outputFilePath, srcMode)
+	if err != nil {
+		return fmt.Errorf("error chmod for output yaml file: %v", err)
 	}
 	return nil
 }
