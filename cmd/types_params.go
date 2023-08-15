@@ -39,6 +39,7 @@ type ConfigData struct {
 			KeyFilePath string `yaml:"keyfile-path"`
 			DictPath    string `yaml:"dict-path"`
 			UseWords    bool   `yaml:"use-words"`
+			Obfuscate   bool   `yaml:"obfuscate"`
 			MinLength   int    `yaml:"min-lenght"`
 			MaxLength   int    `yaml:"max-lenght"`
 		}

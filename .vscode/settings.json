@@ -1,4 +1,7 @@
 {
     "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools",
-    "workbench.colorTheme": "Jellybeans+"
+    "workbench.colorTheme": "One Dark Pro",
+    "workbench.preferredDarkColorTheme": "GitHub Dark Dimmed",
+    "workbench.preferredHighContrastColorTheme": "GitHub Dark High Contrast",
+    
 }

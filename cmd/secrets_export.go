@@ -19,11 +19,12 @@ import (
 // exportCmd represents the export command
 var exportCmd = &cobra.Command{
 	Use:   "export",
-	Short: "Export secrets to specified file asking in terminal for crypting key",
+	Short: "Export secrets to specified file encrypted with specific crypting key",
 	Long: `You can export one or more secrets to separate file. 
 	For example: mcli secrets export secret-1 secret-2 ... secret-n -d /home/username/export-vault
-	You will be asked for secret key by printing in terminal to encrypt exported secrets ... Please remember this key
-	Or you can use stdin for key definition
+	You will be asked for secret key to encrypt exported secrets ... 
+	Please remember this key.
+	Or you can use stdin for key definition.
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var LineBreak string = GlobalMap["LineBreak"]
@@ -78,7 +79,7 @@ var exportCmd = &cobra.Command{
 			}
 
 			if !secure {
-				Elogger.Fatal().Msgf("your key is too weak - at least 8 simbols with digits and spesial simbols")
+				Elogger.Fatal().Msgf("your key is too weak - use at least 8 symbols with digits and spesial symbols")
 			}
 			key, err = mcli_crypto.GetKeyFromString(keyString)
 

@@ -43,6 +43,18 @@ type SecretEntry struct {
 	CreatedAt   time.Time
 	store       *SecretsEntries
 }
+type SecretPlainEntry struct {
+	Name        string
+	Login       string
+	Secret      string
+	Description string
+	CreatedAt   time.Time
+}
+
+func (se *SecretEntry) GetPlainEntry() SecretPlainEntry {
+	return SecretPlainEntry{Name: se.Name, Login: se.Login, Secret: se.Secret,
+		Description: se.Description, CreatedAt: se.CreatedAt}
+}
 
 func (se *SecretEntry) encodeSecret(phrase string, keyPath string, isSalted bool) (string, error) {
 	key, err := se.store.Cypher.GetKey(keyPath, false)

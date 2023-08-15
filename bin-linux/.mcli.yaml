@@ -1,0 +1,53 @@
+config-version: v1
+common:
+  output-file: results.json
+  output-format: json
+secrets:
+  common:
+    use-words: false
+    vault-path: "{{$HomeDir$}}/.mcli/secrets/defvault"
+    keyfile-path: "{{$HomeDir$}}/.ssh/id_rsa"
+    dict-path: "{{$HomeDir$}}/.mcli/pwdgen/dict.csv"
+    min-lenght: 14
+    max-lenght: 32
+http:
+  server:
+    timeout: 3000
+    port:    
+    templates:
+      - tmpl-name: common templates
+        tmpl-type: standart
+        tmpl-path: http-data/templates
+        tmpl-prefix: tmpl
+        tmpl-datapath: http-data/templates-data
+        tmpl-refresh-type: on-change
+        tmpl-refresh-interval: -1
+      - tmpl-name: md templates
+        tmpl-type: markdowm
+        tmpl-path: http-data/markdown
+        tmpl-prefix: md
+        tmpl-datapath: http-data/markdown-data
+        tmpl-refresh-type: on-interval
+        tmpl-refresh-interval: 120 
+    static-path: http-static
+    static-prefix: static
+  request:
+    timeout: 6000
+    method: GET
+    baseURL: http://localhost:8080
+    url: /echo
+    headers:
+      "Content-Type":
+        - application/json
+      "Access-Token":
+        - superpuper_access_token
+      "Foo":
+        - BarFoo
+        - FooBar
+    body:
+      "access-token": superpuper_access_token
+      "username": notroot
+      "ids":
+        - 1001
+        - 1003
+        - 1004

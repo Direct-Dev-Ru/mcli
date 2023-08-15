@@ -29,14 +29,14 @@ type InputSecretEntry struct {
 // generateCmd represents the generate command
 var generateCmd = &cobra.Command{
 	Use:   "generate",
-	Short: "Toolza for password phrase generation",
-	Long: `This command helps generate russians words based passphrase and optionally store it in vault
-For example: mcli secrets generate --use-words 
+	Short: "tool for password phrase generation",
+	Long: ` This subcommand helps generate russians words based passphrase and optionally store it in vault
+			For example: mcli secrets generate --use-words 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
 		var LineBreak string = GlobalMap["LineBreak"]
 
-		var useWords bool
+		var useWords, obfuscate bool
 		var dictPath, vaultPath, keyFilePath string
 		var minLength, maxLength int
 
@@ -44,6 +44,11 @@ For example: mcli secrets generate --use-words
 		isUseWordsSet := cmd.Flags().Lookup("use-words").Changed
 		if !isUseWordsSet {
 			useWords = Config.Secrets.Common.UseWords
+		}
+		obfuscate, _ = cmd.Flags().GetBool("obfuscate")
+		isObfuscateSet := cmd.Flags().Lookup("obfuscate").Changed
+		if !isObfuscateSet {
+			obfuscate = Config.Secrets.Common.Obfuscate
 		}
 
 		dictPath, _ = cmd.Flags().GetString("dict-path")
@@ -77,11 +82,12 @@ For example: mcli secrets generate --use-words
 			maxLength = Config.Secrets.Common.MaxLength
 		}
 
-		// var runesReplaces []mcli_crypto.ReplaceEntry = make([]mcli_crypto.ReplaceEntry, 0, 0)
 		var runesReplaces []mcli_crypto.ReplaceEntry = make([]mcli_crypto.ReplaceEntry, 3)
-		runesReplaces[0] = mcli_crypto.ReplaceEntry{OriginRune: 'a', ReplaceRune: '@', Number: 1000}
-		runesReplaces[1] = mcli_crypto.ReplaceEntry{OriginRune: 'O', ReplaceRune: '0', Number: 1000}
-		runesReplaces[2] = mcli_crypto.ReplaceEntry{OriginRune: 'i', ReplaceRune: '1', Number: 1000}
+		if obfuscate {
+			runesReplaces[0] = mcli_crypto.ReplaceEntry{OriginRune: 'a', ReplaceRune: '@', Number: 1000}
+			runesReplaces[1] = mcli_crypto.ReplaceEntry{OriginRune: 'O', ReplaceRune: '0', Number: 1000}
+			runesReplaces[2] = mcli_crypto.ReplaceEntry{OriginRune: 'i', ReplaceRune: '1', Number: 1000}
+		}
 
 		secretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile,
 			mcli_crypto.AesCypher, nil)
@@ -129,7 +135,7 @@ For example: mcli secrets generate --use-words
 					var entry InputSecretEntry
 					err := dec.Decode(&entry)
 					if err != nil {
-						Elogger.Fatal().Msgf("error decoding input json sequence", err)
+						Elogger.Fatal().Msgf("error decoding input json sequence: %v", err)
 					}
 					inputSecrets = append(inputSecrets, entry)
 				}
@@ -138,7 +144,7 @@ For example: mcli secrets generate --use-words
 
 				err = json.NewDecoder(strings.NewReader(strings.Join(inData, " "))).Decode(&inputSecrets)
 				if err != nil {
-					Elogger.Fatal().Msgf("error decoding input json array", err)
+					Elogger.Fatal().Msgf("error decoding input json array: %v", err)
 				}
 			} else {
 				// plain input
@@ -326,6 +332,7 @@ func init() {
 	generateCmd.Flags().StringP("vault-path", "v", GlobalMap["HomeDir"]+"/.mcli/secrets/defvault", "path to vault")
 	generateCmd.Flags().StringP("keyfile-path", "k", "", "path to file to get access key")
 	generateCmd.Flags().BoolP("use-words", "w", false, "generate by russian words toggle")
+	generateCmd.Flags().BoolP("obfuscate", "o", false, "obfuscate phrase by replacing a=@, l=1 and so on")
 	generateCmd.Flags().IntP("min-length", "m", 8, "min length of password (affected then use-words eq false )")
 	generateCmd.Flags().IntP("max-length", "x", 24, "max length of password (affected then use-words eq false )")
 }
