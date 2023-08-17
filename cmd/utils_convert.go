@@ -67,7 +67,7 @@ func convertRunFunc(cmd *cobra.Command, args []string) {
 		}
 	case "JSONTOYAML":
 		if sourceType == "directory" {
-			Elogger.Fatal().Msg("converter TO_JSON_FROM_BSON don't support directory source - specify path to file")
+			Elogger.Fatal().Msg("converter TO_YAML_FROM_JSON don't support directory source - specify path to file")
 		}
 		if destType == "directory" {
 			fileName := filepath.Base(sourcePath)

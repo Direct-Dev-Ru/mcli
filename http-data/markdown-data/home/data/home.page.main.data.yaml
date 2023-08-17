@@ -1,0 +1,7 @@
+Template: home.page
+Articles:
+    - Title: Article №1
+      Content: Test article about golang number one.
+    - Title: Article №2
+      Content: Test article about golang number two.
+    

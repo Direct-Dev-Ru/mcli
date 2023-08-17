@@ -28,7 +28,7 @@ var httpCmd = &cobra.Command{
 	and we can refer to it in url by /static/... prefix
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		var port, staticPath, staticPrefix, tlsKey, tlsCert string
+		var port, baseUrl, staticPath, staticPrefix, tlsKey, tlsCert string
 		var timeout int64 = 0
 
 		port, _ = cmd.Flags().GetString("port")
@@ -37,6 +37,8 @@ var httpCmd = &cobra.Command{
 		isStaticPathSet := cmd.Flags().Lookup("static-path").Changed
 		staticPrefix, _ = cmd.Flags().GetString("static-prefix")
 		isStaticPrefix := cmd.Flags().Lookup("static-prefix").Changed
+		baseUrl, _ = cmd.Flags().GetString("base-url")
+		isBaseUrl := cmd.Flags().Lookup("base-url").Changed
 
 		tlsKey, _ = cmd.Flags().GetString("tls-key")
 		tlsCert, _ = cmd.Flags().GetString("tls-cert")
@@ -50,24 +52,25 @@ var httpCmd = &cobra.Command{
 		if !isTimeoutSet && Config.Http.Server.Timeout > 0 {
 			timeout = Config.Http.Server.Timeout
 		}
-
 		if !isStaticPathSet && len(Config.Http.Server.StaticPath) > 0 {
 			staticPath = Config.Http.Server.StaticPath
 		}
-
 		if !isStaticPrefix && len(Config.Http.Server.StaticPrefix) > 0 {
 			staticPrefix = Config.Http.Server.StaticPrefix
+		}
+		if !isBaseUrl && len(Config.Http.Server.BaseUrl) > 0 {
+			baseUrl = Config.Http.Server.BaseUrl
 		}
 
 		tmplPath, _ := GetStringParam("tmpl-path", cmd, Config.Http.Server.TmplPath)
 		tmplPrefix, _ := GetStringParam("tmpl-prefix", cmd, Config.Http.Server.TmplPrefix)
 		tmplDataPath, _ := GetStringParam("tmpl-datapath", cmd, Config.Http.Server.TmplDataPath)
 
-		// Wait for interrupt signal
+		// Channel for interrupt signal
 		StopHttpChan := make(chan os.Signal, 1)
 
 		// mcli_http.InitMainRoutes(staticPath, staticPrefix)
-		r := mcli_http.NewRouter(staticPath, staticPrefix, Ilogger, Elogger)
+		r := mcli_http.NewRouter(staticPath, staticPrefix, Ilogger, Elogger, mcli_http.RouterOptions{BaseUrl: baseUrl})
 
 		// root route
 		rootRoute := mcli_http.NewRoute("/", mcli_http.Equal)
@@ -89,7 +92,7 @@ var httpCmd = &cobra.Command{
 			if len(mainPagePath) > 0 {
 				http.ServeFile(res, req, mainPagePath)
 			} else {
-				http.Error(res, "404 Not Found Root Index.html", 404)
+				http.Error(res, "404 Not Found index.html", 404)
 			}
 		})
 		r.AddRoute(rootRoute)
@@ -105,6 +108,7 @@ var httpCmd = &cobra.Command{
 			time.Sleep(5 * time.Second)
 		}()
 		serverTemplates := Config.Http.Server.Templates
+
 		if len(tmplPath) > 0 {
 			serverTemplates = make([]mcli_http.TemplateEntry, 0, 1)
 			serverTemplates[0] = mcli_http.TemplateEntry{TmplName: "fromcmdline", TmplType: "standart",
@@ -180,6 +184,7 @@ func init() {
 	var tmplPath, tmplPrefix, tmplDataPath string = "", "", ""
 
 	httpCmd.Flags().StringP("port", "p", port, "Specify port for test http server.")
+	httpCmd.Flags().String("base-url", "", "Specify base url path for http server")
 	httpCmd.Flags().String("static-path", staticPath, "Specify relative path to static folder")
 	httpCmd.Flags().String("static-prefix", staticPrefix, "Specify url prefix part to static content")
 	httpCmd.Flags().String("tmpl-path", tmplPath, "Specify relative or absolute path to template folder")

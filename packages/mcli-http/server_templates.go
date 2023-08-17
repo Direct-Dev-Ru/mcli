@@ -235,12 +235,15 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 
 		r.infoLog.Trace().Msg("Templates path:" + tmplPath + " Templates prefix:" + tmplPrefix)
 		tmplPrefix = "/" + tmplPrefix + "/"
-
+		// tmplPrefix = r.getResultPattern(tmplPrefix)
 		// constucting new route
+		// fmt.Println(tmplPrefix, Prefix)
+
 		tmplRoute := NewRoute(tmplPrefix, Prefix)
 		tmplRoute.SetHandler(func(res http.ResponseWriter, req *http.Request) {
 			url := req.URL.Path
-			tmplName := strings.TrimPrefix(url, tmplPrefix)
+			tmplName := strings.TrimPrefix(url, r.getResultPattern(tmplPrefix))
+			// fmt.Println(url, tmplPrefix, tmplName)
 			tmplKey := tmplPath + "/" + tmplName
 			tmpl, ok := myTemplateCache.cache[tmplKey]
 			if !ok && !(t.TmplRefreshType == "on-change") {
@@ -353,8 +356,14 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 					}
 				}
 				if !isExist {
-					// candidatePath = os.Getenv("RootPath") + "/" + tmplDataPath + "/" + tmplName + ".json"
 					candidatePath = tmplDataPath + "/" + tmplName + ".json"
+					isExist, _ = exists(candidatePath)
+					if isExist {
+						pathToData = candidatePath
+					}
+				}
+				if !isExist {
+					candidatePath = tmplDataPath + "/" + tmplName + ".yaml"
 					isExist, _ = exists(candidatePath)
 					if isExist {
 						pathToData = candidatePath
@@ -389,14 +398,19 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 				if err != nil {
 					templateData, err = mcli_utils.JsonStringToInterface("{}")
 				} else {
-					if strings.HasSuffix(pathToData, ".bson") {
+					// fmt.Println(filepath.Ext(pathToData))
+					if filepath.Ext(pathToData) == ".bson" {
 						templateData, err = mcli_utils.BsonDataToInterfaceMap(bytesDataForTemplate)
-					} else {
+					}
+					if filepath.Ext(pathToData) == ".json" {
 						templateData, err = mcli_utils.JsonStringToInterface(string(bytesDataForTemplate))
+					}
+					if filepath.Ext(pathToData) == ".yaml" {
+						templateData, err = mcli_utils.YamlStringToInterface(bytesDataForTemplate)
 					}
 				}
 				if err != nil {
-					http.Error(res, "error converting json to interface: "+err.Error(), http.StatusInternalServerError)
+					http.Error(res, "error converting data file to interface: "+err.Error(), http.StatusInternalServerError)
 					return
 				}
 
@@ -419,6 +433,7 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 					Req:  req,
 					Data: templateData,
 				}
+				// if template type is markdown
 				if t.TmplType == "markdowm" {
 					bindData = struct {
 						Req      *http.Request
@@ -442,9 +457,21 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 								http.Error(res, "error convert md source to string", http.StatusInternalServerError)
 								return
 							}
-							htmlContent, err := ConvertMdToHtml(t.TmplDataPath + "/" + pathToMd)
+							// calculate path to md source
+							dirPathToData := strings.TrimSuffix(pathToData, filepath.Base(pathToData))
+
+							// var resultingPathToMd string = t.TmplDataPath + "/" + pathToMd
+
+							resultPathToMd := strings.TrimSuffix(dirPathToData, "/") + "/" + pathToMd
+
+							if strings.HasPrefix(pathToMd, "http://") || strings.HasPrefix(pathToMd, "https://") ||
+								strings.HasPrefix(pathToMd, "/") {
+								resultPathToMd = pathToMd
+							}
+							// fmt.Println(resultPathToMd)
+							htmlContent, err := ConvertMdToHtml(resultPathToMd)
 							if err != nil {
-								http.Error(res, "error convert md to html: "+err.Error(), http.StatusInternalServerError)
+								http.Error(res, "error converting md with source "+resultPathToMd+"to html", http.StatusInternalServerError)
 								return
 							}
 							mdMap[key] = template.HTML(string(htmlContent))

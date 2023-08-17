@@ -14,6 +14,9 @@ http:
   server:
     timeout: 3000
     port:    
+    baseURL: 
+    static-path: http-static
+    static-prefix: static
     templates:
       - tmpl-name: common templates
         tmpl-type: standart
@@ -29,8 +32,6 @@ http:
         tmpl-datapath: http-data/markdown-data
         tmpl-refresh-type: on-interval
         tmpl-refresh-interval: 120 
-    static-path: http-static
-    static-prefix: static
   request:
     timeout: 6000
     method: GET

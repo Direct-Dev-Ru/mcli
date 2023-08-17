@@ -7,14 +7,21 @@
 <div class="text-center">
     <!-- <h1 class="text-primary"> {{.Data.Header}} </h1> -->
     <h1 class="text-primary"> Markdown Home Page </h1>
-    <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Sapiente facilis autem, ipsum, maxime numquam eos
-        dolores accusantium temporibus debitis corrupti iusto repellendus quae sint rem quibusdam! Non quibusdam facere
-        eius.</p>
+    <hr>
     <div class="container">
-        
-        {{ index .Contents "MainContent" }}
-        
+        <h2 class="text-primary"> Some local md content </h2>
+        <div class="text-start">
+            {{ index .Contents "MainContent" }}
+        </div>
     </div>
+    <hr>
+    <div class="container ">
+        <h2 class="text-primary"> Some internet content </h2>
+        <div class="text-start">
+            {{ index .Contents "HttpContent" }}
+        </div>
+    </div>
+
 </div>
 
 {{end}}

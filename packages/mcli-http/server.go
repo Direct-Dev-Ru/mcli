@@ -61,6 +61,7 @@ func (r *Route) SetHandler(f HandleFunc) http.Handler {
 type Router struct {
 	sPath         string
 	sPrefix       string
+	sBaseURL      string
 	infoLog       zerolog.Logger
 	errorLog      zerolog.Logger
 	staticHandler http.Handler
@@ -69,11 +70,19 @@ type Router struct {
 	finalHandler  http.Handler
 }
 
-func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, eLog zerolog.Logger) *Router {
+type RouterOptions struct {
+	BaseUrl string
+}
+
+func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, eLog zerolog.Logger, opts RouterOptions) *Router {
 	sPath = strings.TrimPrefix(sPath, "./")
 	sPath = strings.TrimSuffix(sPath, "/")
 	sPrefix = strings.TrimPrefix(sPrefix, "/")
 	sPrefix = strings.TrimSuffix(sPrefix, "/")
+
+	baseURL := opts.BaseUrl
+	baseURL = strings.TrimPrefix(baseURL, "/")
+
 	var fileServer http.Handler
 
 	if !(len(sPath) == 0 || len(sPrefix) == 0) {
@@ -85,7 +94,7 @@ func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, eLog zerolog.L
 		fileServer = http.FileServer(http.Dir(fileServerResultPath))
 	}
 
-	return &Router{infoLog: iLog, errorLog: eLog, sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer,
+	return &Router{infoLog: iLog, errorLog: eLog, sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer, sBaseURL: baseURL,
 		middleware: make([]Middleware, 0, 3), routes: make([]*Route, 0, 3)}
 }
 
@@ -113,28 +122,54 @@ func (r *Router) AddRoute(route *Route) error {
 	if route.Handler == nil {
 		return fmt.Errorf("route handler is nil")
 	}
+	if route.pattern == "/" && len(r.sBaseURL) > 0 {
+		// add duplicate root route
+		rootRouteClone := NewRoute("/"+r.sBaseURL, Equal)
+		rootRouteClone.Handler = route.Handler
+		r.routes = append(r.routes, rootRouteClone)
+	}
+	route.pattern = r.getResultPattern(route.pattern)
 	r.routes = append(r.routes, route)
 	return nil
+}
+
+func (r *Router) getResultPattern(partial string) string {
+	if len(r.sBaseURL) == 0 {
+		return partial
+	}
+	partial = strings.TrimPrefix(partial, "/")
+	return "/" + r.sBaseURL + "/" + partial
 }
 
 func (r *Router) AddRouteWithHandler(pattern string, routeType RouteType, f HandleFunc) error {
 	if f == nil {
 		f = http.NotFound
 	}
-	route := NewRouteWithHandler(pattern, routeType, f)
+	route := NewRouteWithHandler(r.getResultPattern(pattern), routeType, f)
 	r.routes = append(r.routes, route)
 	return nil
 }
 
 func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 	reqPath := strings.TrimSpace(req.URL.Path)
-	// static paths
-	if strings.HasPrefix(reqPath, "/"+r.sPrefix+"/") && r.staticHandler != nil {
 
+	// fmt.Println(reqPath)
+	// serving static assets
+	if strings.HasPrefix(reqPath, "/"+r.sPrefix+"/") && r.staticHandler != nil {
 		http.StripPrefix("/"+r.sPrefix, r.staticHandler).ServeHTTP(res, req)
 		return
 	}
+
+	if reqPath == "/favicon.ico" {
+		http.Redirect(res, req, r.sPrefix+"/favicon.ico", http.StatusFound)
+		return
+	}
+
+	// serving routes in router
 	for _, route := range r.routes {
+
+		// fmt.Println(reqPath, route.pattern)
+
 		switch route.routeType {
 		case Equal:
 			if reqPath == route.pattern {
@@ -169,80 +204,3 @@ func (r *Router) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	}
 	r.finalHandler.ServeHTTP(res, req)
 }
-
-// if len(r.middleware) > 0 {
-// 	var serve http.Handler = innerHandler
-// 	for i := 0; i < len(r.middleware); i++ {
-// 		mw := r.middleware[i]
-// 		mwInner, ok := mw.(Middleware)
-// 		if !ok {
-// 			r.errorLog.Fatal().Msg("wrong middleware definition")
-// 		}
-
-// 		if i == 0 {
-// 			mwInner.InnerHandler(http.HandlerFunc(r.innerHandler), mw)
-// 		} else {
-// 			mwInner.InnerHandler(serve, mw)
-// 		}
-// 		serve, ok = mwInner.(http.Handler)
-// 		if !ok {
-// 			r.errorLog.Fatal().Msg("wrong middleware definition")
-// 		}
-// 	}
-// 	serve.ServeHTTP(res, req)
-// }
-
-/***
-func InitMainRoutes(sPath string, sPrefix string) {
-
-	sPath = strings.TrimPrefix(sPath, "./")
-	sPath = strings.TrimSuffix(sPath, "/")
-	sPrefix = strings.TrimPrefix(sPrefix, "/")
-	sPrefix = strings.TrimSuffix(sPrefix, "/")
-
-	// static Route
-	fileServer := http.FileServer(http.Dir("./" + sPath))
-	http.Handle("/"+sPrefix+"/", http.StripPrefix("/"+sPrefix, fileServer))
-	// main Route
-	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		// ex, _ := os.Executable()
-		// fmt.Println(runtime.Caller(0))
-		if request.URL.Path != "/" {
-			http.NotFound(writer, request)
-			return
-		}
-		http.ServeFile(writer, request, "./"+sPath+"/html/index.html")
-	})
-
-	http.HandleFunc("/service/exit",
-		func(writer http.ResponseWriter, request *http.Request) {
-			fmt.Println("Server is shutting down")
-			os.Exit(0)
-		})
-
-	http.HandleFunc("/json/listfiles", handleJsonRequest)
-
-	http.HandleFunc("/echo",
-		func(writer http.ResponseWriter, request *http.Request) {
-			writer.Header().Set("Content-Type", "text/plain")
-			fmt.Fprintf(writer, "Method: %v\n", request.Method)
-			for header, vals := range request.Header {
-				fmt.Fprintf(writer, "Header: %v: %v\n", header, vals)
-			}
-			fmt.Fprintln(writer, "-----------------------")
-
-			defer request.Body.Close()
-			data, err := io.ReadAll(request.Body)
-
-			if err == nil {
-				if len(data) == 0 {
-					fmt.Fprintln(writer, "No body")
-				} else {
-					writer.Write(data)
-				}
-			} else {
-				fmt.Fprintf(os.Stdout, "Error reading body: %v\n", err.Error())
-			}
-		})
-}
-*/

@@ -1,0 +1,11 @@
+Version: v1
+Template: home.page
+TemplateData:
+    Header: Markdown Docs Are Here
+    MainText: Read markdowm as html in easy way.
+    Title: Markdown Docs
+MarkdownContents:
+    FooterContent: home.page.footer.md
+    HttpContent: https://raw.githubusercontent.com/gogs/gogs/main/README.md
+    MainContent: home.page.main.md
+UnixNanoTimestamp: 0

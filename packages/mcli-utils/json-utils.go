@@ -99,6 +99,15 @@ func PrintSliceAsTable(data interface{}, columnLimit, nSpaces int) {
 	// fmt.Println(strings.Repeat("-", columnLimit*len(columnWidths)))
 }
 
+func YamlStringToInterface(yamlData []byte) (interface{}, error) {
+	var data interface{}
+	err := yaml.Unmarshal(yamlData, &data)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
 func JsonStringToInterface(jsonString string) (interface{}, error) {
 	var data interface{}
 	decoder := json.NewDecoder(strings.NewReader(jsonString))

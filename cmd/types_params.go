@@ -15,6 +15,7 @@ type ConfigData struct {
 		Server struct {
 			Timeout      int64                     `yaml:"timeout"`
 			Port         string                    `yaml:"port"`
+			BaseUrl      string                    `yaml:"baseURL"`
 			StaticPath   string                    `yaml:"static-path"`
 			StaticPrefix string                    `yaml:"static-prefix"`
 			TmplPath     string                    `yaml:"tmpl-path"`

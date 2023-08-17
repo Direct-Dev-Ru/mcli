@@ -54,7 +54,7 @@ var exportCmd = &cobra.Command{
 		case "/input":
 			joinedInput, _ := Input.GetJoinedString("", true)
 			key, err = mcli_crypto.GetKeyFromString(joinedInput)
-			fmt.Println(key)
+			// fmt.Println(key)
 		case "/ask":
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Print(ColorGreen + "your key: " + ColorReset)
