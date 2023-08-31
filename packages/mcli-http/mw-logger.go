@@ -36,7 +36,6 @@ func (l *Logger) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		l.InfoLog.Info().Str("IP", req.RemoteAddr).Str("URL", req.URL.String()).Msgf("Request time: %v\n", time.Since(start))
 	} else {
 		l.InfoLog.Info().Msgf("Request time: %v\n", time.Since(start))
-
 	}
 
 	// fmt.Printf("Request time: %v\n", time.Since(start))

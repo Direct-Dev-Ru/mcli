@@ -10,11 +10,17 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
+	mcli_crypto "mcli/packages/mcli-crypto"
+	mcli_fs "mcli/packages/mcli-filesystem"
 	mcli_http "mcli/packages/mcli-http"
+	mcli_redis "mcli/packages/mcli-redis"
+	mcli_secrets "mcli/packages/mcli-secrets"
+	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/spf13/cobra"
 )
@@ -75,6 +81,10 @@ var httpCmd = &cobra.Command{
 		// root route
 		rootRoute := mcli_http.NewRoute("/", mcli_http.Equal)
 		rootRoute.SetHandler(func(res http.ResponseWriter, req *http.Request) {
+
+			// authUser, ok := req.Context().Value(mcli_http.ContextKey("authUser")).(string)
+			// fmt.Println("authUser store in ctx", ok, authUser)
+
 			sPath := "./" + staticPath
 			if strings.HasPrefix(staticPath, "/") {
 				sPath = staticPath
@@ -119,9 +129,112 @@ var httpCmd = &cobra.Command{
 		r.AddRouteWithHandler("/echo", mcli_http.Prefix, mcli_http.Http_Echo)
 
 		// setting up middleware
-		err := r.Use(mcli_http.NewLogger(Ilogger, Elogger, mcli_http.LoggerOpts{ShowUrl: false, ShowIp: false}))
-		if err != nil {
-			Elogger.Error().Err(err)
+		// err := r.Use(mcli_http.NewLogger(Ilogger, Elogger, mcli_http.LoggerOpts{ShowUrl: true, ShowIp: false}))
+		// if err != nil {
+		// 	Elogger.Error().Err(err)
+		// }
+
+		if Config.Http.Server.Auth.IsAuthenticate {
+			// _, err = mcli_redis.InitCache(Config.Http.Server.Auth.RedisHost, Config.Http.Server.Auth.RedisPwd)
+			redisStore, err := mcli_redis.NewRedisStore(Config.Http.Server.Auth.RedisHost, Config.Http.Server.Auth.RedisPwd, "userlist")
+			if err != nil {
+				Elogger.Fatal().Err(fmt.Errorf("error init redis store: %v", err))
+			}
+			_, err = redisStore.RedisPool.Get().Do("PING")
+			if err != nil {
+				Elogger.Fatal().Msgf("redis connection error: %v", err.Error())
+			}
+			Ilogger.Trace().Msg("Ping Pong to redis server is successful")
+
+			r.KVStore = redisStore
+			r.CredentialStore = mcli_http.NewUserStore(redisStore, "userlist")
+
+			internalSecretStorePath := filepath.Join(GlobalMap["RootPath"], "internal-secrets")
+			_, _, err = mcli_utils.IsExistsAndCreate(internalSecretStorePath, true)
+			if err != nil {
+				Elogger.Fatal().Msgf("internal secret store error - path do not exists: %v", err.Error())
+			}
+
+			internalSecretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile, mcli_crypto.AesCypher, nil)
+			internalVaultPath := filepath.Join(internalSecretStorePath, "intstore.vault")
+			if err := internalSecretStore.FillStore(internalVaultPath, GlobalMap["RootSecretKeyPath"]); err != nil {
+				Elogger.Fatal().Msg(err.Error())
+			}
+			secretMapa := internalSecretStore.GetSecretPlainMap()
+			cookieKey1, cookieKey2 := "", ""
+			cookieKey1Secret, ok := secretMapa["CookieKey1"]
+
+			if ok {
+				cookieKey1 = cookieKey1Secret.Secret
+				if err != nil {
+					Elogger.Fatal().Msg(err.Error())
+				}
+				Ilogger.Trace().Msg(cookieKey1)
+			} else {
+				cookieKey1 = string(mcli_secrets.GenKey(32))
+
+				secretEntry1, err := internalSecretStore.NewEntry("CookieKey1", "CookieKey1", "Key 1 for Cookie encription")
+				if err != nil {
+					Elogger.Fatal().Msgf("cookieKey1 new entry error: %v", err)
+				}
+				secretEntry1.SetSecret(fmt.Sprintf("%x", cookieKey1), true, false)
+				Ilogger.Trace().Msg(fmt.Sprintf("%x", cookieKey1))
+
+				internalSecretStore.AddEntry(secretEntry1)
+				internalSecretStore.Save(internalVaultPath, GlobalMap["RootSecretKeyPath"])
+			}
+
+			cookieKey2Secret, ok := secretMapa["CookieKey2"]
+
+			if ok {
+				cookieKey2 = cookieKey2Secret.Secret
+				if err != nil {
+					Elogger.Fatal().Msg(err.Error())
+				}
+				Ilogger.Trace().Msg(cookieKey2)
+			} else {
+				// time.Sleep(200 * time.Millisecond)
+				cookieKey2 = string(mcli_secrets.GenKey(32))
+				secretEntry2, err := internalSecretStore.NewEntry("CookieKey2", "CookieKey2", "Key 2 for Cookie encription")
+				if err != nil {
+					Elogger.Fatal().Msgf("cookieKey2 new entry error: %v", err)
+				}
+				secretEntry2.SetSecret(fmt.Sprintf("%x", cookieKey2), true, false)
+				// Ilogger.Trace().Msg(fmt.Sprintf("%x", cookieKey2))
+				internalSecretStore.AddEntry(secretEntry2)
+
+				internalSecretStore.Save(internalVaultPath, GlobalMap["RootSecretKeyPath"])
+			}
+			isEncCookie := false
+			if len(cookieKey1) > 0 && len(cookieKey2) > 0 {
+				isEncCookie = true
+				cookieKey1, err = mcli_secrets.LoadKeyFromHexString(cookieKey1)
+				if err != nil {
+					isEncCookie = false
+				}
+				cookieKey2, err = mcli_secrets.LoadKeyFromHexString(cookieKey2)
+				if err != nil {
+					isEncCookie = false
+				}
+			}
+			mcli_http.SetSecretCookieOptions(isEncCookie, []byte(cookieKey1), []byte(cookieKey2))
+
+			// auth middleware
+			err = r.Use(mcli_http.NewAuth(r.CredentialStore, r.KVStore, isEncCookie))
+			if err != nil {
+				Elogger.Error().Err(err)
+			}
+
+			r.AddRouteWithHandler(Config.Http.Server.Auth.SignInRoute, mcli_http.Prefix, mcli_http.Signin)
+
+			// store := mcli_http.UserRedisStore{RedisPool: mcli_http.RedisPool, CollectionPrefix: "userlist"}
+			// c, _ := store.GetAllUsers("")
+			// for _, user := range c {
+			// 	fmt.Println(*user)
+			// }
+
+		} else {
+			Ilogger.Warn().Msg("Authentication and sessions are disabled !!!")
 		}
 
 		var srv *http.Server
@@ -140,6 +253,7 @@ var httpCmd = &cobra.Command{
 			}
 
 			go func() {
+				defer mcli_redis.RedisPool.Close()
 				if err := srv.ListenAndServeTLS(tlsCert, tlsKey); err != nil && err != http.ErrServerClosed {
 					Elogger.Fatal().Msg(err.Error())
 				}
@@ -154,6 +268,7 @@ var httpCmd = &cobra.Command{
 			}
 
 			go func() {
+				defer mcli_redis.RedisPool.Close()
 				if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 					Elogger.Fatal().Msg(err.Error())
 				}

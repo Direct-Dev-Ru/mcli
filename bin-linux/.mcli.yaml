@@ -14,6 +14,15 @@ http:
   server:
     timeout: 3000
     port:    
+    base-url: server-1
+    auth:
+      is-authenticate: true
+      signin-route: /signin
+      signup-route: /signup
+      redis-host: localhost:6379      
+      redis-password: "{{$REDIS_PWD}}"
+    static-path: http-static
+    static-prefix: static
     templates:
       - tmpl-name: common templates
         tmpl-type: standart
@@ -29,12 +38,10 @@ http:
         tmpl-datapath: http-data/markdown-data
         tmpl-refresh-type: on-interval
         tmpl-refresh-interval: 120 
-    static-path: http-static
-    static-prefix: static
   request:
     timeout: 6000
     method: GET
-    baseURL: http://localhost:8080
+    base-url: http://localhost:8080/server1
     url: /echo
     headers:
       "Content-Type":

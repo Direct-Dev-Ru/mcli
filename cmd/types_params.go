@@ -15,19 +15,27 @@ type ConfigData struct {
 		Server struct {
 			Timeout      int64                     `yaml:"timeout"`
 			Port         string                    `yaml:"port"`
-			BaseUrl      string                    `yaml:"baseURL"`
+			BaseUrl      string                    `yaml:"base-url"`
 			StaticPath   string                    `yaml:"static-path"`
 			StaticPrefix string                    `yaml:"static-prefix"`
 			TmplPath     string                    `yaml:"tmpl-path"`
 			TmplPrefix   string                    `yaml:"tmpl-prefix"`
 			TmplDataPath string                    `yaml:"tmpl-datapath"`
 			Templates    []mcli_http.TemplateEntry `yaml:"templates"`
+
+			Auth struct {
+				IsAuthenticate bool   `yaml:"is-authenticate"`
+				SignInRoute    string `yaml:"signin-route"`
+				SignUpRoute    string `yaml:"signup-route"`
+				RedisHost      string `yaml:"redis-host"`
+				RedisPwd       string `yaml:"redis-password"`
+			} `yaml:"auth"`
 		}
 
 		Request struct {
 			Timeout int64                  `yaml:"timeout"`
 			Method  string                 `yaml:"method"`
-			BaseURL string                 `yaml:"baseURL"`
+			BaseURL string                 `yaml:"base-url"`
 			URL     string                 `yaml:"url"`
 			Headers map[string][]string    `yaml:"headers"`
 			Body    map[string]interface{} `yaml:"body"`

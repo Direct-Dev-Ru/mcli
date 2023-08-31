@@ -8,9 +8,13 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
+	"log"
 	mcli_crypto "mcli/packages/mcli-crypto"
-	mclihttp "mcli/packages/mcli-http"
+	mcli_http "mcli/packages/mcli-http"
+
+	mcli_redis "mcli/packages/mcli-redis"
 	"os"
 	"strings"
 
@@ -22,12 +26,113 @@ var testCmd = &cobra.Command{
 	Use:   "test",
 	Short: "just test command for debuging",
 	Long:  `useful only when DEBUG variable set to true`,
-	Run:   RsaReadFromFile,
+	Run:   TestRunCommand,
 }
 
 func init() {
 	rootCmd.AddCommand(testCmd)
 	// testCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	testCmd.Flags().StringP("function", "f", "", "function name to run")
+}
+
+func TestRunCommand(cmd *cobra.Command, args []string) {
+	funcMap := map[string]func(cmd *cobra.Command, args []string){
+		"RedisTestCommand": RedisTestCommand,
+		"RsaReadFromFile":  RsaReadFromFile,
+	}
+	functionName, _ := cmd.Flags().GetString("function")
+
+	if len(functionName) == 0 {
+		functionName = "RedisTestCommand"
+	}
+	funcMap[functionName](cmd, args)
+}
+
+// testing functions
+
+func RedisTestCommand(cmd *cobra.Command, args []string) {
+	redisStore, err := mcli_redis.NewRedisStore("127.0.0.1:6379", "!mySuperPwd0", "userlist")
+	if err != nil {
+		log.Fatalln("RedisInit:", err)
+	}
+	var memoryUsers map[string]interface{}
+
+	hashPassword1, _ := mcli_crypto.HashPassword("adminK@")
+	hashPassword2, _ := mcli_crypto.HashPassword("user0k")
+
+	var user1 *mcli_http.Credential = mcli_http.NewCredential("admin", hashPassword1, nil)
+	var user2 *mcli_http.Credential = mcli_http.NewCredential("user", hashPassword2, nil)
+	user1.Description = "this is admin user"
+	user1.Roles = []string{"admin", "user-rw"}
+	user2.Description = "this is regular user"
+	user2.Roles = []string{"user-rw"}
+
+	memoryUsers = map[string]interface{}{user1.Username: user1, user2.Username: user2}
+
+	// err = redisStore.SetRecordEx(user1.Username, memoryUsers[user1.Username], 20000, "userlist")
+	// if err != nil {
+	// 	log.Fatalln("error SetRecord User1:", err)
+	// }
+
+	// err = redisStore.SetRecord(user2.Username, memoryUsers[user2.Username])
+	// if err != nil {
+	// 	log.Fatalln("error SetRecord User2:", err)
+	// }
+
+	err = redisStore.SetRecordsEx(memoryUsers, 360000, "userlist")
+	if err != nil {
+		log.Fatalln("error SetRecords failed:", err)
+	}
+
+	getKey := "admin"
+	// value := struct{ Key1 string }{Key1: "value1"}
+	// err = redisStore.SetRecord(getKey, value)
+	// if err != nil {
+	// 	log.Fatalln("error SetRecord ", getKey, err)
+	// }
+
+	// rawRecord1, err, ok := redisStore.GetRecord(getKey)
+	// if err != nil {
+	// 	log.Fatalln("error GetRecord admin :", err)
+	// }
+	// log.Println(getKey, ok, rawRecord1)
+
+	rawRecord1, ttl, err := redisStore.GetRecordEx(getKey)
+	if err != nil {
+		log.Fatalln("error GetRecord admin :", err)
+	}
+	log.Println(getKey, ttl, rawRecord1)
+
+	getKey = "user"
+	rawRecord2, err, ok := redisStore.GetRecord("user")
+	if err != nil {
+		log.Fatalln("error GetRecord user :", err)
+	}
+	log.Println(ok, rawRecord2)
+
+	// var user1FromDb mcli_http.Credential = mcli_http.Credential{}
+	// err = json.Unmarshal([]byte(rawRecord1), &user1FromDb)
+	// if err != nil {
+	// 	log.Fatalln("error Unmarshal GetRecord user :", err)
+	// }
+	// log.Println(user1FromDb.Username)
+	// log.Println(mcli_crypto.CheckHashedPassword(user1FromDb.Password, "admin"))
+
+	var user2FromDb mcli_http.Credential = mcli_http.Credential{}
+	err = json.Unmarshal([]byte(rawRecord2), &user2FromDb)
+	if err != nil {
+		log.Fatalln("error Unmarshal GetRecord user :", err)
+	}
+	log.Println(user2FromDb.Username)
+	log.Println(mcli_crypto.CheckHashedPassword(user2FromDb.Password, "userOk"))
+
+	// fmt.Println(redisStore.RemoveRecords([]string{"admin"}, "users", "userlist"))
+
+	mapa, err := redisStore.GetRecords("*", "user*")
+	if err != nil {
+		log.Fatalln("error GetRecords :", err)
+	}
+	fmt.Println(mapa)
 }
 
 func RsaReadFromFile(cmd *cobra.Command, args []string) {
@@ -45,7 +150,7 @@ func TestHttptemplCache(cmd *cobra.Command, args []string) {
 	if ENV_DEBUG != "true" {
 		os.Exit(1)
 	}
-	cache, err := mclihttp.LoadTemplatesCache("http-data/templates")
+	cache, err := mcli_http.LoadTemplatesCache("http-data/templates")
 	fmt.Printf("|%+v| <%+v>\n", cache, err)
 }
 

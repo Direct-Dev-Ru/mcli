@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	mcli_utils "mcli/packages/mcli-utils"
 
@@ -75,7 +74,7 @@ var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 		data: make(map[string]SomeData),
 	}
 
-	rand.Seed(time.Now().UnixNano())
+	//rand.Seed(time.Now().UnixNano())
 	go monitor(readData, writeData, accuData)
 
 	var w sync.WaitGroup

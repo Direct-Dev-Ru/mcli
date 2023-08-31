@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"log"
+	mcli_secrets "mcli/packages/mcli-secrets"
+	mcli_utils "mcli/packages/mcli-utils"
 	"os"
 	"path"
 	"path/filepath"
@@ -143,8 +146,27 @@ func init() {
 	// println(GlobalMap["RootPath"])
 	// println(GlobalMap["DefaultConfigPath"])
 
-	rootCmd.PersistentFlags().StringVar(&ConfigPath, "config", "", "specify path to config file *.yaml")
+	// generate rootkey for internal secrets
+	rootSecretStorePath := filepath.Join(GlobalMap["HomeDir"], ".mcli", "root", "secret")
+	_, _, err = mcli_utils.IsExistsAndCreate(rootSecretStorePath, true)
+	if err != nil {
+		log.Fatalln("root secret store error - path do not exists: ", err)
+	}
+	rootSecretStore_key := filepath.Join(rootSecretStorePath, "rootkey.key")
+	ok, _, _ := mcli_utils.IsExistsAndCreate(rootSecretStore_key, false)
+	if !ok {
+		err = mcli_secrets.SaveKeyToFilePlain(rootSecretStore_key, mcli_secrets.GenKey(1024))
+		if err != nil {
+			log.Fatalln("root secret store error - save rootSecretStore_key error: ", err)
+		}
+	}
+	_, err = mcli_secrets.LoadKeyFromFilePlain(rootSecretStore_key)
+	if err != nil {
+		log.Fatalln("root secret store error - load rootSecretStore_key error: ", err)
+	}
+	GlobalMap["RootSecretKeyPath"] = rootSecretStore_key
 
+	rootCmd.PersistentFlags().StringVar(&ConfigPath, "config", "", "specify path to config file *.yaml")
 	rootCmd.Flags().StringP("root-args", "a", "", "args for root command")
 
 }

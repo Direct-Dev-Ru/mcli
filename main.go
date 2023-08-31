@@ -19,16 +19,16 @@ import (
 
 func main() {
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-	ilogger := zerolog.New(os.Stdout).Level(zerolog.InfoLevel).With().Timestamp().Logger()
-	elogger := zerolog.New(os.Stderr).Level(zerolog.ErrorLevel).With().Timestamp().Logger()
+	iLogger := zerolog.New(os.Stdout).Level(zerolog.InfoLevel).With().Timestamp().Logger()
+	eLogger := zerolog.New(os.Stderr).Level(zerolog.ErrorLevel).With().Timestamp().Logger()
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	elogger.Level(zerolog.ErrorLevel)
+	eLogger.Level(zerolog.ErrorLevel)
 	ENV_DEBUG := strings.ToLower(os.Getenv("DEBUG"))
 	if ENV_DEBUG == "true" {
 		zerolog.SetGlobalLevel(zerolog.TraceLevel)
 		buildInfo, _ := debug.ReadBuildInfo()
 
-		ilogger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+		iLogger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
 			Level(zerolog.TraceLevel).
 			With().
 			Timestamp().
@@ -37,7 +37,7 @@ func main() {
 			Str("go_version", buildInfo.GoVersion).
 			Logger()
 
-		elogger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+		eLogger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
 			Level(zerolog.WarnLevel).
 			With().
 			Timestamp().
@@ -49,11 +49,11 @@ func main() {
 
 	// ilogger.Info().Msg("Hello from Zerolog global ilogger")
 
-	// elogger.Error().
+	// Elogger.Error().
 	// 	Stack().
 	// 	Err(errors.New("file open failed!")).
 	// 	Msg("something happened!")
 
-	iloggers := []zerolog.Logger{ilogger, elogger}
+	iloggers := []zerolog.Logger{iLogger, eLogger}
 	cmd.Execute(iloggers)
 }

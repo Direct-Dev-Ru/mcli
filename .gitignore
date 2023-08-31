@@ -1,3 +1,4 @@
+
 ./mcli
 mcli
 ./mcli.exe
@@ -8,3 +9,7 @@ mcli.exe
 .vagrant
 cert
 .test-data/*.tkt
+
+compose.env
+keyfile.txt
+internal-secrets/

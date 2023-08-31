@@ -1,6 +1,7 @@
 package mclihttp
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -59,22 +60,24 @@ func (r *Route) SetHandler(f HandleFunc) http.Handler {
 
 // Router
 type Router struct {
-	sPath         string
-	sPrefix       string
-	sBaseURL      string
-	infoLog       zerolog.Logger
-	errorLog      zerolog.Logger
-	staticHandler http.Handler
-	routes        []*Route
-	middleware    []Middleware
-	finalHandler  http.Handler
+	sPath           string
+	sPrefix         string
+	sBaseURL        string
+	infoLog         zerolog.Logger
+	errorLog        zerolog.Logger
+	staticHandler   http.Handler
+	routes          []*Route
+	middleware      []Middleware
+	finalHandler    http.Handler
+	KVStore         KVStorer
+	CredentialStore CredentialStorer
 }
 
 type RouterOptions struct {
 	BaseUrl string
 }
 
-func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, eLog zerolog.Logger, opts RouterOptions) *Router {
+func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, Elogger zerolog.Logger, opts RouterOptions) *Router {
 	sPath = strings.TrimPrefix(sPath, "./")
 	sPath = strings.TrimSuffix(sPath, "/")
 	sPrefix = strings.TrimPrefix(sPrefix, "/")
@@ -94,7 +97,7 @@ func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, eLog zerolog.L
 		fileServer = http.FileServer(http.Dir(fileServerResultPath))
 	}
 
-	return &Router{infoLog: iLog, errorLog: eLog, sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer, sBaseURL: baseURL,
+	return &Router{infoLog: iLog, errorLog: Elogger, sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer, sBaseURL: baseURL,
 		middleware: make([]Middleware, 0, 3), routes: make([]*Route, 0, 3)}
 }
 
@@ -116,6 +119,19 @@ func (r *Router) ConstructFinalHandler() error {
 		}
 	}
 	return nil
+}
+
+func (r *Router) injectToContext(next http.HandlerFunc, keyCtx string, valueCtx interface{}) http.HandlerFunc {
+	return func(res http.ResponseWriter, req *http.Request) {
+		// Add a value to the context
+		// userID := "user123"
+		var ctx = req.Context()
+		if valueCtx != nil {
+			ctx = context.WithValue(req.Context(), ContextKey(keyCtx), valueCtx)
+		}
+		// Call the next handler with the updated context
+		next(res, req.WithContext(ctx))
+	}
 }
 
 func (r *Router) AddRoute(route *Route) error {
@@ -202,5 +218,6 @@ func (r *Router) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		r.ConstructFinalHandler()
 		// http.HandlerFunc(r.innerHandler).ServeHTTP(res, req)
 	}
-	r.finalHandler.ServeHTTP(res, req)
+	r.injectToContext(r.finalHandler.ServeHTTP, "router", r).ServeHTTP(res, req)
+	// r.finalHandler.ServeHTTP(res, req)
 }

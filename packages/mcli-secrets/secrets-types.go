@@ -288,3 +288,14 @@ func (ses *SecretsEntries) GetFromEncContent(content []byte, key []byte) error {
 	return ses.Srl.Unmarshal(storeContent, &ses.Secrets)
 
 }
+
+func (ses *SecretsEntries) GetSecretPlainMap() map[string]SecretPlainEntry {
+	ses.Lock()
+	defer ses.Unlock()
+	smap := make(map[string]SecretPlainEntry, len(ses.Secrets))
+	for _, se := range ses.Secrets {
+		// fmt.Print(se.Name)
+		smap[se.Name] = se.GetPlainEntry()
+	}
+	return smap
+}

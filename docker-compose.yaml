@@ -1,0 +1,25 @@
+# docker volume create --driver local \
+#     --opt type=none \
+#     --opt device=/var/opt/my_docker_data/redis \
+#     --opt o=bind redis_data
+volumes:
+  redis_data:
+    external: true
+
+services:
+  redis:
+    image: redis:7
+    env_file:
+      - compose.env      
+    command:
+      - /bin/sh
+      - -c
+      # - Double dollars, so that the variable is not expanded by Docker Compose
+      # - Surround by quotes, so that the shell does not split the password
+      # - The ${variable:?message} syntax causes shell to exit with a non-zero
+      #   code and print a message, when the variable is not set or empty
+      - redis-server --save 120 1 --loglevel warning --requirepass "$${REDIS_PWD:?REDIS_PWD variable is not set}"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data

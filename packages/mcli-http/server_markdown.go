@@ -115,7 +115,7 @@ func ConvertMdToHtml(source string) ([]byte, error) {
 		var err error
 		dataSource := metaData.TemplateDataPath
 		// lets get data
-		rawDataForMd := make([]byte, 0)
+		var rawDataForMd []byte
 		if strings.HasPrefix(dataSource, "http://") || strings.HasPrefix(dataSource, "https://") {
 			rawDataForMd, err = getHTTP(dataSource)
 			if err != nil {

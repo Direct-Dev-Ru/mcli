@@ -13,6 +13,16 @@ func Http_Echo(writer http.ResponseWriter, request *http.Request) {
 	for header, vals := range request.Header {
 		fmt.Fprintf(writer, "Header: %v: %v\n", header, vals)
 	}
+	fmt.Fprintln(writer, "----------Context-------------")
+	isAuth, ok := request.Context().Value(ContextKey("isAuth")).(bool)
+	if ok {
+		fmt.Fprintf(writer, "Is Authenticated: %v\n", isAuth)
+	}
+
+	user, ok := request.Context().Value(ContextKey("authUser")).(*Credential)
+	if ok {
+		fmt.Fprintf(writer, "Authenticated user: %v\n", user.Username)
+	}
 	fmt.Fprintln(writer, "-----------------------")
 
 	defer request.Body.Close()
