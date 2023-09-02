@@ -2,7 +2,6 @@ package mclihttp
 
 import (
 	"encoding/json"
-	"fmt"
 	mcli_crypto "mcli/packages/mcli-crypto"
 )
 
@@ -21,7 +20,7 @@ func NewUserStore(kvstore KVStorer, collectionPrefix string) *UserStore {
 func (us *UserStore) GetUser(username string) (*Credential, error, bool) {
 	user := Credential{}
 	userRaw, err, ok := us.kvStore.GetRecord(username)
-	fmt.Println("UserStore GetUser:", userRaw, err, ok)
+	// fmt.Println("UserStore GetUser:", userRaw, err, ok)
 	if err != nil || !ok {
 		return &user, err, false
 	}

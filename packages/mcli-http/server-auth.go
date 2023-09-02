@@ -3,16 +3,14 @@ package mclihttp
 import (
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	sc "github.com/gorilla/securecookie"
 )
 
-//	var users = map[string]string{
-//		"user1": "pwd1",
-//		"user2": "pwd2",
-//	}
 var cookieName string = "session-token"
 var (
 	timeExeed     = 36000
@@ -20,14 +18,21 @@ var (
 	encodeCookies = false
 )
 
-func SetSecretCookieOptions(doEncoding bool, cookieHash, cookieBlock []byte) {
+func SetSecretCookieOptions(doEncoding bool, cookieName string, cookieHash, cookieBlock []byte) {
+	if cookieName == "" {
+		cookieName = "session-token"
+	}
 	encodeCookies = doEncoding
-	s = sc.New(cookieHash, cookieBlock)
+	s = nil
+	if encodeCookies {
+		s = sc.New(cookieHash, cookieBlock)
+	}
 }
 
 type Credential struct {
 	Username    string   `json:"username"`
 	Password    string   `json:"password"`
+	Expired     bool     `json:"expired"`
 	FirstName   string   `json:"first-name"`
 	LastName    string   `json:"last-name"`
 	Email       string   `json:"email"`
@@ -39,8 +44,25 @@ type Credential struct {
 	CredStore   CredentialStorer
 }
 
-func NewCredential(username, password string, credStore CredentialStorer) *Credential {
-	cred := Credential{Username: username, Password: password}
+func NewCredential(username, password string, expired bool, credStore CredentialStorer) *Credential {
+	username = strings.TrimSpace(username)
+	emailPattern := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	emailRegex, err := regexp.Compile(emailPattern)
+	email := ""
+	if err == nil {
+		if emailRegex.MatchString(username) {
+			email = username
+		}
+	}
+	phonePattern := `^(\+\d{1,2}\s?)?(\(\d{3}\)|\d{3})[-.\s]?\d{3}[-.\s]?\d{4}$`
+	phoneRegex := regexp.MustCompile(phonePattern)
+	phone := ""
+	if err == nil {
+		if phoneRegex.MatchString(username) {
+			phone = username
+		}
+	}
+	cred := Credential{Username: username, Password: password, Email: email, Phone: phone}
 	cred.CredStore = credStore
 	return &cred
 }
@@ -87,6 +109,7 @@ func (session *Session) Authenticate(cred Credential) (bool, error) {
 		return ok, fmt.Errorf("authenticate error: %v", err)
 	}
 	err = session.Store.SetRecordEx(session.Token, cred.Username, int(session.Expire), "session-list")
+
 	if err != nil {
 		return false, fmt.Errorf("store session token error: %v", err)
 	}
@@ -95,6 +118,6 @@ func (session *Session) Authenticate(cred Credential) (bool, error) {
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
 	//  TODO: check routes and improove cookie name resolution
-	clearAuthenticatedCookie(w, &Session{CookieName: "session-token"})
+	clearAuthenticatedCookie(w, &Session{CookieName: cookieName})
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

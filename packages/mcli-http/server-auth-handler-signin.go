@@ -121,10 +121,12 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 		var cred Credential = Credential{Username: "", Password: "", CredStore: router.CredentialStore}
 
 		contentType := r.Header.Get("Content-Type")
+
 		password, username := "", ""
 		switch contentType {
 		case "application/json":
 			_, err := processJSONBody(w, r, &cred)
+
 			if err != nil {
 				http.Error(w, "wrong data in request body", http.StatusBadRequest)
 				clearAuthenticatedCookie(w, session)
@@ -178,11 +180,17 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 
 		if contentType == "application/json" {
 			// Respond with JSON
-			cred.Password = ""
+			fullUser, err, _ := cred.CredStore.GetUser(cred.Username)
+			if err != nil {
+				http.Error(w, "auth error: full user data getting error: "+err.Error(), http.StatusUnauthorized)
+				clearAuthenticatedCookie(w, session)
+				return
+			}
+			fullUser.Password = ""
 			responseJSON := map[string]interface{}{
 				"message": "Login successful",
 				"error":   false,
-				"payload": cred,
+				"payload": fullUser,
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(responseJSON)

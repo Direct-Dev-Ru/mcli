@@ -60,11 +60,15 @@ func RedisTestCommand(cmd *cobra.Command, args []string) {
 	hashPassword1, _ := mcli_crypto.HashPassword("adminK@")
 	hashPassword2, _ := mcli_crypto.HashPassword("user0k")
 
-	var user1 *mcli_http.Credential = mcli_http.NewCredential("admin", hashPassword1, nil)
-	var user2 *mcli_http.Credential = mcli_http.NewCredential("user", hashPassword2, nil)
+	var user1 *mcli_http.Credential = mcli_http.NewCredential("admin", hashPassword1, false, nil)
+	user1.Email = "info@direct-dev.ru"
+	user1.Phone = "+79059400071"
 	user1.Description = "this is admin user"
 	user1.Roles = []string{"admin", "user-rw"}
+
+	var user2 *mcli_http.Credential = mcli_http.NewCredential("user@yandex.ru", hashPassword2, false, nil)
 	user2.Description = "this is regular user"
+	user2.Phone = "+79608755599"
 	user2.Roles = []string{"user-rw"}
 
 	memoryUsers = map[string]interface{}{user1.Username: user1, user2.Username: user2}

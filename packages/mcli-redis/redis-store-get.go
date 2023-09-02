@@ -28,9 +28,9 @@ func (rs *RedisStore) GetRecord(key string, keyPrefixes ...string) (result strin
 	var createIfKeyDontExists bool = false
 
 	// Check if the key exists
-	fmt.Println(resultKey)
+	// fmt.Println(resultKey)
 	if err = rs.KeyExists(conn, resultKey); err != nil {
-		fmt.Println(err)
+		// fmt.Println(err)
 		if _, ok = err.(*KeyNotFoundError); ok {
 			if createIfKeyDontExists {
 				createIfKeyDontExists = false
@@ -43,7 +43,7 @@ func (rs *RedisStore) GetRecord(key string, keyPrefixes ...string) (result strin
 	} else {
 		// Key exists, retrieve its value
 		value, err := redis.String(conn.Do("GET", resultKey))
-		fmt.Println(value, err)
+		// fmt.Println(value, err)
 		if err != nil {
 			return "", err, true
 		}

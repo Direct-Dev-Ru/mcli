@@ -16,14 +16,15 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-// exportCmd represents the export command
 var importCmd = &cobra.Command{
 	Use:   "import",
 	Short: "Import secrets from specified file asking in terminal for crypting key",
-	Long: `You can import secrets from separate file. 
-	For example: mcli secrets import secret-1 secret-2 ... secret-n d=/ask -e=/home/username/export.vault
-	You will be asked for secret key to print it in terminal to decrypt imported secrets ... 
-	Or you can use stdin for key definition
+	Long: `You can import secrets from separate encrypted file. 
+	For example: 
+		mcli secrets import secret-1 secret-2 ... secret-n d=/ask -e=/home/username/export.vault
+	You will be asked for secret key to print it in terminal for future decrypt imported secrets ... 
+	Or you can use stdin for key definition:
+	 	echo ${SECRET_CONTAINING_VAR} | mcli secrets import secret-1 secret-2 -e=/home/username/export.vault
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
 		var LineBreak string = GlobalMap["LineBreak"]

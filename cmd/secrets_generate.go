@@ -94,6 +94,7 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 	if IsCommandInPipe() && len(Input.InputSlice) == 0 {
 		Elogger.Fatal().Msg("input from pipe is empty: provide not empty pipe or run without pipe")
 	}
+	// process if stdin contains stream of objects to generate secrets
 	if IsCommandInPipe() && len(Input.InputSlice) > 0 {
 		Ilogger.Trace().Msg("input from pipe ...")
 		// input should be blocks of data if plain input:

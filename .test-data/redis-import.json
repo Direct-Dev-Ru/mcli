@@ -1,0 +1,37 @@
+[
+  {
+    "Key": "mega-admin",
+    "Email": "info@direct-dev.ru",
+    "Username": "{{Key}}",
+    "Password": "{{Key}}",
+    "Expired": "false",
+    "FirstName": "Anton",
+    "LastName": "Kuznetcov",
+    "BackupEmail": "kuznetcovay@yandex.ru",
+    "Phone": "+79059499988",
+    "BackupPhone": "+796088859687",
+    "Description": "Administrator of the Universe",
+    "Roles": [
+      "user-rw",
+      "admin",
+      "power-user"
+    ]
+  },
+  {
+    "Key": "info@direct-dev.ru",
+    "Email": "info@direct-dev.ru",
+    "Username": "{{Email}}",
+    "Password": "{{Email}}",
+    "Expired": "false",
+    "FirstName": "Nikolay",
+    "LastName": "Svetoforov",
+    "BackupEmail": "nsvet@direct-dev.ru",
+    "Phone": "+79607779988",
+    "BackupPhone": "+79604445522",
+    "Description": "Mega User of the World",
+    "Roles": [
+      "user-rw",
+      "power-user"
+    ]
+  }
+]

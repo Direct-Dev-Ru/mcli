@@ -217,7 +217,7 @@ var httpCmd = &cobra.Command{
 					isEncCookie = false
 				}
 			}
-			mcli_http.SetSecretCookieOptions(isEncCookie, []byte(cookieKey1), []byte(cookieKey2))
+			mcli_http.SetSecretCookieOptions(isEncCookie, "session-token", []byte(cookieKey1), []byte(cookieKey2))
 
 			// auth middleware
 			err = r.Use(mcli_http.NewAuth(r.CredentialStore, r.KVStore, isEncCookie))
@@ -253,7 +253,9 @@ var httpCmd = &cobra.Command{
 			}
 
 			go func() {
-				defer mcli_redis.RedisPool.Close()
+				if Config.Http.Server.Auth.IsAuthenticate {
+					defer mcli_redis.RedisPool.Close()
+				}
 				if err := srv.ListenAndServeTLS(tlsCert, tlsKey); err != nil && err != http.ErrServerClosed {
 					Elogger.Fatal().Msg(err.Error())
 				}
@@ -268,7 +270,9 @@ var httpCmd = &cobra.Command{
 			}
 
 			go func() {
-				defer mcli_redis.RedisPool.Close()
+				if Config.Http.Server.Auth.IsAuthenticate {
+					defer mcli_redis.RedisPool.Close()
+				}
 				if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 					Elogger.Fatal().Msg(err.Error())
 				}
