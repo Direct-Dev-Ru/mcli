@@ -2,6 +2,7 @@ package mcliutils
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"golang.org/x/exp/slices"
@@ -104,3 +105,29 @@ func TranslitToLatFromCyr(stringToConvert string) string {
 	}
 	return string(output)
 }
+
+func FindSubstrings(text string) ([]string, bool) {
+	re := regexp.MustCompile(`{{(.*?)}}`)
+	found := re.FindAllStringSubmatch(text, -1)
+
+	if len(found) > 0 {
+		substrings := make([]string, len(found))
+		for i, f := range found {
+			substrings[i] = f[0]
+		}
+		return substrings, true
+	}
+
+	return nil, false
+}
+
+// func main() {
+// 	text := "This is a {{test}} string with {{multiple}} occurrences of {{substrings}}"
+
+// 	substrings, ok := FindSubstrings(text)
+// 	if ok {
+// 		fmt.Println("Found substrings:", substrings)
+// 	} else {
+// 		fmt.Println("No substrings found")
+// 	}
+// }

@@ -5,7 +5,9 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	mcli_utils "mcli/packages/mcli-utils"
 	"os"
 	"strings"
 
@@ -122,10 +124,13 @@ func importToRedis(cmd *cobra.Command, args []string) {
 		fmt.Printf("Before: %v\n\n", inputRecords)
 
 		for key, record := range inputRecords {
-			recordMap, ok := record.(map[string]interface{})
-			if ok {
+			if recordMap, ok := record.(map[string]interface{}); ok {
+				resolvedMap := make(map[string]string, 0)
 				for innerKey, val := range recordMap {
 					if sValue, ok := val.(string); ok {
+						resValue, _ := resolveValue(sValue, recordMap, resolvedMap)
+						recordMap[innerKey] = resValue
+
 						sval := strings.TrimSpace(sValue)
 						if strings.HasPrefix(sval, "{{") && strings.HasSuffix(sval, "}}") {
 							sval = strings.Trim(strings.Trim(sval, "{"), "}")
@@ -143,6 +148,26 @@ func importToRedis(cmd *cobra.Command, args []string) {
 		}
 		fmt.Printf("After: %v", inputRecords)
 	}
+}
+
+func resolveValue(sValue string, sourceMap map[string]interface{}, resolved map[string]string) (string, error) {
+	if sourceMap == nil {
+		return "", errors.New("empty source map")
+	}
+	if resolved == nil {
+		resolved = make(map[string]string, 0)
+	}
+	sValue = strings.TrimSpace(sValue)
+	matches, ok := mcli_utils.FindSubstrings(sValue)
+	if !ok {
+		return sValue, nil
+	}
+	for _, match := range matches {
+		if resolvedMatch, ok := resolved[match]; ok {
+			sValue = strings.ReplaceAll(sValue, match, resolvedMatch)
+		}
+	}
+	return sValue, nil
 }
 
 // redisImportCmd represents the redisImport command

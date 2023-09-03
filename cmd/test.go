@@ -9,9 +9,11 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	mcli_crypto "mcli/packages/mcli-crypto"
+	mcli_error "mcli/packages/mcli-error"
 	mcli_http "mcli/packages/mcli-http"
 
 	mcli_redis "mcli/packages/mcli-redis"
@@ -39,6 +41,7 @@ func TestRunCommand(cmd *cobra.Command, args []string) {
 	funcMap := map[string]func(cmd *cobra.Command, args []string){
 		"RedisTestCommand": RedisTestCommand,
 		"RsaReadFromFile":  RsaReadFromFile,
+		"TestErrorPackage": TestErrorPackage,
 	}
 	functionName, _ := cmd.Flags().GetString("function")
 
@@ -49,6 +52,25 @@ func TestRunCommand(cmd *cobra.Command, args []string) {
 }
 
 // testing functions
+
+func TestErrorPackage(cmd *cobra.Command, args []string) {
+	err := errors.New("i am error 1")
+	if err != nil {
+		err2 := mcli_error.NewCommonError("wrap error 1", mcli_error.ResourceNotFound)
+		err2.Wrap(err)
+		if !err2.IsNil() {
+			err3 := mcli_error.NewCommonError("wrap error 2", mcli_error.InvalidLogin)
+			fmt.Println(err2)
+			err3.Wrap(err2)
+			fmt.Println(err3)
+			fmt.Println("-----------")
+
+			fmt.Println("is error 3 is InvalidLoginError:", err3.Is(mcli_error.InvalidLoginError))
+			fmt.Println("is error 3 is ResourceNotFoundError:", err3.Is(mcli_error.ResourceNotFoundError))
+			fmt.Println("is error 3 is InvalidParameterError:", err3.Is(mcli_error.InvalidParameterError))
+		}
+	}
+}
 
 func RedisTestCommand(cmd *cobra.Command, args []string) {
 	redisStore, err := mcli_redis.NewRedisStore("127.0.0.1:6379", "!mySuperPwd0", "userlist")
