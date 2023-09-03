@@ -7,12 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	mcli_error "mcli/packages/mcli-error"
 	mcli_utils "mcli/packages/mcli-utils"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+var Err mcli_error.CommonError
 
 // input should be blocks of data if yaml input:
 // Key:	KeyName1

@@ -68,6 +68,8 @@ func TestErrorPackage(cmd *cobra.Command, args []string) {
 			fmt.Println("is error 3 is InvalidLoginError:", err3.Is(mcli_error.InvalidLoginError))
 			fmt.Println("is error 3 is ResourceNotFoundError:", err3.Is(mcli_error.ResourceNotFoundError))
 			fmt.Println("is error 3 is InvalidParameterError:", err3.Is(mcli_error.InvalidParameterError))
+			// var simpleError mcli_error.CommonError = errors.New("simple error")
+			// fmt.Println("simple error is:", err3.Is(mcli_error.InvalidParameterError))
 		}
 	}
 }
