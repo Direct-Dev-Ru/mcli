@@ -106,8 +106,11 @@ func TranslitToLatFromCyr(stringToConvert string) string {
 	return string(output)
 }
 
-func FindSubstrings(text string) ([]string, bool) {
-	re := regexp.MustCompile(`{{(.*?)}}`)
+func FindSubstrings(text, pattern string) ([]string, bool) {
+	if pattern == "" {
+		pattern = `{{(.*?)}}`
+	}
+	re := regexp.MustCompile(pattern)
 	found := re.FindAllStringSubmatch(text, -1)
 
 	if len(found) > 0 {

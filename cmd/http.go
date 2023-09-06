@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -20,7 +19,6 @@ import (
 	mcli_http "mcli/packages/mcli-http"
 	mcli_redis "mcli/packages/mcli-redis"
 	mcli_secrets "mcli/packages/mcli-secrets"
-	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/spf13/cobra"
 )
@@ -138,7 +136,7 @@ var httpCmd = &cobra.Command{
 			// _, err = mcli_redis.InitCache(Config.Http.Server.Auth.RedisHost, Config.Http.Server.Auth.RedisPwd)
 			redisStore, err := mcli_redis.NewRedisStore(Config.Http.Server.Auth.RedisHost, Config.Http.Server.Auth.RedisPwd, "userlist")
 			if err != nil {
-				Elogger.Fatal().Err(fmt.Errorf("error init redis store: %v", err))
+				Elogger.Fatal().Msg(fmt.Sprintf("error init redis store: %v\n", err.Error()))
 			}
 			_, err = redisStore.RedisPool.Get().Do("PING")
 			if err != nil {
@@ -149,14 +147,15 @@ var httpCmd = &cobra.Command{
 			r.KVStore = redisStore
 			r.CredentialStore = mcli_http.NewUserStore(redisStore, "userlist")
 
-			internalSecretStorePath := filepath.Join(GlobalMap["RootPath"], "internal-secrets")
-			_, _, err = mcli_utils.IsExistsAndCreate(internalSecretStorePath, true)
-			if err != nil {
-				Elogger.Fatal().Msgf("internal secret store error - path do not exists: %v", err.Error())
-			}
+			// internalSecretStorePath := filepath.Join(GlobalMap["RootPath"], "internal-secrets")
+			// _, _, err = mcli_utils.IsExistsAndCreate(internalSecretStorePath, true)
+			// if err != nil {
+			// 	Elogger.Fatal().Msgf("internal secret store error - path do not exists: %v", err.Error())
+			// }
 
 			internalSecretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile, mcli_crypto.AesCypher, nil)
-			internalVaultPath := filepath.Join(internalSecretStorePath, "intstore.vault")
+			internalVaultPath := GlobalMap["RootSecretVaultPath"]
+
 			if err := internalSecretStore.FillStore(internalVaultPath, GlobalMap["RootSecretKeyPath"]); err != nil {
 				Elogger.Fatal().Msg(err.Error())
 			}
@@ -178,7 +177,7 @@ var httpCmd = &cobra.Command{
 					Elogger.Fatal().Msgf("cookieKey1 new entry error: %v", err)
 				}
 				secretEntry1.SetSecret(fmt.Sprintf("%x", cookieKey1), true, false)
-				Ilogger.Trace().Msg(fmt.Sprintf("%x", cookieKey1))
+				// Ilogger.Trace().Msg(fmt.Sprintf("%x", cookieKey1))
 
 				internalSecretStore.AddEntry(secretEntry1)
 				internalSecretStore.Save(internalVaultPath, GlobalMap["RootSecretKeyPath"])

@@ -81,8 +81,15 @@ func GenerateBytes(n int) ([]byte, error) {
 }
 
 func GeneratePassword(length int) (string, error) {
+	if length == 0 {
+		length = 12
+	}
 	b, err := GenerateBytes(length)
 	p := Base64Encode(string(b))
 	p = strings.ReplaceAll(p, "=", "")
+	r := []rune(p)
+	if len(r) > length {
+		p = string(r[:length])
+	}
 	return p, err
 }

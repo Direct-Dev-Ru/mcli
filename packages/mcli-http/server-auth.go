@@ -2,6 +2,7 @@ package mclihttp
 
 import (
 	"fmt"
+	mcli_store "mcli/packages/mcli-store"
 	"net/http"
 	"regexp"
 	"strings"
@@ -78,10 +79,10 @@ type Session struct {
 	Token      string
 	Value      interface{}
 	Expire     time.Duration
-	Store      KVStorer
+	Store      mcli_store.KVStorer
 }
 
-func NewSession(cookieName string, s KVStorer) *Session {
+func NewSession(cookieName string, s mcli_store.KVStorer) *Session {
 	session := Session{CookieName: cookieName, Store: s}
 	return &session
 }

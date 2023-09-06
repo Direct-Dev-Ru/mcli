@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	mcli_secrets "mcli/packages/mcli-secrets"
+
 	"github.com/gomodule/redigo/redis"
 )
 
@@ -25,8 +27,11 @@ func (e *KeyNotFoundError) Error() string {
 }
 
 type RedisStore struct {
-	RedisPool *redis.Pool
-	KeyPrefix string
+	RedisPool  *redis.Pool
+	KeyPrefix  string
+	Encrypt    bool
+	Cypher     mcli_secrets.SecretsCypher
+	encryptKey []byte
 }
 
 func NewRedisStore(host, password, keyPrefix string) (*RedisStore, error) {
@@ -36,7 +41,7 @@ func NewRedisStore(host, password, keyPrefix string) (*RedisStore, error) {
 			return nil, err
 		}
 	}
-	return &RedisStore{RedisPool: RedisPool, KeyPrefix: keyPrefix}, nil
+	return &RedisStore{RedisPool: RedisPool, KeyPrefix: keyPrefix, Encrypt: false}, nil
 }
 
 func InitCache(host, password string) (*redis.Pool, error) {
@@ -67,5 +72,17 @@ func NewRedisPool(host, password string) *redis.Pool {
 			}
 			return c, nil
 		},
+	}
+}
+
+func (r *RedisStore) SetEcrypt(encrypt bool, encryptKey []byte, cypher mcli_secrets.SecretsCypher) {
+	r.Encrypt = encrypt
+	r.Cypher = cypher
+	r.encryptKey = encryptKey
+	if len(r.encryptKey) == 0 {
+		r.Encrypt = false
+	}
+	if !encrypt {
+		r.Cypher = nil
 	}
 }

@@ -3,6 +3,7 @@ package mclihttp
 import (
 	"context"
 	"fmt"
+	mcli_store "mcli/packages/mcli-store"
 	"net/http"
 	"regexp"
 	"strings"
@@ -69,7 +70,7 @@ type Router struct {
 	routes          []*Route
 	middleware      []Middleware
 	finalHandler    http.Handler
-	KVStore         KVStorer
+	KVStore         mcli_store.KVStorer
 	CredentialStore CredentialStorer
 }
 

@@ -39,6 +39,14 @@ func (rs *RedisStore) SetRecord(key string, value interface{}, keyPrefixes ...st
 	if err != nil {
 		return err
 	}
+
+	if rs.Encrypt && rs.Cypher != nil {
+		rawValue, err = rs.Cypher.Encrypt(rs.encryptKey, rawValue, true)
+		if err != nil {
+			return fmt.Errorf("encryption error: %w", err)
+		}
+	}
+
 	valueToStore := string(rawValue)
 	for _, k := range resultKeys {
 		_, err := conn.Do("SET", k, valueToStore)
@@ -50,6 +58,7 @@ func (rs *RedisStore) SetRecord(key string, value interface{}, keyPrefixes ...st
 	}
 	return nil
 }
+
 func (rs *RedisStore) SetRecordEx(key string, value interface{}, expiration int, keyPrefixes ...string) error {
 	resultKeys := []string{key}
 	if len(keyPrefixes) > 0 {
@@ -73,6 +82,14 @@ func (rs *RedisStore) SetRecordEx(key string, value interface{}, expiration int,
 	if err != nil {
 		return err
 	}
+
+	if rs.Encrypt && rs.Cypher != nil {
+		rawValue, err = rs.Cypher.Encrypt(rs.encryptKey, rawValue, true)
+		if err != nil {
+			return fmt.Errorf("encryption error: %w", err)
+		}
+	}
+
 	valueToStore := string(rawValue)
 	for _, k := range resultKeys {
 		_, err := conn.Do("SET", k, valueToStore, "EX", int(expiration))
@@ -104,6 +121,12 @@ func (rs *RedisStore) SetRecords(values map[string]interface{}, keyPrefixes ...s
 		rawValue, err := json.Marshal(val)
 		if err != nil {
 			return err
+		}
+		if rs.Encrypt && rs.Cypher != nil {
+			rawValue, err = rs.Cypher.Encrypt(rs.encryptKey, rawValue, true)
+			if err != nil {
+				return fmt.Errorf("encryption error: %w", err)
+			}
 		}
 		valueToStore := string(rawValue)
 		for _, k := range resultKeys {

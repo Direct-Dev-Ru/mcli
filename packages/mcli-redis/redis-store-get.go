@@ -42,12 +42,18 @@ func (rs *RedisStore) GetRecord(key string, keyPrefixes ...string) (result strin
 		return "", err, false
 	} else {
 		// Key exists, retrieve its value
-		value, err := redis.String(conn.Do("GET", resultKey))
+		rawValue, err := redis.Bytes(conn.Do("GET", resultKey))
+		if rs.Encrypt && rs.Cypher != nil {
+			rawValue, err = rs.Cypher.Decrypt(rs.encryptKey, rawValue, true)
+			if err != nil {
+				return "", fmt.Errorf("dencryption error: %w", err), false
+			}
+		}
 		// fmt.Println(value, err)
 		if err != nil {
 			return "", err, true
 		}
-		return value, nil, true
+		return string(rawValue), nil, true
 	}
 }
 
@@ -94,11 +100,19 @@ func (rs *RedisStore) GetRecords(pattern string, keyPrefixes ...string) (map[str
 		for _, key := range values {
 			// fmt.Println("Key:", value)
 
-			value, err := redis.String(conn.Do("GET", key))
+			rawValue, err := redis.Bytes(conn.Do("GET", key))
 			if err != nil {
 				return nil, err
 			}
-			resultMap[key] = value
+
+			if rs.Encrypt && rs.Cypher != nil {
+				rawValue, err = rs.Cypher.Decrypt(rs.encryptKey, rawValue, true)
+				if err != nil {
+					return nil, fmt.Errorf("dencryption error: %w", err)
+				}
+			}
+
+			resultMap[key] = string(rawValue)
 		}
 
 		if nextCursor == 0 {

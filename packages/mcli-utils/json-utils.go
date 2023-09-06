@@ -13,6 +13,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func PrettyPrintMap(inputMap map[string]interface{}) string {
+	prettyJSON, err := json.MarshalIndent(inputMap, "", "  ")
+	if err != nil {
+		return ""
+	}
+	return string(prettyJSON)
+}
+
 func PrettyJsonEncode(data interface{}, out io.Writer) error {
 	enc := json.NewEncoder(out)
 	enc.SetIndent("", "    ")

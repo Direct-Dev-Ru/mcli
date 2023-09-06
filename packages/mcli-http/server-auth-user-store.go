@@ -3,14 +3,15 @@ package mclihttp
 import (
 	"encoding/json"
 	mcli_crypto "mcli/packages/mcli-crypto"
+	mcli_store "mcli/packages/mcli-store"
 )
 
 type UserStore struct {
-	kvStore          KVStorer
+	kvStore          mcli_store.KVStorer
 	CollectionPrefix string
 }
 
-func NewUserStore(kvstore KVStorer, collectionPrefix string) *UserStore {
+func NewUserStore(kvstore mcli_store.KVStorer, collectionPrefix string) *UserStore {
 	if collectionPrefix == "" {
 		collectionPrefix = "userlist"
 	}

@@ -1,6 +1,7 @@
 package mclifilesystem
 
 import (
+	"bufio"
 	"errors"
 	"io"
 	"os"
@@ -56,4 +57,33 @@ func (gc GetFileContentType) GetContentChunks(filePath string) ([]byte, error) {
 		result = append(result, buf[:]...)
 	}
 	return result, nil
+}
+
+func ReadFileLines(filepath string) ([]string, error) {
+	// Open the file for reading
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var lines []string
+
+	// Create a scanner to read lines from the file
+	scanner := bufio.NewScanner(file)
+
+	// Read lines one by one
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		lines = append(lines, line)
+	}
+
+	// Check for scanner errors
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return lines, nil
 }

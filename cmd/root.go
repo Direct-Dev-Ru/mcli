@@ -10,11 +10,13 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
+	mcli_secrets "mcli/packages/mcli-secrets"
 	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/rs/zerolog"
@@ -190,5 +192,46 @@ func initConfig() {
 		}
 	}
 
-	// fmt.Println(info.Mode(), info.Name(), info.Size())
+	var err error
+
+	// read or create key for internal secrets
+	var rootKeySecretStorePath = filepath.Dir(Config.Common.InternalKeyFilePath)
+	var rootSecretStore_key = Config.Common.InternalKeyFilePath
+
+	if len(Config.Common.InternalKeyFilePath) == 0 {
+		rootKeySecretStorePath = filepath.Join(GlobalMap["HomeDir"], ".mcli", "root")
+		rootSecretStore_key = filepath.Join(rootKeySecretStorePath, "rootkey.key")
+		Config.Common.InternalKeyFilePath = rootSecretStore_key
+	}
+	_, _, err = mcli_utils.IsExistsAndCreate(rootKeySecretStorePath, true)
+	if err != nil {
+		Elogger.Fatal().Msgf("root secret store error - path do not exists: %s", err.Error())
+	}
+	ok, _, _ := mcli_utils.IsExistsAndCreate(rootSecretStore_key, false)
+	if !ok {
+		err = mcli_secrets.SaveKeyToFilePlain(rootSecretStore_key, mcli_secrets.GenKey(1024))
+		if err != nil {
+			Elogger.Fatal().Msgf("root secret store error - save rootSecretStore_key error: %s", err.Error())
+		}
+	}
+	_, err = mcli_secrets.LoadKeyFromFilePlain(rootSecretStore_key)
+	if err != nil {
+		Elogger.Fatal().Msgf("root secret store error - load rootSecretStore_key error: %s", err.Error())
+	}
+
+	GlobalMap["RootSecretKeyPath"] = rootSecretStore_key
+	// paths to internal secret vault
+	var internalSecretVaultBasePath = filepath.Dir(Config.Common.InternalVaultPath)
+	var internalSecretVaultPath = Config.Common.InternalVaultPath
+	if len(Config.Common.InternalVaultPath) == 0 {
+		internalSecretVaultBasePath = filepath.Join(GlobalMap["RootPath"], "internal-secrets")
+		internalSecretVaultPath = filepath.Join(internalSecretVaultBasePath, "internal.vault")
+		Config.Common.InternalVaultPath = internalSecretVaultPath
+	}
+	_, _, err = mcli_utils.IsExistsAndCreate(internalSecretVaultBasePath, true)
+	if err != nil {
+		Elogger.Fatal().Msgf("internal vault secret store error : %v", err.Error())
+	}
+	GlobalMap["RootSecretVaultPath"] = internalSecretVaultPath
+
 }

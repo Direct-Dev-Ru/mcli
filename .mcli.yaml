@@ -2,10 +2,12 @@ config-version: v1
 common:
   output-file: results.json
   output-format: json
+  internal-keyfile-path: "{{$HomeDir$}}/.mcli/root/secrets/rootkey.key"
+  internal-vault-path: "{{$RootPath$}}/intvault/int.vault"
 secrets:
   common:
     use-words: false
-    vault-path: "{{$HomeDir$}}/.mcli/secrets/defvault"
+    vault-path: "{{$HomeDir$}}/.mcli/secrets/default.vault"
     keyfile-path: "{{$HomeDir$}}/.ssh/id_rsa"
     dict-path: "{{$HomeDir$}}/.mcli/pwdgen/dict.csv"
     min-lenght: 14
@@ -18,7 +20,11 @@ http:
     auth:
       is-authenticate: true
       signin-route: /signin
+      signin-template: ./http-data/internal-templates/signin/signin.page
+      signin-redirect: /
       signup-route: /signup
+      signup-template: ./http-data/internal-templates/signup/signup.page
+      signup-redirect: /profile
       redis-host: localhost:6379      
       redis-password: "{{$REDIS_PWD}}"
     static-path: http-static

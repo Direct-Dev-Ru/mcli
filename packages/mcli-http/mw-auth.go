@@ -5,7 +5,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
 	// "github.com/rs/zerolog/pkgerrors"
+	mcli_store "mcli/packages/mcli-store"
 )
 
 type Auth struct {
@@ -13,12 +15,12 @@ type Auth struct {
 	Inner       http.Handler
 	isEncCookie bool
 	userStore   CredentialStorer
-	kvStore     KVStorer
+	kvStore     mcli_store.KVStorer
 }
 
 type ContextKey string
 
-func NewAuth(userStore CredentialStorer, kvStore KVStorer, isEnc bool) *Auth {
+func NewAuth(userStore CredentialStorer, kvStore mcli_store.KVStorer, isEnc bool) *Auth {
 
 	return &Auth{userStore: userStore, kvStore: kvStore, isEncCookie: isEnc}
 }
