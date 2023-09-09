@@ -18,4 +18,6 @@ type KVStorer interface {
 
 	RemoveRecord(key string, keyPrefixes ...string) error
 	RemoveRecords(keys []string, keyPrefixes ...string) error
+
+	Close()
 }

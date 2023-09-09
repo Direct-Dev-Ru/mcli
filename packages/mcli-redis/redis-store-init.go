@@ -86,3 +86,9 @@ func (r *RedisStore) SetEcrypt(encrypt bool, encryptKey []byte, cypher mcli_secr
 		r.Cypher = nil
 	}
 }
+
+func (r *RedisStore) Close() {
+	if r.RedisPool != nil {
+		r.RedisPool.Close()
+	}
+}

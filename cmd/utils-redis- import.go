@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -188,13 +189,48 @@ func importToRedis(cmd *cobra.Command, args []string) {
 		if err != nil {
 			Elogger.Fatal().Msg(err.Error())
 		}
+		defer kvStore.Close()
 		if encrypt {
-			enckey, err := mcli_secrets.LoadKeyFromFilePlain(Config.Common.InternalKeyFilePath)
-			if err != nil {
-				Elogger.Fatal().Msgf("load rootSecretStore_key error: %s", err.Error())
+			// enckey, err := mcli_secrets.LoadKeyFromFilePlain(Config.Common.InternalKeyFilePath)
+			// if err != nil {
+			// 	Elogger.Fatal().Msgf("load rootSecretStore_key error: %s", err.Error())
+			// }
+
+			// getting or generating enc key for encryption records in redis database
+			internalSecretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile, mcli_crypto.AesCypher, nil)
+
+			if err := internalSecretStore.FillStore(Config.Common.InternalVaultPath, Config.Common.InternalKeyFilePath); err != nil {
+				Elogger.Fatal().Msg(err.Error())
 			}
-			kvStore.SetEcrypt(encrypt, enckey, cypher)
+			secretMap := internalSecretStore.GetSecretPlainMap()
+			redisEncKey := ""
+			redisEncKeySecret, ok := secretMap["RedisEncKey"]
+
+			if ok {
+				redisEncKey = redisEncKeySecret.Secret
+				if err != nil {
+					Elogger.Fatal().Msg(err.Error())
+				}
+				Ilogger.Trace().Msg(redisEncKey)
+			} else {
+				redisEncKey = string(mcli_secrets.GenKey(64))
+
+				redisSecretKeyEntry, err := internalSecretStore.NewEntry("RedisEncKey", "RedisEncKey", "Key fo redis records encription")
+				if err != nil {
+					Elogger.Fatal().Msgf("RedisEncKey new entry error: %v", err)
+				}
+				redisSecretKeyEntry.SetSecret(fmt.Sprintf("%x", redisEncKey), true, false)
+				Ilogger.Trace().Msg(fmt.Sprintf("%x", redisEncKey))
+
+				internalSecretStore.AddEntry(redisSecretKeyEntry)
+				internalSecretStore.Save(Config.Common.InternalVaultPath, Config.Common.InternalKeyFilePath)
+			}
+			// end getting or generting enc key for encryption records in redis database
+
+			// setup encryption parameters
+			kvStore.SetEcrypt(encrypt, []byte(redisEncKey), cypher)
 		}
+
 		keyToCheck := ""
 		for key, record := range inputRecords {
 			keyToCheck = key
@@ -212,11 +248,18 @@ func importToRedis(cmd *cobra.Command, args []string) {
 			}
 		}
 
-		_, err, ok := kvStore.GetRecord(keyToCheck)
+		// lets check getting record from redis db
+		startTime := time.Now()
+		rec, err, ok := kvStore.GetRecord(keyToCheck)
+		elapsedTime := time.Since(startTime)
+
+		// Print the elapsed time in seconds
+		fmt.Printf("Function execution time: %v seconds\n", elapsedTime.Seconds())
+
 		if !ok || err != nil {
 			Elogger.Fatal().Msgf("check record error: %s", err.Error())
 		}
-		Ilogger.Info().Msg("import successful")
+		Ilogger.Info().Msgf("import successful. [%s]%v", keyToCheck, rec)
 		os.Exit(0)
 	}
 }
@@ -357,6 +400,7 @@ func init() {
 	redisImportCmd.PersistentFlags().String("input-file", "", "file with data for import")
 	redisImportCmd.PersistentFlags().String("key-prefix", "", "prefix to add to key then store in redis database")
 	redisImportCmd.Flags().BoolP("encrypt", "e", false, "encrypt records")
+	redisImportCmd.PersistentFlags().String("encrypt-key-name", "mcli-redis-enc-name", "prefix to add to key then store in redis database")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
