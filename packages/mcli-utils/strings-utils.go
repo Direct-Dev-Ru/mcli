@@ -124,13 +124,10 @@ func FindSubstrings(text, pattern string) ([]string, bool) {
 	return nil, false
 }
 
-// func main() {
-// 	text := "This is a {{test}} string with {{multiple}} occurrences of {{substrings}}"
+func IsStringEmpty(s string) bool {
+	return len(s) == 0
+}
 
-// 	substrings, ok := FindSubstrings(text)
-// 	if ok {
-// 		fmt.Println("Found substrings:", substrings)
-// 	} else {
-// 		fmt.Println("No substrings found")
-// 	}
-// }
+func IsStringNotEmpty(s string) bool {
+	return !(len(s) == 0)
+}
