@@ -62,3 +62,14 @@ func LoadKeyFromHexString(hexKeyString string) (string, error) {
 	}
 	return string(readKey), nil
 }
+
+func LoadByteKeyFromHexString(hexKeyString string) ([]byte, error) {
+
+	// Convert hexadecimal string back to byte slice
+	var readKey []byte
+	_, err := fmt.Sscanf(string(hexKeyString), "%x", &readKey)
+	if err != nil {
+		return nil, fmt.Errorf("error converting hexadecimal string: %v", err)
+	}
+	return readKey, nil
+}

@@ -2180,7 +2180,7 @@ const (
 	SYS_SOCKETPAIR                      = 0x368
 	SYS_WRITEV                          = 0x369
 	SYS_ENDNETENT                       = 0x370
-	SYS_CLOSElogger                     = 0x371
+	SYS_CLOSELOG                        = 0x371
 	SYS_OPENLOG                         = 0x372
 	SYS_SETLOGMASK                      = 0x373
 	SYS_SYSLOG                          = 0x374

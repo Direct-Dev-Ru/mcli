@@ -9,9 +9,9 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
-func (rs *RedisStore) GetRecord(key string, keyPrefixes ...string) (result string, err error, ok bool) {
+func (rs *RedisStore) GetRecord(key string, keyPrefixes ...string) (result []byte, err error, ok bool) {
 	if len(key) == 0 {
-		return "", nil, false
+		return nil, nil, false
 	}
 	prefix := ""
 	resultKey := key
@@ -35,32 +35,48 @@ func (rs *RedisStore) GetRecord(key string, keyPrefixes ...string) (result strin
 			if createIfKeyDontExists {
 				createIfKeyDontExists = false
 				//  TODO create empty resultKey
-				return "", nil, false
+				return nil, nil, false
 			}
-			return "", nil, false
+			return nil, nil, false
 		}
-		return "", err, false
+		return nil, err, false
 	} else {
 		// Key exists, retrieve its value
 		rawValue, err := redis.Bytes(conn.Do("GET", resultKey))
-		if rs.Encrypt && rs.Cypher != nil {
+		if err != nil {
+			return nil, err, true
+		}
+		if rs.Encrypt {
+			if rs.Cypher == nil {
+				return nil, fmt.Errorf("decryption error: %s", "cypher is nil"), false
+			}
 			rawValue, err = rs.Cypher.Decrypt(rs.encryptKey, rawValue, true)
 			if err != nil {
-				return "", fmt.Errorf("dencryption error: %w", err), false
+				return nil, fmt.Errorf("decryption error: %w", err), false
 			}
 		}
-		// fmt.Println(value, err)
+		storedData := StoreFormat{}
+		err = rs.Unmarshal(rawValue, &storedData)
 		if err != nil {
-			return "", err, true
+			return nil, err, true
 		}
-		return string(rawValue), nil, true
+		returnValue := storedData.Value
+
+		switch storedData.ValueType {
+		case "string":
+			return returnValue, nil, true
+		default:
+			return returnValue, nil, true
+		}
+
+		// return string(rawValue), nil, true
 	}
 }
 
-func (rs *RedisStore) GetRecordEx(key string, keyPrefixes ...string) (string, int, error) {
+func (rs *RedisStore) GetRecordEx(key string, keyPrefixes ...string) ([]byte, int, error) {
 	result, err, ok := rs.GetRecord(key, keyPrefixes...)
 	if err != nil || !ok {
-		return "", -1, err
+		return nil, -1, err
 	}
 	if ok {
 		conn := rs.RedisPool.Get()
@@ -68,15 +84,15 @@ func (rs *RedisStore) GetRecordEx(key string, keyPrefixes ...string) (string, in
 		resultKey, _ := rs.GetResultKey(key, keyPrefixes...)
 		remainingTime, err := redis.Int(conn.Do("TTL", resultKey))
 		if err != nil {
-			return "", -1, err
+			return nil, -1, err
 		}
 		return result, remainingTime, nil
 	}
-	return "", -1, fmt.Errorf("key do not exists")
+	return nil, -1, fmt.Errorf("key do not exists")
 }
 
-func (rs *RedisStore) GetRecords(pattern string, keyPrefixes ...string) (map[string]string, error) {
-	resultMap := make(map[string]string, 0)
+func (rs *RedisStore) GetRecords(pattern string, keyPrefixes ...string) (map[string][]byte, error) {
+	resultMap := make(map[string][]byte, 0)
 	prefix := ""
 	resultPattern := pattern
 	if len(keyPrefixes) > 0 {
@@ -96,23 +112,34 @@ func (rs *RedisStore) GetRecords(pattern string, keyPrefixes ...string) (map[str
 		if err != nil {
 			return nil, err
 		}
-
 		for _, key := range values {
-			// fmt.Println("Key:", value)
-
 			rawValue, err := redis.Bytes(conn.Do("GET", key))
 			if err != nil {
 				return nil, err
 			}
-
-			if rs.Encrypt && rs.Cypher != nil {
+			if rs.Encrypt {
+				if rs.Cypher == nil {
+					return nil, fmt.Errorf("decryption error: %s", "cypher is nil")
+				}
 				rawValue, err = rs.Cypher.Decrypt(rs.encryptKey, rawValue, true)
 				if err != nil {
-					return nil, fmt.Errorf("dencryption error: %w", err)
+					return nil, fmt.Errorf("decryption error: %w", err)
 				}
 			}
+			storedData := StoreFormat{}
+			err = rs.Unmarshal(rawValue, &storedData)
+			if err != nil {
+				return nil, err
+			}
+			returnValue := storedData.Value
 
-			resultMap[key] = string(rawValue)
+			switch storedData.ValueType {
+			case "string":
+				resultMap[key] = returnValue
+			default:
+				resultMap[key] = returnValue
+			}
+
 		}
 
 		if nextCursor == 0 {
@@ -125,16 +152,16 @@ func (rs *RedisStore) GetRecords(pattern string, keyPrefixes ...string) (map[str
 }
 
 // timeout in millisecond
-func (rs *RedisStore) GetRecordWithTimeOut(key string, timeout int, keyPrefixes ...string) (string, error, bool) {
+func (rs *RedisStore) GetRecordWithTimeOut(key string, timeout int, keyPrefixes ...string) ([]byte, error, bool) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Millisecond) // Set your desired timeout here
 	defer cancel()
 
-	resultChan := make(chan string)
+	resultChan := make(chan []byte)
 	go func() {
 		value, err, _ := rs.GetRecord(key, keyPrefixes...)
 		if err != nil {
-			resultChan <- fmt.Sprintf("error: %v", err)
+			resultChan <- []byte(fmt.Sprintf("error: %v", err))
 		} else {
 			resultChan <- value
 		}
@@ -142,12 +169,12 @@ func (rs *RedisStore) GetRecordWithTimeOut(key string, timeout int, keyPrefixes 
 
 	select {
 	case result := <-resultChan:
-		if strings.HasPrefix(result, "error:") {
-			return "", fmt.Errorf("%s", result), false
+		if strings.HasPrefix(string(result), "error:") {
+			return nil, fmt.Errorf("%s", result), false
 		}
 		return result, nil, true
 	case <-ctx.Done():
-		return "", fmt.Errorf("command timed out for %v millisecond", timeout), false
+		return nil, fmt.Errorf("command timed out for %v millisecond", timeout), false
 	}
 }
 

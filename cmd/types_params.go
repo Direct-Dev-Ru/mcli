@@ -2,9 +2,12 @@ package cmd
 
 import (
 	mcli_http "mcli/packages/mcli-http"
+	mcli_interface "mcli/packages/mcli-interface"
 )
 
 type ConfigData struct {
+	Cache mcli_interface.Cacher
+
 	ConfigVersion string `yaml:"config-version"`
 	Common        struct {
 		OutputFile          string `yaml:"output-file"`

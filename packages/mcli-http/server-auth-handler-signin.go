@@ -4,11 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"os"
+
+	// mcli_utils "mcli/packages/mcli-utils"
+
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 )
+
+type signInDataMember struct {
+	Action   string
+	Redirect string
+}
+type signInData struct {
+	Data signInDataMember
+}
 
 var tmplSignIn string = `
 		<!DOCTYPE html>
@@ -22,7 +34,7 @@ var tmplSignIn string = `
 				<div class="row justify-content-center">
 					<div class="col-md-4">
 						<h2 class="mb-4">Login</h2>
-						<form method="POST" action="/server-1/signin">
+						<form method="POST" action="{{ .Data.Action }}">
 							<div class="mb-3">
 								<label for="username" class="form-label">Username</label>
 								<input type="text" id="username" name="username" class="form-control" required>
@@ -102,10 +114,36 @@ var tmplSignIn string = `
 `
 */
 
-func Signin(w http.ResponseWriter, r *http.Request) {
+var tmplParsed *template.Template
+var loginData signInData
+
+func GetSignInHandler(signInTemplatePath, baseUrl, action, redirect string) (HandleFunc, error) {
+
+	tmplContent, err := os.ReadFile(signInTemplatePath)
+	if err != nil {
+		return nil, err
+	}
+	tmplSignIn = string(tmplContent)
+
+	overAllActionUrl := strings.TrimPrefix(action, "/")
+	if !strings.HasPrefix(action, baseUrl) {
+		overAllActionUrl = fmt.Sprintf("%s/%s", baseUrl, overAllActionUrl)
+	}
+	overAllActionUrl = fmt.Sprintf("/%s", overAllActionUrl)
+
+	loginData = signInData{Data: signInDataMember{Action: overAllActionUrl, Redirect: redirect}}
+	tmplParsed, err = template.New("signin").Parse(tmplSignIn)
+	if err != nil {
+		return nil, err
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		signIn(w, r, tmplParsed, loginData)
+	}, nil
+}
+
+func signIn(w http.ResponseWriter, r *http.Request, template *template.Template, loginData signInData) {
 	if r.Method == http.MethodGet {
-		tmplParsed, _ := template.New("").Parse(tmplSignIn)
-		tmplParsed.Execute(w, nil)
+		tmplParsed.Execute(w, loginData)
 		return
 	}
 
@@ -118,7 +156,7 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 		session := NewSession(cookieName, router.KVStore)
 		session.Expire = time.Duration(timeExeed)
 
-		var cred Credential = Credential{Username: "", Password: "", CredStore: router.CredentialStore}
+		var cred Credential = Credential{Expired: true, CredStore: router.CredentialStore}
 
 		contentType := r.Header.Get("Content-Type")
 
@@ -180,12 +218,19 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 
 		if contentType == "application/json" {
 			// Respond with JSON
-			fullUser, err, _ := cred.CredStore.GetUser(cred.Username)
+			iUser, err, _ := cred.CredStore.GetUser(cred.Username)
 			if err != nil {
-				http.Error(w, "auth error: full user data getting error: "+err.Error(), http.StatusUnauthorized)
+				http.Error(w, "auth error: full user data get error: "+err.Error(), http.StatusUnauthorized)
 				clearAuthenticatedCookie(w, session)
 				return
 			}
+			fullUser, ok := iUser.(*Credential)
+			if !ok {
+				http.Error(w, "auth error: full user data get error: type mismatch "+err.Error(), http.StatusUnauthorized)
+				clearAuthenticatedCookie(w, session)
+				return
+			}
+
 			fullUser.Password = ""
 			responseJSON := map[string]interface{}{
 				"message": "Login successful",

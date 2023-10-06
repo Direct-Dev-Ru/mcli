@@ -1,10 +1,11 @@
 package mcliredis
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
-	mcli_secrets "mcli/packages/mcli-secrets"
+	mcli_interface "mcli/packages/mcli-interface"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -30,7 +31,9 @@ type RedisStore struct {
 	RedisPool  *redis.Pool
 	KeyPrefix  string
 	Encrypt    bool
-	Cypher     mcli_secrets.SecretsCypher
+	Cypher     mcli_interface.SecretsCypher
+	Marshal    func(any) ([]byte, error)
+	Unmarshal  func([]byte, any) error
 	encryptKey []byte
 }
 
@@ -41,7 +44,8 @@ func NewRedisStore(host, password, keyPrefix string) (*RedisStore, error) {
 			return nil, err
 		}
 	}
-	return &RedisStore{RedisPool: RedisPool, KeyPrefix: keyPrefix, Encrypt: false}, nil
+	return &RedisStore{RedisPool: RedisPool, KeyPrefix: keyPrefix,
+		Encrypt: false, Marshal: json.Marshal, Unmarshal: json.Unmarshal}, nil
 }
 
 func InitCache(host, password string) (*redis.Pool, error) {
@@ -75,7 +79,24 @@ func NewRedisPool(host, password string) *redis.Pool {
 	}
 }
 
-func (r *RedisStore) SetEcrypt(encrypt bool, encryptKey []byte, cypher mcli_secrets.SecretsCypher) {
+func (r *RedisStore) SetMarshalling(fMarshal func(any) ([]byte, error), fUnMarshal func([]byte, any) error) {
+	if fMarshal != nil {
+		r.Marshal = fMarshal
+	}
+	if fUnMarshal != nil {
+		r.Unmarshal = fUnMarshal
+	}
+}
+
+func (r *RedisStore) GetMarshal() func(any) ([]byte, error) {
+	return r.Marshal
+}
+
+func (r *RedisStore) GetUnMarshal() func([]byte, any) error {
+	return r.Unmarshal
+}
+
+func (r *RedisStore) SetEcrypt(encrypt bool, encryptKey []byte, cypher mcli_interface.SecretsCypher) {
 	r.Encrypt = encrypt
 	r.Cypher = cypher
 	r.encryptKey = encryptKey

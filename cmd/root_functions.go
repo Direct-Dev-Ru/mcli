@@ -100,6 +100,7 @@ func init() {
 
 	// define Terminal Params
 	GlobalMap["IsTerminal"] = "false"
+
 	if term.IsTerminal(0) {
 		// println("in a term")
 		IsTerminal = true

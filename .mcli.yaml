@@ -4,6 +4,8 @@ common:
   output-format: json
   internal-keyfile-path: "{{$HomeDir$}}/.mcli/root/secrets/rootkey.key"
   internal-vault-path: "{{$RootPath$}}/intvault/int.vault"
+  redis-host: localhost:6379      
+  redis-password: "{{$REDIS_PWD}}"
 secrets:
   common:
     use-words: false
@@ -16,14 +18,14 @@ http:
   server:
     timeout: 3000
     port:    
-    base-url: server-1
+    base-url: srv-1
     auth:
       is-authenticate: true
       signin-route: /signin
-      signin-template: ./http-data/internal-templates/signin/signin.page
+      signin-template: ./http-data/internal-templates/signin/signin.page.html
       signin-redirect: /
       signup-route: /signup
-      signup-template: ./http-data/internal-templates/signup/signup.page
+      signup-template: ./http-data/internal-templates/signup/signup.page.html
       signup-redirect: /profile
       redis-host: localhost:6379      
       redis-password: "{{$REDIS_PWD}}"
@@ -47,7 +49,7 @@ http:
   request:
     timeout: 6000
     method: GET
-    base-url: http://localhost:8080/server1
+    base-url: http://localhost:8080/srv-1/
     url: /echo
     headers:
       "Content-Type":

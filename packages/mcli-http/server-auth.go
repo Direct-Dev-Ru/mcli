@@ -1,8 +1,10 @@
 package mclihttp
 
 import (
+	"errors"
 	"fmt"
-	mcli_store "mcli/packages/mcli-store"
+	mcli_interface "mcli/packages/mcli-interface"
+	mcli_utils "mcli/packages/mcli-utils"
 	"net/http"
 	"regexp"
 	"strings"
@@ -33,7 +35,7 @@ func SetSecretCookieOptions(doEncoding bool, cookieName string, cookieHash, cook
 type Credential struct {
 	Username    string   `json:"username"`
 	Password    string   `json:"password"`
-	Expired     bool     `json:"expired"`
+	Expired     bool     `json:"expired,string,omitempty"`
 	FirstName   string   `json:"first-name"`
 	LastName    string   `json:"last-name"`
 	Email       string   `json:"email"`
@@ -42,10 +44,20 @@ type Credential struct {
 	BackupPhone string   `json:"backup-phone"`
 	Description string   `json:"description"`
 	Roles       []string `json:"roles"`
-	CredStore   CredentialStorer
+	CredStore   mcli_interface.CredentialStorer
 }
 
-func NewCredential(username, password string, expired bool, credStore CredentialStorer) *Credential {
+// func (f *Credential) UnmarshalJSON(b []byte) (err error) {
+// 	switch str := strings.ToLower(strings.Trim(string(b), `"`)); str {
+// 	case "true":
+// 		f.Expired = true
+// 	case "false":
+// 		f.Expired = false
+// 	}
+// 	return err
+// }
+
+func NewCredential(username, password string, expired bool, credStore mcli_interface.CredentialStorer) *Credential {
 	username = strings.TrimSpace(username)
 	emailPattern := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 	emailRegex, err := regexp.Compile(emailPattern)
@@ -74,15 +86,24 @@ func (cred *Credential) SetCredential(username, password string) error {
 	return nil
 }
 
+func (cred *Credential) GetString(field string) (string, error) {
+	mapCred := mcli_utils.StructToMapStringValues(*cred)
+	fieldValue, ok := mapCred[field]
+	if ok {
+		return *fieldValue, nil
+	}
+	return "", errors.New("no such field")
+}
+
 type Session struct {
 	CookieName string
 	Token      string
 	Value      interface{}
 	Expire     time.Duration
-	Store      mcli_store.KVStorer
+	Store      mcli_interface.KVStorer
 }
 
-func NewSession(cookieName string, s mcli_store.KVStorer) *Session {
+func NewSession(cookieName string, s mcli_interface.KVStorer) *Session {
 	session := Session{CookieName: cookieName, Store: s}
 	return &session
 }

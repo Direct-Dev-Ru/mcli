@@ -25,17 +25,18 @@ func convertRunFunc(cmd *cobra.Command, args []string) {
 	convertType = strings.ReplaceAll(convertType, "_", "")
 	convertType = strings.ReplaceAll(convertType, ".", "")
 
-	_, sourceType, err := IsPathExistsAndCreate(sourcePath, false)
+	_, sourceType, err := IsPathExistsAndCreate(sourcePath, false, false)
 	if err != nil {
 		Elogger.Fatal().Msgf("someting goes wrong %v", err)
 	}
 
-	_, destType, err := IsPathExistsAndCreate(destPath, true)
-
+	_, destType, err := IsPathExistsAndCreate(destPath, true, false)
 	if err != nil {
 		Elogger.Fatal().Msgf("something goes wrong while creating dest directory: %v", err)
 	}
-	Ilogger.Info().Msg(convertType)
+
+	// Ilogger.Info().Msg(convertType)
+
 	switch convertType {
 	case "JSONTOBSON":
 		if sourceType == "directory" {

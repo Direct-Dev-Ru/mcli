@@ -7,20 +7,20 @@ import (
 	"time"
 
 	// "github.com/rs/zerolog/pkgerrors"
-	mcli_store "mcli/packages/mcli-store"
+	mcli_interface "mcli/packages/mcli-interface"
 )
 
 type Auth struct {
 	User        *Credential
 	Inner       http.Handler
 	isEncCookie bool
-	userStore   CredentialStorer
-	kvStore     mcli_store.KVStorer
+	userStore   mcli_interface.CredentialStorer
+	kvStore     mcli_interface.KVStorer
 }
 
 type ContextKey string
 
-func NewAuth(userStore CredentialStorer, kvStore mcli_store.KVStorer, isEnc bool) *Auth {
+func NewAuth(userStore mcli_interface.CredentialStorer, kvStore mcli_interface.KVStorer, isEnc bool) *Auth {
 
 	return &Auth{userStore: userStore, kvStore: kvStore, isEncCookie: isEnc}
 }
@@ -46,8 +46,8 @@ func (auth *Auth) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	} else {
 		// fmt.Println("session-token", cookie)
 
-		username, ttl, err := auth.kvStore.GetRecordEx(cookie, "session-list")
-		username = strings.TrimPrefix(strings.TrimSuffix(username, `"`), `"`)
+		rawUserName, ttl, err := auth.kvStore.GetRecordEx(cookie, "session-list")
+		username := strings.TrimPrefix(strings.TrimSuffix(string(rawUserName), `"`), `"`)
 
 		// fmt.Println(username, ttl, err)
 		if ttl <= 0 && err != nil {

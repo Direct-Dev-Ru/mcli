@@ -2819,7 +2819,7 @@ const (
 	ProcessLoaderDetour
 	ProcessSecurityDomainInformation
 	ProcessCombineSecurityDomainsInformation
-	ProcessEnablEloggerging
+	ProcessEnableLogging
 	ProcessLeapSecondInformation
 	ProcessFiberShadowStackAllocation
 	ProcessFreeFiberShadowStackAllocation

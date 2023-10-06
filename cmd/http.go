@@ -65,6 +65,7 @@ var httpCmd = &cobra.Command{
 		if !isBaseUrl && len(Config.Http.Server.BaseUrl) > 0 {
 			baseUrl = Config.Http.Server.BaseUrl
 		}
+		baseUrl = strings.Trim(baseUrl, "/")
 
 		tmplPath, _ := GetStringParam("tmpl-path", cmd, Config.Http.Server.TmplPath)
 		tmplPrefix, _ := GetStringParam("tmpl-prefix", cmd, Config.Http.Server.TmplPrefix)
@@ -168,7 +169,7 @@ var httpCmd = &cobra.Command{
 				if err != nil {
 					Elogger.Fatal().Msg(err.Error())
 				}
-				Ilogger.Trace().Msg(cookieKey1)
+				// Ilogger.Trace().Msg(cookieKey1)
 			} else {
 				cookieKey1 = string(mcli_secrets.GenKey(32))
 
@@ -190,7 +191,7 @@ var httpCmd = &cobra.Command{
 				if err != nil {
 					Elogger.Fatal().Msg(err.Error())
 				}
-				Ilogger.Trace().Msg(cookieKey2)
+				// Ilogger.Trace().Msg(cookieKey2)
 			} else {
 				// time.Sleep(200 * time.Millisecond)
 				cookieKey2 = string(mcli_secrets.GenKey(32))
@@ -205,27 +206,45 @@ var httpCmd = &cobra.Command{
 				internalSecretStore.Save(internalVaultPath, GlobalMap["RootSecretKeyPath"])
 			}
 			isEncCookie := false
+			var cookieByteKey1, cookieByteKey2 []byte
 			if len(cookieKey1) > 0 && len(cookieKey2) > 0 {
 				isEncCookie = true
-				cookieKey1, err = mcli_secrets.LoadKeyFromHexString(cookieKey1)
+				cookieByteKey1, err = mcli_secrets.LoadByteKeyFromHexString(cookieKey1)
 				if err != nil {
 					isEncCookie = false
 				}
-				cookieKey2, err = mcli_secrets.LoadKeyFromHexString(cookieKey2)
+				cookieByteKey2, err = mcli_secrets.LoadByteKeyFromHexString(cookieKey2)
 				if err != nil {
 					isEncCookie = false
 				}
 			}
-			mcli_http.SetSecretCookieOptions(isEncCookie, "session-token", []byte(cookieKey1), []byte(cookieKey2))
+			mcli_http.SetSecretCookieOptions(isEncCookie, "session-token", cookieByteKey1, cookieByteKey2)
 
-			// auth middleware
+			// init auth middleware
 			err = r.Use(mcli_http.NewAuth(r.CredentialStore, r.KVStore, isEncCookie))
 			if err != nil {
-				Elogger.Error().Err(err)
+				Elogger.Error().Msg(err.Error())
 			}
 
-			r.AddRouteWithHandler(Config.Http.Server.Auth.SignInRoute, mcli_http.Prefix, mcli_http.Signin)
+			// get path to signin template
+			signInTmplPath, err := getFullPath(Config.Http.Server.Auth.SignInTemplate)
+			if err != nil {
+				Elogger.Error().Msg(err.Error())
+				signInTmplPath = ""
+			}
 
+			signInHandler, err := mcli_http.GetSignInHandler(signInTmplPath, baseUrl,
+				Config.Http.Server.Auth.SignInRoute, Config.Http.Server.Auth.SignInRedirect)
+			_ = signInHandler
+			if err != nil {
+				Elogger.Fatal().Msgf("error reading file: %v", err)
+			}
+			r.AddRouteWithHandler(Config.Http.Server.Auth.SignInRoute, mcli_http.Prefix,
+				signInHandler)
+			// r.AddRouteWithHandler(Config.Http.Server.Auth.SignInRoute, mcli_http.Prefix,
+			// 	mcli_http.SignIn)
+
+			// r.PrintRoutes()
 			// store := mcli_http.UserRedisStore{RedisPool: mcli_http.RedisPool, CollectionPrefix: "userlist"}
 			// c, _ := store.GetAllUsers("")
 			// for _, user := range c {
@@ -236,6 +255,7 @@ var httpCmd = &cobra.Command{
 			Ilogger.Warn().Msg("Authentication and sessions are disabled !!!")
 		}
 
+		// TODO: add CORS and CSRF middleware
 		var srv *http.Server
 		if len(tlsCert) > 0 && len(tlsKey) > 0 {
 

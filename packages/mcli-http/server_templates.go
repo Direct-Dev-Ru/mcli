@@ -170,7 +170,6 @@ func (r *Router) refreshTemplateCache(ctx context.Context, d time.Duration, myTm
 			// r.infoLog.Trace().Msg("Refresh Task running ... ")
 			myTmplCache.Lock()
 			cache, err := LoadMyTemplatesCache(myTmplCache.tmplPath)
-			myTmplCache.Unlock()
 			if err != nil {
 				r.errorLog.Error().Msgf("refreshing of template caching %v got error: %v", myTmplCache.tmplName, err)
 				ticker.Stop()
@@ -179,9 +178,7 @@ func (r *Router) refreshTemplateCache(ctx context.Context, d time.Duration, myTm
 				myTmplCache.cache = cache
 				r.infoLog.Trace().Msgf("refreshing of template cache: %v is successfull", myTmplCache.tmplName)
 			}
-			// default:
-			// fmt.Println("Task undefined ...")
-			// time.Sleep(5 * time.Second)
+			myTmplCache.Unlock()
 		}
 	}
 }
@@ -212,10 +209,8 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 	// }
 
 	if e, _ := exists(tmplPath); e {
-
 		// ctx, cancel := context.WithCancel(context.Background())
 		// defer cancel()
-
 		cache, err := LoadMyTemplatesCache(tmplPath)
 		if err != nil {
 			r.errorLog.Error().Msgf("template caching error: %v", err)
@@ -433,6 +428,7 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 					Req:  req,
 					Data: templateData,
 				}
+
 				// if template type is markdown
 				if t.TmplType == "markdowm" {
 					bindData = struct {
@@ -485,12 +481,10 @@ func (r *Router) setTmplRoutes(ctx context.Context, t TemplateEntry) error {
 							Data:     templateData,
 							Contents: mdMap,
 						}
-
 					} else {
 						http.Error(res, "error find MarkdownContents member in template map", http.StatusInternalServerError)
 						return
 					}
-
 				}
 			}
 			// fmt.Println("request processing " + req.URL.String())

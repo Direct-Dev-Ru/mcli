@@ -65,7 +65,7 @@ func ConvertMdToHtml(source string) ([]byte, error) {
 		// Make the HTTP GET request
 		response, err := http.Get(source)
 		if err != nil {
-			fmt.Println(err)
+
 			return nil, err
 		}
 		defer response.Body.Close()

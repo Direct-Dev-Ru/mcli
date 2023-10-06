@@ -26,7 +26,6 @@ func RenderJSON(w http.ResponseWriter, v interface{}, wrap bool) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(send)
-
 }
 
 func RenderErrorJSON(w http.ResponseWriter, e error) {

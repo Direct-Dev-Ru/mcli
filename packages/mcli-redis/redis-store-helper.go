@@ -29,3 +29,11 @@ func (rs *RedisStore) GetResultKey(key string, keyPrefixes ...string) (resultKey
 	}
 	return
 }
+
+func (rs *RedisStore) ExecuteCommand(conn redis.Conn, command string, args ...interface{}) (interface{}, error) {
+	r, err := conn.Do(command, args...)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}

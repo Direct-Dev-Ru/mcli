@@ -343,7 +343,7 @@ const (
 	WinAuthenticatedUserSid                       = 17
 	WinRestrictedCodeSid                          = 18
 	WinTerminalServerSid                          = 19
-	WinRemotEloggeronIdSid                        = 20
+	WinRemoteLogonIdSid                           = 20
 	WinLogonIdsSid                                = 21
 	WinLocalSystemSid                             = 22
 	WinLocalServiceSid                            = 23
@@ -404,7 +404,7 @@ const (
 	WinBuiltinCertSvcDComAccessGroup              = 78
 	WinMediumPlusLabelSid                         = 79
 	WinLocalLogonSid                              = 80
-	WinConsolEloggeronSid                         = 81
+	WinConsoleLogonSid                            = 81
 	WinThisOrganizationCertificateSid             = 82
 	WinApplicationPackageAuthoritySid             = 83
 	WinBuiltinAnyPackageSid                       = 84

@@ -126,6 +126,7 @@ func Execute(loggers []zerolog.Logger) {
 }
 
 func initConfig() {
+	var err error
 
 	// Check if piped to StdIn
 	info, _ := os.Stdin.Stat()
@@ -147,7 +148,7 @@ func initConfig() {
 		// Input.DivideInputSlice("||", ' ')
 	}
 
-	// read config
+	// read config file
 	configFile, _ := rootCmd.Flags().GetString("config")
 	if len(configFile) == 0 {
 		configFile = GlobalMap["DefaultConfigPath"]
@@ -192,7 +193,7 @@ func initConfig() {
 		}
 	}
 
-	var err error
+	Config.Cache = mcli_utils.NewCCache(0, nil)
 
 	// read or create key for internal secrets
 	var rootKeySecretStorePath = filepath.Dir(Config.Common.InternalKeyFilePath)
@@ -203,23 +204,29 @@ func initConfig() {
 		rootSecretStore_key = filepath.Join(rootKeySecretStorePath, "rootkey.key")
 		Config.Common.InternalKeyFilePath = rootSecretStore_key
 	}
-	_, _, err = mcli_utils.IsExistsAndCreate(rootKeySecretStorePath, true)
+	_, _, err = mcli_utils.IsExistsAndCreate(rootKeySecretStorePath, true, false)
 	if err != nil {
 		Elogger.Fatal().Msgf("root secret store error - path do not exists: %s", err.Error())
 	}
-	ok, _, _ := mcli_utils.IsExistsAndCreate(rootSecretStore_key, false)
+	ok, _, _ := mcli_utils.IsExistsAndCreate(rootSecretStore_key, false, false)
+
 	if !ok {
 		err = mcli_secrets.SaveKeyToFilePlain(rootSecretStore_key, mcli_secrets.GenKey(1024))
 		if err != nil {
 			Elogger.Fatal().Msgf("root secret store error - save rootSecretStore_key error: %s", err.Error())
 		}
 	}
-	_, err = mcli_secrets.LoadKeyFromFilePlain(rootSecretStore_key)
+	// read root secret from file
+	rootInternalSecret, err := mcli_secrets.LoadKeyFromFilePlain(rootSecretStore_key)
 	if err != nil {
 		Elogger.Fatal().Msgf("root secret store error - load rootSecretStore_key error: %s", err.Error())
 	}
-
+	_, err = Config.Cache.Set("RootInternalSecret", rootInternalSecret)
+	if err != nil {
+		Elogger.Fatal().Msgf("root secret store in cache error: %s", err.Error())
+	}
 	GlobalMap["RootSecretKeyPath"] = rootSecretStore_key
+
 	// paths to internal secret vault
 	var internalSecretVaultBasePath = filepath.Dir(Config.Common.InternalVaultPath)
 	var internalSecretVaultPath = Config.Common.InternalVaultPath
@@ -228,10 +235,21 @@ func initConfig() {
 		internalSecretVaultPath = filepath.Join(internalSecretVaultBasePath, "internal.vault")
 		Config.Common.InternalVaultPath = internalSecretVaultPath
 	}
-	_, _, err = mcli_utils.IsExistsAndCreate(internalSecretVaultBasePath, true)
+	_, _, err = mcli_utils.IsExistsAndCreate(internalSecretVaultBasePath, true, false)
 	if err != nil {
 		Elogger.Fatal().Msgf("internal vault secret store error : %v", err.Error())
 	}
 	GlobalMap["RootSecretVaultPath"] = internalSecretVaultPath
 
+	for gKey, gValue := range GlobalMap {
+		_, err = Config.Cache.Set(gKey, gValue)
+		if err != nil {
+			Elogger.Fatal().Msg("set cache value error " + err.Error())
+		}
+	}
+
+	fmt.Println("-------------")
+	fmt.Println("Global Map :", GlobalMap)
+	fmt.Println("-------------")
+	fmt.Println("Global Cache :", Config.Cache)
 }

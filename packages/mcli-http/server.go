@@ -3,10 +3,11 @@ package mclihttp
 import (
 	"context"
 	"fmt"
-	mcli_store "mcli/packages/mcli-store"
 	"net/http"
 	"regexp"
 	"strings"
+
+	mcli_interface "mcli/packages/mcli-interface"
 
 	"github.com/rs/zerolog"
 )
@@ -49,8 +50,10 @@ func NewRouteWithHandler(pattern string, routeType RouteType, f HandleFunc) *Rou
 func (r *Route) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 	if r.Handler != nil {
+		// fmt.Println(req.Method, req.URL, r.Handler)
 		r.Handler(res, req)
 	} else {
+
 		http.Error(res, "404 Handler Not Found", 404)
 	}
 }
@@ -68,10 +71,11 @@ type Router struct {
 	errorLog        zerolog.Logger
 	staticHandler   http.Handler
 	routes          []*Route
-	middleware      []Middleware
+	middleware      []mcli_interface.Middleware
 	finalHandler    http.Handler
-	KVStore         mcli_store.KVStorer
-	CredentialStore CredentialStorer
+	KVStore         mcli_interface.KVStorer
+	CredentialStore mcli_interface.CredentialStorer
+	Cache           map[string]mcli_interface.Cacher
 }
 
 type RouterOptions struct {
@@ -99,10 +103,17 @@ func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, Elogger zerolo
 	}
 
 	return &Router{infoLog: iLog, errorLog: Elogger, sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer, sBaseURL: baseURL,
-		middleware: make([]Middleware, 0, 3), routes: make([]*Route, 0, 3)}
+		middleware: make([]mcli_interface.Middleware, 0, 3), routes: make([]*Route, 0, 3)}
 }
 
-func (r *Router) Use(mw Middleware) error {
+func (r *Router) PrintRoutes() {
+
+	for _, route := range r.routes {
+		fmt.Println(route)
+	}
+}
+
+func (r *Router) Use(mw mcli_interface.Middleware) error {
 	r.middleware = append(r.middleware, mw)
 	return nil
 }
@@ -112,7 +123,7 @@ func (r *Router) ConstructFinalHandler() error {
 	r.finalHandler = http.HandlerFunc(r.innerHandler)
 
 	if len(r.middleware) > 0 {
-		var currentMw Middleware
+		var currentMw mcli_interface.Middleware
 		for i := len(r.middleware) - 1; i >= 0; i-- {
 			currentMw = r.middleware[i]
 			currentMw.SetInnerHandler(r.finalHandler)
@@ -185,8 +196,6 @@ func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 	// serving routes in router
 	for _, route := range r.routes {
 
-		// fmt.Println(reqPath, route.pattern)
-
 		switch route.routeType {
 		case Equal:
 			if reqPath == route.pattern {
@@ -194,7 +203,10 @@ func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 				return
 			}
 		case Prefix:
+
 			if strings.HasPrefix(reqPath, route.pattern) {
+				// fmt.Println(reqPath, route.pattern)
+				// fmt.Println(route.Handler)
 				route.ServeHTTP(res, req)
 				return
 			}

@@ -6,23 +6,9 @@ import (
 	"fmt"
 	"sync"
 	"time"
-)
 
-type SecretsWriter interface {
-	SetContent(path string, content []byte) (int, error)
-}
-type SecretsReader interface {
-	GetContent(path string) ([]byte, error)
-}
-type SecretsCypher interface {
-	Encrypt(key, data []byte, isSalted bool) ([]byte, error)
-	Decrypt(key, data []byte, isSalted bool) ([]byte, error)
-	GetKey(path string, random bool) ([]byte, error)
-}
-type SecretsSerializer interface {
-	Marshal(data any) ([]byte, error)
-	Unmarshal(data []byte, v any) error
-}
+	mcli_interface "mcli/packages/mcli-interface"
+)
 
 type DefaultSerializer struct {
 }
@@ -125,18 +111,18 @@ func (se *SecretEntry) Update(seSource SecretEntry) error {
 type SecretsEntries struct {
 	sync.Mutex
 	Secrets   []SecretEntry
-	Wrt       SecretsWriter
-	Rdr       SecretsReader
-	Srl       SecretsSerializer
-	Cypher    SecretsCypher
+	Wrt       mcli_interface.SecretsWriter
+	Rdr       mcli_interface.SecretsReader
+	Srl       mcli_interface.SecretsSerializer
+	Cypher    mcli_interface.SecretsCypher
 	vaultPath string
 	keyPath   string
 }
 
 var DefaultSer DefaultSerializer = DefaultSerializer{}
 
-func NewSecretsEntries(rd SecretsReader, wr SecretsWriter, cyp SecretsCypher,
-	ser SecretsSerializer) SecretsEntries {
+func NewSecretsEntries(rd mcli_interface.SecretsReader, wr mcli_interface.SecretsWriter, cyp mcli_interface.SecretsCypher,
+	ser mcli_interface.SecretsSerializer) SecretsEntries {
 
 	if ser == nil {
 		ser = DefaultSer
@@ -173,6 +159,39 @@ func (ses *SecretsEntries) AddEntry(se SecretEntry) error {
 		ses.Secrets = append(ses.Secrets, se)
 	}
 
+	return nil
+}
+
+func (ses *SecretsEntries) FillStoreV2(knvp mcli_interface.KeyAndVaultProvider) error {
+	iContent, err := knvp.GetVault()
+	if err != nil {
+		return fmt.Errorf("read store fault: %w", err)
+	}
+	if vaultContent, ok := iContent.([]byte); ok {
+
+		if len(vaultContent) > 0 {
+			key, err := knvp.GetKey()
+			if err != nil {
+				return fmt.Errorf("get key error %w", err)
+			}
+			cypherData, err := hex.DecodeString(string(vaultContent))
+			if err != nil {
+				return fmt.Errorf("hex decrypting fault: %w", err)
+			}
+
+			vaultContent, err = ses.Cypher.Decrypt(key, cypherData, true)
+			if err != nil {
+				return fmt.Errorf("decrypting fault: %v", err)
+			}
+			ses.Srl.Unmarshal(vaultContent, &ses.Secrets)
+		}
+		for i := 0; i < len(ses.Secrets); i++ {
+			ses.Secrets[i].store = ses
+		}
+
+		ses.vaultPath, _ = knvp.GetVaultPath()
+		ses.keyPath, _ = knvp.GetKeyPath()
+	}
 	return nil
 }
 
@@ -225,6 +244,36 @@ func (ses *SecretsEntries) Save(vaultPath, keyPath string) error {
 	key, err := ses.Cypher.GetKey(keyPath, false)
 	if err != nil {
 		return fmt.Errorf("%w", err)
+	}
+	cypherData, err := ses.Cypher.Encrypt(key, raw, true)
+	if err != nil {
+		return fmt.Errorf("encrypt fault: %w", err)
+	}
+	hexCypherData := hex.EncodeToString(cypherData)
+
+	_, err = ses.Wrt.SetContent(vaultPath, []byte(hexCypherData))
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+	return nil
+}
+
+func (ses *SecretsEntries) SaveV2(knvp mcli_interface.KeyAndVaultProvider) error {
+	ses.Lock()
+	defer ses.Unlock()
+	vaultPath, _ := knvp.GetVaultPath()
+	if len(vaultPath) == 0 {
+		vaultPath = ses.vaultPath
+	}
+
+	raw, err := ses.Srl.Marshal(ses.Secrets)
+	if err != nil {
+		return err
+	}
+
+	key, err := knvp.GetKey()
+	if err != nil {
+		return fmt.Errorf("get key error: %w", err)
 	}
 	cypherData, err := ses.Cypher.Encrypt(key, raw, true)
 	if err != nil {
