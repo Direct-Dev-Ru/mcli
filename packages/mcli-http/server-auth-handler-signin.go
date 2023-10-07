@@ -114,7 +114,7 @@ var tmplSignIn string = `
 `
 */
 
-var tmplParsed *template.Template
+var tmplSignInParsed *template.Template
 var loginData signInData
 
 func GetSignInHandler(signInTemplatePath, baseUrl, action, redirect string) (HandleFunc, error) {
@@ -132,18 +132,18 @@ func GetSignInHandler(signInTemplatePath, baseUrl, action, redirect string) (Han
 	overAllActionUrl = fmt.Sprintf("/%s", overAllActionUrl)
 
 	loginData = signInData{Data: signInDataMember{Action: overAllActionUrl, Redirect: redirect}}
-	tmplParsed, err = template.New("signin").Parse(tmplSignIn)
+	tmplSignInParsed, err = template.New("signin").Parse(tmplSignIn)
 	if err != nil {
 		return nil, err
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		signIn(w, r, tmplParsed, loginData)
+		signIn(w, r, tmplSignInParsed, loginData)
 	}, nil
 }
 
 func signIn(w http.ResponseWriter, r *http.Request, template *template.Template, loginData signInData) {
 	if r.Method == http.MethodGet {
-		tmplParsed.Execute(w, loginData)
+		template.Execute(w, loginData)
 		return
 	}
 

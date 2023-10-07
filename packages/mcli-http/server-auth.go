@@ -16,9 +16,10 @@ import (
 
 var cookieName string = "session-token"
 var (
+	s *sc.SecureCookie
+	// timeExeed     = HttpConfig.Server.Auth.AuthTtl
 	timeExeed     = 36000
-	s             *sc.SecureCookie
-	encodeCookies = false
+	encodeCookies = HttpConfig.Server.Auth.SecureAuthToken
 )
 
 func SetSecretCookieOptions(doEncoding bool, cookieName string, cookieHash, cookieBlock []byte) {
@@ -36,6 +37,7 @@ type Credential struct {
 	Username    string   `json:"username"`
 	Password    string   `json:"password"`
 	Expired     bool     `json:"expired,string,omitempty"`
+	Blocked     bool     `json:"blocked,string,omitempty"`
 	FirstName   string   `json:"first-name"`
 	LastName    string   `json:"last-name"`
 	Email       string   `json:"email"`

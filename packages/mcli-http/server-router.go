@@ -12,56 +12,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-type RouteType int
-
-const (
-	Equal RouteType = iota + 1
-	Prefix
-	Regexp
-)
-
-type HandleFunc func(http.ResponseWriter, *http.Request)
-
-// Route
-type Route struct {
-	url       string
-	pattern   string
-	routeType RouteType
-	Handler   HandleFunc
-}
-
-func NewRoute(pattern string, routeType RouteType) *Route {
-	if routeType <= 0 || routeType > 2 {
-		routeType = Equal
-	}
-	return &Route{"", pattern, routeType, http.NotFound}
-}
-
-func NewRouteWithHandler(pattern string, routeType RouteType, f HandleFunc) *Route {
-	if routeType <= 0 || routeType > 2 {
-		routeType = Equal
-	}
-	if f == nil {
-		f = http.NotFound
-	}
-	return &Route{"", pattern, routeType, f}
-}
-
-func (r *Route) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-
-	if r.Handler != nil {
-		// fmt.Println(req.Method, req.URL, r.Handler)
-		r.Handler(res, req)
-	} else {
-
-		http.Error(res, "404 Handler Not Found", 404)
-	}
-}
-func (r *Route) SetHandler(f HandleFunc) http.Handler {
-	r.Handler = f
-	return r
-}
-
 // Router
 type Router struct {
 	sPath           string

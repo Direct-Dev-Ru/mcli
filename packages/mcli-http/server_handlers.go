@@ -14,14 +14,15 @@ func Http_Echo(writer http.ResponseWriter, request *http.Request) {
 		fmt.Fprintf(writer, "Header: %v: %v\n", header, vals)
 	}
 	fmt.Fprintln(writer, "----------Context-------------")
-	isAuth, ok := request.Context().Value(ContextKey("isAuth")).(bool)
+	isAuth, ok := request.Context().Value(ContextKey("IsAuth")).(bool)
 	if ok {
 		fmt.Fprintf(writer, "Is Authenticated: %v\n", isAuth)
 	}
 
-	user, ok := request.Context().Value(ContextKey("authUser")).(*Credential)
+	user, ok := request.Context().Value(ContextKey("AuthUser")).(*Credential)
 	if ok {
-		fmt.Fprintf(writer, "Authenticated user: %v\n", user.Username)
+		fmt.Fprintf(writer, "Authenticated user.Username: %v\n", user.Username)
+		fmt.Fprintf(writer, "Authenticated user.Roles: %v\n", user.Roles)
 	}
 	fmt.Fprintln(writer, "-----------------------")
 

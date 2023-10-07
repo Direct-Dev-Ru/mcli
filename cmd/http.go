@@ -75,38 +75,29 @@ var httpCmd = &cobra.Command{
 		StopHttpChan := make(chan os.Signal, 1)
 
 		// mcli_http.InitMainRoutes(staticPath, staticPrefix)
+
+		mcli_http.HttpConfig = Config.Http
+
 		r := mcli_http.NewRouter(staticPath, staticPrefix, Ilogger, Elogger, mcli_http.RouterOptions{BaseUrl: baseUrl})
 
 		// root route
-		rootRoute := mcli_http.NewRoute("/", mcli_http.Equal)
-		rootRoute.SetHandler(func(res http.ResponseWriter, req *http.Request) {
 
-			// authUser, ok := req.Context().Value(mcli_http.ContextKey("authUser")).(string)
-			// fmt.Println("authUser store in ctx", ok, authUser)
+		// get path to root template
+		rootPageTmplPath, err := getFullPath(Config.Http.Server.RootPage.RootPageTemplate)
+		if err != nil {
+			Elogger.Error().Msg(err.Error())
+			rootPageTmplPath = ""
+		}
 
-			sPath := "./" + staticPath
-			if strings.HasPrefix(staticPath, "/") {
-				sPath = staticPath
-			}
-			mainPagePath := ""
-			mainPagePathCandidate := sPath + "/index.html"
-			if _, err := os.Stat(mainPagePathCandidate); err != nil {
-				mainPagePathCandidate = sPath + "/html/index.html"
-				if _, err := os.Stat(mainPagePathCandidate); err != nil {
-					mainPagePathCandidate = ""
-				}
-			}
-			mainPagePath = mainPagePathCandidate
+		rootHandler, err := mcli_http.GetRootHandler(rootPageTmplPath, baseUrl,
+			Config.Http.Server.RootPage.RootPageTitle,
+			"/",
+			Config.Http.Server.Auth.SignInRoute)
 
-			if len(mainPagePath) > 0 {
-				http.ServeFile(res, req, mainPagePath)
-			} else {
-				http.Error(res, "404 Not Found index.html", 404)
-			}
-		})
-		r.AddRoute(rootRoute)
-		// route for template handling
-		// r.SetTmplRoutes(tmplPath, tmplPrefix, tmplDataPath)
+		if err != nil {
+			Elogger.Fatal().Msgf("error reading file: %v", err)
+		}
+		r.AddRouteWithHandler("/", mcli_http.Equal, rootHandler)
 
 		// Context to stop server and pass into other goroutines
 		ctx, cancel := context.WithCancel(context.Background())
@@ -205,7 +196,8 @@ var httpCmd = &cobra.Command{
 
 				internalSecretStore.Save(internalVaultPath, GlobalMap["RootSecretKeyPath"])
 			}
-			isEncCookie := false
+			isEncCookie := Config.Http.Server.Auth.SecureAuthToken
+
 			var cookieByteKey1, cookieByteKey2 []byte
 			if len(cookieKey1) > 0 && len(cookieKey2) > 0 {
 				isEncCookie = true
@@ -218,7 +210,8 @@ var httpCmd = &cobra.Command{
 					isEncCookie = false
 				}
 			}
-			mcli_http.SetSecretCookieOptions(isEncCookie, "session-token", cookieByteKey1, cookieByteKey2)
+			mcli_http.SetSecretCookieOptions(isEncCookie, Config.Http.Server.Auth.AuthTokenName,
+				cookieByteKey1, cookieByteKey2)
 
 			// init auth middleware
 			err = r.Use(mcli_http.NewAuth(r.CredentialStore, r.KVStore, isEncCookie))

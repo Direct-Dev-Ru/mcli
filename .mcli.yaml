@@ -17,16 +17,30 @@ secrets:
 http:
   server:
     timeout: 3000
-    port:    
+    port: 8088    
     base-url: srv-1
+    root-page: 
+      rootpage-template: ./http-data/internal-templates/root/root.page.html
+      rootpage-title: "Mega Portal 2023"
+      redirect-unauthorized: true
     auth:
       is-authenticate: true
       signin-route: /signin
       signin-template: ./http-data/internal-templates/signin/signin.page.html
+      signin-change-route: /changepwd
+      signin-change-template: ./http-data/internal-templates/signin/signin.change.page.html
       signin-redirect: /
+      
       signup-route: /signup
       signup-template: ./http-data/internal-templates/signup/signup.page.html
+      signup-confirm-route: /confirm-registration
+      signup-confirm-template: ./http-data/internal-templates/signup/signup.confirm.page.html
       signup-redirect: /profile
+
+      auth-ttl: 36000
+      secure-auth-token: true
+      auth-token-name: session-token
+
       redis-host: localhost:6379      
       redis-password: "{{$REDIS_PWD}}"
     static-path: http-static
