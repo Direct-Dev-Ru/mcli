@@ -42,6 +42,10 @@ func IsCommandInPipe() bool {
 	return GlobalMap["IS_COMMAND_IN_PIPE"] == "CommandInPipe"
 }
 
+func IsCommandNotInPipeInputFromFile() bool {
+	return GlobalMap["IS_COMMAND_IN_PIPE"] == "CommandNotInPipeInputFromFile"
+}
+
 func GetRootAndDefaultConfigPaths() (configPath string, rootPath string, err error) {
 	var execPath string
 	execPath, err = os.Executable()
@@ -165,6 +169,7 @@ func init() {
 	// GlobalMap["RootSecretKeyPath"] = rootSecretStore_key
 
 	rootCmd.PersistentFlags().StringVar(&ConfigPath, "config", "", "specify path to config file *.yaml")
+	rootCmd.PersistentFlags().StringVar(&InputDataFromFile, "stdin-from-file", "", "specify path to file emulating data for stdin")
 	rootCmd.Flags().StringP("root-args", "a", "", "args for root command")
 
 }

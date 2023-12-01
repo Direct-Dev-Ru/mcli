@@ -131,3 +131,37 @@ func IsStringEmpty(s string) bool {
 func IsStringNotEmpty(s string) bool {
 	return !(len(s) == 0)
 }
+
+// hasIdenticalSymbols checks if all characters in a string are identical
+func HasIdenticalSymbols(s string) bool {
+	if len(s) <= 1 {
+		return true
+	}
+	s = strings.ReplaceAll(s, " ", "")
+	s = strings.ReplaceAll(s, "\t", "")
+	firstSymbol := s[0]
+	for i := 1; i < len(s); i++ {
+		if s[i] != firstSymbol {
+			return false
+		}
+	}
+	return true
+}
+
+func PadLeft(input string, length int, padChar rune) string {
+	if len(input) >= length {
+		return input
+	}
+
+	padding := strings.Repeat(string(padChar), length-len(input))
+	return padding + input
+}
+
+func PadRight(input string, length int, padChar rune) string {
+	if len(input) >= length {
+		return input
+	}
+
+	padding := strings.Repeat(string(padChar), length-len(input))
+	return input + padding
+}

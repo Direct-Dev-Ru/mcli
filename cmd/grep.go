@@ -233,7 +233,7 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	if !isInputTypeSet && false { //len(Config.Grep. ...) > 0 {
 		inputType = "" //Config.Grep. ...
 	}
-	inputTypes := []string{"plain", "json", "json-pretty", "table"}
+	inputTypes := []string{"plain", "json", "json-pretty", "table", "yaml"}
 	ok := slices.Contains(inputTypes, inputType)
 	if !ok {
 		inputType = "plain"
@@ -263,7 +263,7 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	if !isOutputTypeSet && false { //len(Config.Grep. ...) > 0 {
 		outputType = "" //Config.Grep. ...
 	}
-	outTypes := []string{"plain", "json", "json-pretty", "table"}
+	outTypes := []string{"plain", "json", "json-pretty", "table", "default", "yaml"}
 	ok = slices.Contains(outTypes, outputType)
 	if !ok {
 		outputType = "plain"
@@ -284,22 +284,29 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	// Process if input passed througth pipe
 	var InputForGrep InputData
 
-	if IsCommandInPipe() {
-		if v, e := Input.DivideInputSlice("||", ' '); e != nil {
-			InputForGrep = InputData{InputSlice: Input.InputSlice,
-				InputMap:   make(map[string][]string),
-				InputTable: make([]map[string]string, 0),
-			}
-		} else {
-			InputForGrep = InputData{InputSlice: v,
-				InputMap:   make(map[string][]string),
-				InputTable: make([]map[string]string, 0),
-			}
-		}
+	if IsCommandInPipe() || IsCommandNotInPipeInputFromFile() {
+
+		// if v, e := Input.DivideInputSlice("||", ' '); e != nil {
+
+		// 	InputForGrep = InputData{InputSlice: Input.InputSlice,
+		// 		InputMap:   make(map[string][]string),
+		// 		InputTable: make([]map[string]string, 0),
+		// 	}
+		// } else {
+		// 	InputForGrep = InputData{InputSlice: v,
+		// 		InputMap:   make(map[string][]string),
+		// 		InputTable: make([]map[string]string, 0),
+		// 	}
+		// }
+
+		inputMap, _ := Input.SplitByOneOrMoreSpaces(0, true, true, false)
+		InputForGrep.InputMap = inputMap
+		InputForGrep.InputSlice = Input.InputSlice
+
 		if isShowInputFromPipe {
 			fmt.Println("----------------start input from pipe passed to command--------------------")
 			fmt.Println("")
-			for _, line := range Input.InputSlice {
+			for _, line := range InputForGrep.InputSlice {
 				fmt.Print(line)
 			}
 			fmt.Println("")
@@ -310,52 +317,73 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 		if len(InputForGrep.InputSlice) > 0 {
 			switch inputType {
 			case "table":
-				var headers []string = make([]string, 0, 5)
-				var headersPositions []int = make([]int, 0, 5)
-				// var headersBorders []border = make([]border, 0, 5)
-				var isHeadersSet bool = false
-				for _, inputLine := range InputForGrep.InputSlice {
-					currentLine := strings.ReplaceAll(inputLine, GlobalMap["LineBreak"], "")
-					if len(currentLine) == 0 {
-						continue
-					}
-					// splits by two or more spaces or one or more tabs
-					// splitRX := regexp.MustCompile(`([ ]{2,})|([\t]{1,})`)
-					splitRX := regexp.MustCompile(`([|]{2,})|([\t]{1,})`)
 
-					if !isHeadersSet {
-						hs := splitRX.Split(currentLine, -1)
-						//fmt.Println(hs)
-						for _, h := range hs {
-							InputForGrep.InputMap[h] = make([]string, 0, len(InputForGrep.InputSlice)-1)
-							headers = append(headers, strings.TrimSpace(strings.ToUpper(h)))
-							headersPositions = append(headersPositions, strings.Index(currentLine, h))
+				if false {
+					var headers []string = make([]string, 0, 5)
+					var headersPositions []int = make([]int, 0, 5)
+					// var headersBorders []border = make([]border, 0, 5)
+					var isHeadersSet bool = false
+					for _, inputLine := range InputForGrep.InputSlice {
+						currentLine := strings.ReplaceAll(inputLine, GlobalMap["LineBreak"], "")
+						if len(currentLine) == 0 {
+							continue
 						}
-						isHeadersSet = true
-						continue
-					}
-					var row []string
+						// splits by two or more spaces or one or more tabs
+						// splitRX := regexp.MustCompile(`([ ]{2,})|([\t]{1,})`)
+						splitRX := regexp.MustCompile(`([|]{2,})|([\t]{1,})`)
 
-					row = splitRX.Split(currentLine, -1)
-					for i, f := range row {
-						row[i] = strings.TrimSpace(f)
-					}
-					if len(row) != len(headers) {
-						row = mcli_utils.SliceStringByPositions(currentLine, headersPositions)
-					}
-
-					currentRowMap := make(map[string]string, 0)
-
-					for k, h := range headers {
-						if k < len(row) && len(h) > 0 {
-							InputForGrep.InputMap[h] = append(InputForGrep.InputMap[h], row[k])
-							currentRowMap[h] = row[k]
+						if !isHeadersSet {
+							hs := splitRX.Split(currentLine, -1)
+							//fmt.Println(hs)
+							for _, h := range hs {
+								InputForGrep.InputMap[h] = make([]string, 0, len(InputForGrep.InputSlice)-1)
+								headers = append(headers, strings.TrimSpace(strings.ToUpper(h)))
+								headersPositions = append(headersPositions, strings.Index(currentLine, h))
+							}
+							isHeadersSet = true
+							continue
 						}
+						var row []string
+
+						row = splitRX.Split(currentLine, -1)
+						for i, f := range row {
+							row[i] = strings.TrimSpace(f)
+						}
+						if len(row) != len(headers) {
+							row = mcli_utils.SliceStringByPositions(currentLine, headersPositions)
+						}
+
+						currentRowMap := make(map[string]string, 0)
+
+						for k, h := range headers {
+							if k < len(row) && len(h) > 0 {
+								InputForGrep.InputMap[h] = append(InputForGrep.InputMap[h], row[k])
+								currentRowMap[h] = row[k]
+							}
+						}
+
+						InputForGrep.InputTable = append(InputForGrep.InputTable, currentRowMap)
 					}
-
-					InputForGrep.InputTable = append(InputForGrep.InputTable, currentRowMap)
-
 				}
+
+				nRows := 0
+				keys := make([]string, len(InputForGrep.InputMap))
+				i := 0
+				for key, mapValues := range InputForGrep.InputMap {
+					keys[i] = key
+					i++
+					if nRows < len(mapValues) {
+						nRows = len(mapValues)
+					}
+				}
+				for i := 0; i < nRows; i++ {
+					currentRowMap := make(map[string]string, 0)
+					for h, mapValues := range InputForGrep.InputMap {
+						currentRowMap[h] = mapValues[i]
+					}
+					InputForGrep.InputTable = append(InputForGrep.InputTable, currentRowMap)
+				}
+
 			case "json":
 			case "plain":
 				for _, inputLine := range InputForGrep.InputSlice {
@@ -394,10 +422,21 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	switch inputType {
 	case "table":
 		OutPut.OutputTable = filterTable(InputForGrep.InputTable, getFilterTokens(filter))
-		outJson, _ := mcli_utils.PrettyJsonEncodeToString(OutPut.OutputTable)
-		fmt.Println("outJson :", outJson)
+
+		OutPut.OutputMap = make(map[string][]string, 0)
+		for _, rowMap := range OutPut.OutputTable {
+			for key, val := range rowMap {
+				if _, ok := OutPut.OutputMap[key]; !ok {
+					OutPut.OutputMap[key] = make([]string, 0)
+				}
+				OutPut.OutputMap[key] = append(OutPut.OutputMap[key], val)
+			}
+		}
 
 	case "json":
+		OutPut.OutputTable = filterTable(InputForGrep.InputTable, getFilterTokens(filter))
+		outJson, _ := mcli_utils.PrettyJsonEncodeToString(OutPut.OutputTable)
+		fmt.Println("outJson :", outJson)
 	default:
 	}
 
@@ -413,9 +452,12 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	}
 
 	switch {
-	case outputType == "plai n":
+	case outputType == "plain":
 		if len(outColumns) > 0 {
-			for k, v := range InputForGrep.InputMap {
+			for i := 0; i < len(outColumns); i++ {
+				outColumns[i] = strings.TrimSpace(outColumns[i])
+			}
+			for k, v := range OutPut.OutputMap {
 				if slices.Contains(outColumns, k) {
 					for _, v2 := range v {
 						printFunction(k, v2)
@@ -423,6 +465,22 @@ var grepCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 				}
 			}
 		}
+	case outputType == "json-pretty":
+		outJson, _ := mcli_utils.PrettyJsonEncodeToString(OutPut.OutputTable)
+		fmt.Println(outJson)
+	case outputType == "json":
+		outJson, _ := mcli_utils.JsonEncodeToString(OutPut.OutputTable)
+		fmt.Println(outJson)
+	case outputType == "yaml":
+		outYaml, err := mcli_utils.YamlEncodeToString(OutPut.OutputTable)
+		fmt.Println(outYaml, err)
+	case outputType == "table":
+		OutPut.PrintAsTable(" ")
+	case outputType == "default":
+		if inputType == "table" {
+			OutPut.PrintAsTable(" ")
+		}
+
 	}
 
 }
@@ -441,9 +499,9 @@ var grepCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(grepCmd)
 
-	grepCmd.Flags().StringP("input-type", "i", "plain", "how parse input: as plain or json or table")
+	grepCmd.Flags().StringP("input-type", "i", "plain", "how parse input: as plain or json or table or yaml")
 	grepCmd.Flags().BoolP("viewpipe", "v", false, "set if you want see input pipe passed to command")
-	grepCmd.Flags().StringP("output-type", "o", "plain", "how format output: as plain or json or table")
+	grepCmd.Flags().StringP("output-type", "o", "default", "how format output: plain, json, json-pretty, table, default, yaml")
 	grepCmd.Flags().StringP("out-cols", "l", "", "output columns when table outputs: if omits  - all columns printed")
 	grepCmd.Flags().BoolP("no-headers", "n", false, "then outputs as table omit headers or not")
 	grepCmd.Flags().StringP("source", "s", "/input", "is input data from pipe - /input value or should be specified througth --source")

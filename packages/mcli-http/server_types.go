@@ -1,5 +1,10 @@
 package mclihttp
 
+import (
+	"fmt"
+	"strings"
+)
+
 var HttpConfig Http
 
 type Server struct {
@@ -34,9 +39,13 @@ type Server struct {
 		SignInConfirmTemplate string `yaml:"signup-confirm-template"`
 		SignUpRedirect        string `yaml:"signup-redirect"`
 
-		AuthTtl         int    `yaml:"auth-ttl"`
-		SecureAuthToken bool   `yaml:"secure-auth-token"`
-		AuthTokenName   string `yaml:"auth-token-name"`
+		ProfileRoute    string `yaml:"profile-route"`
+		ProfileTemplate string `yaml:"profile-template"`
+
+		AuthTtl             int    `yaml:"auth-ttl"`
+		SecureAuthToken     bool   `yaml:"secure-auth-token"`
+		AuthTokenName       string `yaml:"auth-token-name"`
+		SessionsRedisPrefix string `yaml:"sessions-redis-prefix"`
 
 		RedisHost string `yaml:"redis-host"`
 		RedisPwd  string `yaml:"redis-password"`
@@ -55,4 +64,16 @@ type Request struct {
 type Http struct {
 	Server  Server
 	Request Request
+}
+
+func (config *Http) GetFullUrl(url string, baseUrl ...string) string {
+	base := config.Server.BaseUrl
+	if len(baseUrl) > 0 {
+		base = baseUrl[0]
+	}
+	overallUrl := strings.TrimPrefix(url, "/")
+	if !strings.HasPrefix(url, base) {
+		overallUrl = fmt.Sprintf("%s/%s", base, url)
+	}
+	return fmt.Sprintf("/%s", overallUrl)
 }

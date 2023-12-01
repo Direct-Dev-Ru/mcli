@@ -154,7 +154,8 @@ func signIn(w http.ResponseWriter, r *http.Request, template *template.Template,
 			return
 		}
 		session := NewSession(cookieName, router.KVStore)
-		session.Expire = time.Duration(timeExeed)
+		// fmt.Printf("%v, %T\n", HttpConfig.Server.Auth.AuthTtl, HttpConfig.Server.Auth.AuthTtl)
+		session.Expire = time.Duration(HttpConfig.Server.Auth.AuthTtl)
 
 		var cred Credential = Credential{Expired: true, CredStore: router.CredentialStore}
 

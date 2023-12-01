@@ -83,7 +83,7 @@ func IsPathExistsAndCreate(pathParam string, create, asFile bool) (bool, string,
 }
 
 // TODO: Integrate this function into all import commands ( secrets, redis and so on)
-func processInput(inputArgs ...string) (map[string]interface{}, error) {
+func ProcessInput(inputArgs ...string) (map[string]interface{}, error) {
 	inputFile := inputArgs[0]
 
 	if !IsCommandInPipe() && len(inputFile) > 0 {
@@ -227,7 +227,7 @@ func processEntry(entry map[string]interface{}, globalPrefix string) (map[string
 	return entry, nil
 }
 
-func getHttpRequest(partialPath string) ([]byte, error) {
+func GetHttpRequest(partialPath string) ([]byte, error) {
 	partialPath = strings.TrimSpace(partialPath)
 
 	if strings.HasPrefix(partialPath, "http") {

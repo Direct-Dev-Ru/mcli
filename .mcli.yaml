@@ -35,11 +35,16 @@ http:
       signup-template: ./http-data/internal-templates/signup/signup.page.html
       signup-confirm-route: /confirm-registration
       signup-confirm-template: ./http-data/internal-templates/signup/signup.confirm.page.html
-      signup-redirect: /profile
+      signup-redirect: /users-profile
 
-      auth-ttl: 36000
+      profile-route: /users-profile
+      profile-template: ./http-data/internal-templates/profile/profile.page.html
+
+
+      auth-ttl: 3600
       secure-auth-token: true
       auth-token-name: session-token
+      sessions-redis-prefix: session-list
 
       redis-host: localhost:6379      
       redis-password: "{{$REDIS_PWD}}"

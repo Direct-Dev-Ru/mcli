@@ -1,0 +1,5 @@
+CONTAINER ID   IMAGE                           COMMAND                  CREATED        STATUS                     PORTS                                       NAMES
+14e19915c057   moby/buildkit:buildx-stable-1   "buildkitd"              11 days ago    Up 11 days                                                             buildx_buildkit_silly_elgamal0
+e118d0dbfa3a   kuznetcovay/ddru:v1.0.20.1      "docker-entrypoint.s…"   11 days ago    Exited (1) 11 days ago                                                 nice_hodgkin
+788245b5bac6   kuznetcovay/ddru:v1.0.20        "docker-entrypoint.s…"   11 days ago    Exited (0) 11 days ago                                                 stupefied_edison
+3b986347306a   kuznetcovay/cdddru:dev-v1.0.3   "/usr/local/bin/dock…"   5 weeks ago    Exited (255) 4 weeks ago   2375-2376/tcp                               cdddru

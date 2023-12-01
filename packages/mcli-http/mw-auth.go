@@ -2,7 +2,6 @@ package mclihttp
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -46,23 +45,32 @@ func (auth *Auth) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		ctx = context.WithValue(ctx, ContextKey("AuthUser"), nil)
 
 	} else {
-		fmt.Printf("%s cookie in context of route %s: %s\n", cookieName, req.URL, cookie)
 
-		// getting username from kvStore
-		rawUserName, ttl, err := auth.kvStore.GetRecordEx(cookie, "session-list")
+		// fmt.Printf("%s cookie in context of route %s: %s\n", cookieName, req.URL, cookie)
+
+		// getting user from kvStore
+		sessionPrefix := HttpConfig.Server.Auth.SessionsRedisPrefix
+		if sessionPrefix == "" {
+			sessionPrefix = "session-list"
+		}
+		rawUserName, ttl, err := auth.kvStore.GetRecordEx(cookie, sessionPrefix)
 		username := strings.TrimPrefix(strings.TrimSuffix(string(rawUserName), `"`), `"`)
 
 		// fmt.Println(username, ttl, err)
+
 		if ttl <= 0 && err != nil {
 			http.Error(res, "status unauthorized. no session found in store", http.StatusUnauthorized)
 			return
 		}
+		// TODO: if rest time less than 80% - redirect to prolongate route
 
+		// getting user raw data from kvstore
 		userRaw, err, ok := auth.userStore.GetUser(username)
 		if ok && err != nil {
 			http.Error(res, "status unauthorized. no user found in store", http.StatusUnauthorized)
 			return
 		}
+		// convert to Credential datatype
 		user, ok := userRaw.(*Credential)
 		if !ok {
 			http.Error(res, "status unauthorized. user bad type in store", http.StatusUnauthorized)
@@ -70,31 +78,27 @@ func (auth *Auth) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		}
 		user.Password = ""
 
-		fmt.Println("user to store in Context", user, err, ok)
+		// fmt.Println("user to store in Context", user, err, ok)
+
+		// processing different cases with user state
+
+		if !user.Confirmed {
+			http.Redirect(res, req, HttpConfig.GetFullUrl(HttpConfig.Server.Auth.SignUpConfirmRoute),
+				http.StatusTemporaryRedirect)
+			return
+		}
 
 		if user.Blocked {
-
-			baseUrl := HttpConfig.Server.BaseUrl
-			signUpUrl := HttpConfig.Server.Auth.SignUpRoute
-			overallSignUpUrl := strings.TrimPrefix(signUpUrl, "/")
-			if !strings.HasPrefix(signUpUrl, baseUrl) {
-				overallSignUpUrl = fmt.Sprintf("%s/%s", baseUrl, overallSignUpUrl)
-			}
-			overallSignUpUrl = fmt.Sprintf("/%s", overallSignUpUrl)
-
-			http.Redirect(res, req, overallSignUpUrl, http.StatusTemporaryRedirect)
+			// if user blocked - redirect to signup route
+			http.Redirect(res, req, HttpConfig.GetFullUrl(HttpConfig.Server.Auth.SignUpRoute),
+				http.StatusTemporaryRedirect)
 			return
 		}
 
 		if user.Expired {
-			baseUrl := HttpConfig.Server.BaseUrl
-			signInUrl := HttpConfig.Server.Auth.SignInRoute
-			overallSignInUrl := strings.TrimPrefix(signInUrl, "/")
-			if !strings.HasPrefix(signInUrl, baseUrl) {
-				overallSignInUrl = fmt.Sprintf("%s/%s", baseUrl, overallSignInUrl)
-			}
-			overallSignInUrl = fmt.Sprintf("/%s", overallSignInUrl)
-			http.Redirect(res, req, overallSignInUrl, http.StatusTemporaryRedirect)
+			// if password has expired - redirect to change password route
+			http.Redirect(res, req, HttpConfig.GetFullUrl(HttpConfig.Server.Auth.SignInChangeRoute),
+				http.StatusTemporaryRedirect)
 			return
 		}
 

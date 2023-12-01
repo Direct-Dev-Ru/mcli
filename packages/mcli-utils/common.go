@@ -1,6 +1,11 @@
 package mcliutils
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+	"sort"
+	"strings"
+)
 
 // TiifFunc- returns funcTrue or funcFalse result as interface{}, error tulip accordinly by the ifCase bool param
 // args ...interface{} is optional args for true and false functions
@@ -114,4 +119,53 @@ func StructToMapStringValues(input interface{}) map[string]*string {
 	}
 
 	return result
+}
+
+func PrintAsTable(data map[string][]string, columnDivider string) {
+
+	// Find the maximum length for each column
+	columnWidths := make(map[string]int)
+	var keys []string
+	var rowCount int = 0
+	for key, colValues := range data {
+		// Add the key to the list if it's not already present
+		if _, exists := columnWidths[key]; !exists {
+			keys = append(keys, key)
+		}
+		if len(colValues) > rowCount {
+			rowCount = len(colValues)
+		}
+		// Update the column width if the current value is wider
+		for _, value := range colValues {
+			if len(value) > columnWidths[key] {
+				columnWidths[key] = len(value)
+			}
+		}
+	}
+
+	// Sort the keys to maintain consistent order
+	sort.Strings(keys)
+
+	// Calculate the total width of the header
+	totalHeaderWidth := 0
+	for _, key := range keys {
+		totalHeaderWidth += columnWidths[key] + len(columnDivider)
+	}
+
+	// Print header
+	headerDivider := strings.Repeat(" ", totalHeaderWidth-1) // Subtract 1 to match the last column
+	for _, key := range keys {
+		fmt.Printf("%-*s%s", columnWidths[key]+len(columnDivider), key, columnDivider)
+	}
+	fmt.Println() // Move to the next line after the header
+	_ = headerDivider
+	fmt.Println(headerDivider)
+
+	// Print data rows
+	for i := 0; i < rowCount; i++ {
+		for _, key := range keys {
+			fmt.Printf("%-*s%s", columnWidths[key]+len(columnDivider), data[key][i], columnDivider)
+		}
+		fmt.Println() // Move to the next line after each row
+	}
 }

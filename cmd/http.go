@@ -219,23 +219,19 @@ var httpCmd = &cobra.Command{
 				Elogger.Error().Msg(err.Error())
 			}
 
-			// get path to signin template
+			// process route to signin template
 			signInTmplPath, err := getFullPath(Config.Http.Server.Auth.SignInTemplate)
 			if err != nil {
 				Elogger.Error().Msg(err.Error())
 				signInTmplPath = ""
 			}
-
 			signInHandler, err := mcli_http.GetSignInHandler(signInTmplPath, baseUrl,
 				Config.Http.Server.Auth.SignInRoute, Config.Http.Server.Auth.SignInRedirect)
-			_ = signInHandler
 			if err != nil {
 				Elogger.Fatal().Msgf("error reading file: %v", err)
 			}
 			r.AddRouteWithHandler(Config.Http.Server.Auth.SignInRoute, mcli_http.Prefix,
 				signInHandler)
-			// r.AddRouteWithHandler(Config.Http.Server.Auth.SignInRoute, mcli_http.Prefix,
-			// 	mcli_http.SignIn)
 
 			// r.PrintRoutes()
 			// store := mcli_http.UserRedisStore{RedisPool: mcli_http.RedisPool, CollectionPrefix: "userlist"}

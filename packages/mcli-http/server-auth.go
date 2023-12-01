@@ -16,10 +16,8 @@ import (
 
 var cookieName string = "session-token"
 var (
-	s *sc.SecureCookie
-	// timeExeed     = HttpConfig.Server.Auth.AuthTtl
-	timeExeed     = 36000
-	encodeCookies = HttpConfig.Server.Auth.SecureAuthToken
+	s             *sc.SecureCookie
+	encodeCookies = false
 )
 
 func SetSecretCookieOptions(doEncoding bool, cookieName string, cookieHash, cookieBlock []byte) {
@@ -37,6 +35,7 @@ type Credential struct {
 	Username    string   `json:"username"`
 	Password    string   `json:"password"`
 	Expired     bool     `json:"expired,string,omitempty"`
+	Confirmed   bool     `json:"confirmed,string,omitempty"`
 	Blocked     bool     `json:"blocked,string,omitempty"`
 	FirstName   string   `json:"first-name"`
 	LastName    string   `json:"last-name"`
@@ -132,11 +131,15 @@ func (session *Session) Authenticate(cred Credential) (bool, error) {
 	if !ok {
 		return ok, fmt.Errorf("authenticate error: %v", err)
 	}
-	err = session.Store.SetRecordEx(session.Token, cred.Username, int(session.Expire), "session-list")
-
+	sessionPrefix := HttpConfig.Server.Auth.SessionsRedisPrefix
+	if sessionPrefix == "" {
+		sessionPrefix = "session-list"
+	}
+	err = session.Store.SetRecordEx(session.Token, cred.Username, int(session.Expire), sessionPrefix)
 	if err != nil {
 		return false, fmt.Errorf("store session token error: %v", err)
 	}
+
 	return true, nil
 }
 

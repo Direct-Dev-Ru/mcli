@@ -103,14 +103,13 @@ var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	// fmt.Println()
 }
 
-// rootCmd represents the base command when cviewed without any subcommands
+// rootCmd represents the base command when running without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "mcli",
-	Short: "cli for some operations in Linux",
-	Long: `Yes there is an aliases is ...
-But standalone executable module sometimes 
-is more helpful than .bashrc file`,
-
+	Short: "cli tool for some operations in Linux and Windows",
+	Long: `Yes there is an standart tools is 
+But self made is more clearer and more manageble
+`,
 	Run: rootCmdRunFunc,
 }
 
@@ -129,12 +128,24 @@ func initConfig() {
 	var err error
 
 	// Check if piped to StdIn
+
 	info, _ := os.Stdin.Stat()
 	GlobalMap["IS_COMMAND_IN_PIPE"] = "CommandNotInPipe"
-	if (info.Mode()&os.ModeNamedPipe) == os.ModeNamedPipe || info.Size() > 0 {
-		GlobalMap["IS_COMMAND_IN_PIPE"] = "CommandInPipe"
+	if ((info.Mode()&os.ModeNamedPipe) == os.ModeNamedPipe || info.Size() > 0) || len(InputDataFromFile) > 0 {
+		var r *bufio.Reader
 		var inputSlice []string = []string{}
-		r := bufio.NewReader(os.Stdin)
+		if len(InputDataFromFile) > 0 {
+			file, err := os.Open(InputDataFromFile)
+			if err != nil {
+				Elogger.Fatal().Msgf("Input data file %s do not exists or not accessible", InputDataFromFile)
+			}
+			defer file.Close()
+			r = bufio.NewReader(file)
+			GlobalMap["IS_COMMAND_IN_PIPE"] = "CommandNotInPipeInputFromFile"
+		} else {
+			GlobalMap["IS_COMMAND_IN_PIPE"] = "CommandInPipe"
+			r = bufio.NewReader(os.Stdin)
+		}
 		for {
 			input, err := r.ReadString('\n')
 			if input != "" {
@@ -145,7 +156,6 @@ func initConfig() {
 			}
 		}
 		Input.InputSlice = inputSlice
-		// Input.DivideInputSlice("||", ' ')
 	}
 
 	// read config file
@@ -248,8 +258,10 @@ func initConfig() {
 		}
 	}
 
-	fmt.Println("-------------")
-	fmt.Println("Global Map :", GlobalMap)
-	fmt.Println("-------------")
-	fmt.Println("Global Cache :", Config.Cache)
+	// fmt.Println("-------------")
+	// fmt.Println("Global Map :", GlobalMap)
+	Ilogger.Trace().Msgf("Global Map: %v", GlobalMap)
+	// fmt.Println("-------------")
+	// fmt.Println("Global Cache :", Config.Cache)
+	Ilogger.Trace().Msgf("Global Cache: %v", Config.Cache)
 }

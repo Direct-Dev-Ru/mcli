@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	mcliutils "mcli/packages/mcli-utils"
+	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/spf13/cobra"
 )
@@ -24,7 +27,7 @@ type InputData struct {
 
 type OutputData struct {
 	OutputSlice []string
-	OutputMap   map[string]interface{}
+	OutputMap   map[string][]string
 	OutputTable []map[string]string
 }
 
@@ -124,6 +127,169 @@ func (d InputData) DivideInputSlice(divider string, columnBorder rune) ([]string
 
 	// fmt.Println(outSlice)
 	return outSlice, nil
+}
+
+func (d *InputData) SplitByOneOrMoreSpaces(skipLines int, removeOneSymbolLines bool,
+	useFirstLineAsHeader bool, useOneSpaceAsSplitter bool) (map[string][]string, error) {
+
+	var inputLines [][]rune = make([][]rune, 0)
+	// convert input lines to [][]rune
+	if skipLines < 0 {
+		skipLines = 0
+	}
+	for i := skipLines; i < len(d.InputSlice); i++ {
+		inputLine := d.InputSlice[i]
+		if mcliutils.HasIdenticalSymbols(inputLine) {
+			continue
+		}
+		inputLines = append(inputLines, []rune(inputLine))
+	}
+
+	var fields []string
+	var positions []int
+	inField := true
+
+	maxLengthLine := 0
+	maxLineIdx := 0
+	for idx, line := range inputLines {
+		if len(line) > maxLengthLine {
+			maxLengthLine = len(line)
+			maxLineIdx = idx
+		}
+	}
+	// fmt.Println(maxLineIdx)
+	// fmt.Println(inputLines[maxLineIdx])
+	baseLine := inputLines[maxLineIdx]
+
+	// fmt.Println(baseLine, len(baseLine), maxLineIdx, maxLengthLine)
+	// fmt.Println(string(baseLine), len(string(baseLine)), maxLineIdx, maxLengthLine)
+
+	prevPos := 0
+	isColumnBorderCandidate := false
+	isColumnBorder := false
+	fieldCandidate := ""
+	for pos, char := range baseLine {
+
+		if unicode.IsSpace(char) {
+			if inField {
+				// fmt.Println(pos)
+				if !isColumnBorderCandidate {
+					isColumnBorderCandidate = true
+					for _, line := range inputLines {
+						if len(line) > pos && !unicode.IsSpace(line[pos]) {
+							isColumnBorderCandidate = false
+							break
+						}
+					}
+					if isColumnBorderCandidate {
+						continue
+					}
+				}
+				if isColumnBorderCandidate {
+					isColumnBorder = true
+
+					for _, line := range inputLines {
+						if !unicode.IsSpace(line[pos]) {
+							isColumnBorder = false
+							break
+						}
+					}
+					if !isColumnBorder {
+						continue
+					}
+
+				}
+				// fmt.Println(isColumnBorder, inField, prevPos)
+
+				if isColumnBorder && inField {
+					fieldCandidate = ""
+					if useFirstLineAsHeader {
+						fieldCandidate = strings.TrimSpace(string(inputLines[0][prevPos : pos+1]))
+					}
+
+					if len(fieldCandidate) > 0 || !useFirstLineAsHeader {
+						// fmt.Println(fieldCandidate, inField)
+						inField = false
+						if useFirstLineAsHeader {
+							fields = append(fields, fieldCandidate)
+						} else {
+							fields = append(fields, "Column"+mcliutils.PadLeft(strconv.Itoa(len(fields)+1), 2, '0'))
+						}
+						positions = append(positions, pos)
+						prevPos = pos
+						isColumnBorder = false
+						isColumnBorderCandidate = false
+					}
+				}
+			} else {
+				for _, line := range inputLines {
+					if !unicode.IsSpace(line[pos]) {
+						inField = true
+						break
+					}
+				}
+				continue
+			}
+		} else {
+			isColumnBorderCandidate = false
+			isColumnBorder = false
+			inField = true
+		}
+	}
+	// fmt.Println(positions[len(positions)-1])
+
+	if useFirstLineAsHeader {
+		fieldCandidate = strings.TrimSpace(string(inputLines[0][positions[len(positions)-1]+1:]))
+	}
+	if len(fieldCandidate) > 0 || !useFirstLineAsHeader {
+		// fmt.Println(fieldCandidate, inField)
+		if useFirstLineAsHeader {
+			fields = append(fields, fieldCandidate)
+		} else {
+			fields = append(fields, "Column"+mcliutils.PadLeft(strconv.Itoa(len(fields)+1), 2, '0'))
+		}
+		// positions = append(positions, 6500000)
+	}
+
+	table := make(map[string][]string, 0)
+
+	// Initialize the map with empty slices
+	for _, col := range fields {
+		table[col] = make([]string, 0)
+	}
+
+	for lnum, line := range inputLines {
+		// fmt.Println("-----------------------", lnum, "--------------------")
+		// fmt.Println(string(line))
+		// markerString := createStringWithCaretPositions(positions, len(line))
+		// fmt.Println(markerString)
+		if useFirstLineAsHeader && lnum == 0 {
+			continue
+		}
+
+		prev := 0
+		fieldValue := ""
+		for fnum, pos := range positions {
+			fieldValue = strings.TrimSpace(string(line[prev:pos]))
+			prev = pos
+			// fmt.Println(fnum, headers[fnum], "\t\t", fieldValue)
+			table[fields[fnum]] = append(table[fields[fnum]], fieldValue)
+		}
+		fieldValue = strings.TrimSpace(string(line[prev:]))
+		// fmt.Println(len(positions), headers[len(positions)], "\t\t", fieldValue)
+		table[fields[len(positions)]] = append(table[fields[len(positions)]], fieldValue)
+
+	}
+	d.InputMap = table
+	return table, nil
+}
+
+func (d *InputData) PrintAsTable(columnDivider string) {
+	mcliutils.PrintAsTable(d.InputMap, columnDivider)
+}
+
+func (d *OutputData) PrintAsTable(columnDivider string) {
+	mcliutils.PrintAsTable(d.OutputMap, columnDivider)
 }
 
 func (d InputData) GetJoinedString(strJoin string, removeLineBreaks bool) (string, error) {

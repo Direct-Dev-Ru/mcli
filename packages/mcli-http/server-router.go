@@ -21,6 +21,7 @@ type Router struct {
 	errorLog        zerolog.Logger
 	staticHandler   http.Handler
 	routes          []*Route
+	mapRoutes       map[RouteType]map[string]*Route
 	middleware      []mcli_interface.Middleware
 	finalHandler    http.Handler
 	KVStore         mcli_interface.KVStorer
@@ -51,13 +52,16 @@ func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, Elogger zerolo
 		// fmt.Println(fileServerResultPath)
 		fileServer = http.FileServer(http.Dir(fileServerResultPath))
 	}
+	mapRoutes := make(map[RouteType]map[string]*Route, 3)
+	mapRoutes[Equal] = make(map[string]*Route, 0)
+	mapRoutes[Prefix] = make(map[string]*Route, 0)
+	mapRoutes[Regexp] = make(map[string]*Route, 0)
 
 	return &Router{infoLog: iLog, errorLog: Elogger, sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer, sBaseURL: baseURL,
-		middleware: make([]mcli_interface.Middleware, 0, 3), routes: make([]*Route, 0, 3)}
+		middleware: make([]mcli_interface.Middleware, 0, 3), routes: make([]*Route, 0, 3), mapRoutes: mapRoutes}
 }
 
 func (r *Router) PrintRoutes() {
-
 	for _, route := range r.routes {
 		fmt.Println(route)
 	}
@@ -108,15 +112,39 @@ func (r *Router) AddRoute(route *Route) error {
 	}
 	route.pattern = r.getResultPattern(route.pattern)
 	r.routes = append(r.routes, route)
+
+	switch route.routeType {
+	case Equal:
+		r.setRouterMapsByMethod(route)
+	case Prefix:
+		r.setRouterMapsByMethod(route)
+	case Regexp:
+		r.setRouterMapsByMethod(route)
+	}
+
 	return nil
+}
+
+func (r *Router) setRouterMapsByMethod(route *Route) {
+	switch route.method {
+	case http.MethodGet:
+		r.mapRoutes[route.routeType][http.MethodGet] = route
+	case http.MethodPost:
+		r.mapRoutes[route.routeType][http.MethodPost] = route
+	case http.MethodPut:
+		r.mapRoutes[route.routeType][http.MethodPut] = route
+	case http.MethodDelete:
+		r.mapRoutes[route.routeType][http.MethodDelete] = route
+	default:
+		r.mapRoutes[route.routeType]["General"] = route
+	}
 }
 
 func (r *Router) getResultPattern(partial string) string {
 	if len(r.sBaseURL) == 0 {
 		return partial
 	}
-	partial = strings.TrimPrefix(partial, "/")
-	return "/" + r.sBaseURL + "/" + partial
+	return HttpConfig.GetFullUrl(partial, r.sBaseURL)
 }
 
 func (r *Router) AddRouteWithHandler(pattern string, routeType RouteType, f HandleFunc) error {
@@ -124,7 +152,11 @@ func (r *Router) AddRouteWithHandler(pattern string, routeType RouteType, f Hand
 		f = http.NotFound
 	}
 	route := NewRouteWithHandler(r.getResultPattern(pattern), routeType, f)
-	r.routes = append(r.routes, route)
+	// r.routes = append(r.routes, route)
+	err := r.AddRoute(route)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
