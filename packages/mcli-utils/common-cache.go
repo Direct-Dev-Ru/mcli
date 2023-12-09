@@ -30,8 +30,8 @@ type CCache struct {
 
 type CacheFunc func(params ...interface{}) (interface{}, error)
 
-func NewCCache(ttl int, f CacheFunc) *CCache {
-	return &CCache{Ttl: ttl, Cache: make(map[string]*cacheEntry), Func: f}
+func NewCCache(ttl int, maxEntries int, f CacheFunc) *CCache {
+	return &CCache{Ttl: ttl, MaxEntries: maxEntries, Cache: make(map[string]*cacheEntry), Func: f}
 }
 
 type CCacheEntries []wrapCacheEntry
@@ -40,6 +40,21 @@ func (c CCacheEntries) Len() int      { return len(c) }
 func (c CCacheEntries) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
 func (c CCacheEntries) Less(i, j int) bool {
 	return c[i].e.Count*uint(c[i].e.TimeStamp.Unix()) < c[j].e.Count*uint(c[j].e.TimeStamp.Unix())
+}
+
+func (cc *CCache) Get(key string) (interface{}, error) {
+	var entry *cacheEntry
+
+	cc.mu.RLock()
+	entry, ok := cc.Cache[key]
+	cc.mu.RUnlock()
+	if ok {
+		entry.mu.Lock()
+		entry.Count++
+		entry.mu.Unlock()
+		return entry.Value, nil
+	}
+	return nil, fmt.Errorf("key %s doesn't exists", key)
 }
 
 func (cc *CCache) GetAndSetIfNotExists(key string, value ...interface{}) (interface{}, error) {
@@ -82,6 +97,9 @@ func (cc *CCache) GetAndSetIfNotExists(key string, value ...interface{}) (interf
 	cc.mu.Lock()
 	entry.TimeStamp = time.Now()
 	cc.Cache[key] = entry
+	if len(cc.Cache) > int(float64(cc.MaxEntries)*1.2) {
+		cc.Optimize(true)
+	}
 	cc.mu.Unlock()
 
 	return entry.Value, nil
@@ -110,8 +128,11 @@ func (cc *CCache) Set(key string, value ...interface{}) (interface{}, error) {
 
 	cc.mu.Lock()
 	cc.Cache[key] = entry
+	if len(cc.Cache) > int(float64(cc.MaxEntries)*1.2) {
+		cc.Optimize(true)
+	}
+	// fmt.Println(cc.Cache)
 	cc.mu.Unlock()
-
 	return entry.Value, nil
 }
 
@@ -126,7 +147,7 @@ func (cc *CCache) Remove(key string) error {
 	return nil
 }
 
-func (cc *CCache) Optimize() bool {
+func (cc *CCache) Optimize(inLockMode bool) bool {
 
 	ok := false
 	currentTime := time.Now()
@@ -136,20 +157,28 @@ func (cc *CCache) Optimize() bool {
 		for key, entry := range cc.Cache {
 			expirationTime := entry.TimeStamp.Add(time.Millisecond * time.Duration(cc.Ttl))
 			if currentTime.After(expirationTime) {
-				cc.Remove(key)
+				if inLockMode {
+					delete(cc.Cache, key)
+				} else {
+					cc.Remove(key)
+				}
 				ok = true
 				continue
 			}
 			wrapCacheEntries = append(wrapCacheEntries, wrapCacheEntry{key: key, e: entry})
 		}
 	}
-	// if we need save only max usable enries
-	if cc.MaxEntries > 0 {
+	// if we need save only max usable entries
+	if cc.MaxEntries > 0 && len(cc.Cache) >= limit {
 		sort.Sort(sort.Reverse(wrapCacheEntries))
 		_ = limit
 		for idx, e := range wrapCacheEntries {
-			if limit < (idx + 1) {
-				cc.Remove(e.key)
+			if (idx + 1) > cc.MaxEntries {
+				if inLockMode {
+					delete(cc.Cache, e.key)
+				} else {
+					cc.Remove(e.key)
+				}
 				ok = true
 			}
 		}

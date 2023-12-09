@@ -203,7 +203,7 @@ func initConfig() {
 		}
 	}
 
-	Config.Cache = mcli_utils.NewCCache(0, nil)
+	Config.Cache = mcli_utils.NewCCache(0, 0, nil)
 
 	// read or create key for internal secrets
 	var rootKeySecretStorePath = filepath.Dir(Config.Common.InternalKeyFilePath)

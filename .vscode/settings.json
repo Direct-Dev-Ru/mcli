@@ -3,5 +3,7 @@
     "workbench.colorTheme": "Jellybeans+",
     "workbench.preferredDarkColorTheme": "GitHub Dark Dimmed",
     "workbench.preferredHighContrastColorTheme": "GitHub Dark High Contrast",
-    
+    "go.delveConfig": {
+        "debugAdapter": "legacy"
+    },
 }

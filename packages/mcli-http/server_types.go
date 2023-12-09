@@ -17,6 +17,7 @@ type Server struct {
 	TmplPrefix   string          `yaml:"tmpl-prefix"`
 	TmplDataPath string          `yaml:"tmpl-datapath"`
 	Templates    []TemplateEntry `yaml:"templates"`
+	RouterV2     bool
 
 	RootPage struct {
 		RootPageTemplate     string `yaml:"rootpage-template"`
@@ -72,8 +73,10 @@ func (config *Http) GetFullUrl(url string, baseUrl ...string) string {
 		base = baseUrl[0]
 	}
 	overallUrl := strings.TrimPrefix(url, "/")
-	if !strings.HasPrefix(url, base) {
-		overallUrl = fmt.Sprintf("%s/%s", base, url)
+	if !strings.HasPrefix(overallUrl, base) {
+		overallUrl = fmt.Sprintf("%s/%s", base, overallUrl)
 	}
+	// fmt.Println(base, url, baseUrl)
+	// fmt.Println(fmt.Sprintf("/%s", overallUrl))
 	return fmt.Sprintf("/%s", overallUrl)
 }

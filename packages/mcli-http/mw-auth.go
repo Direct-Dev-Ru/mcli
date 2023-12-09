@@ -18,7 +18,7 @@ type Auth struct {
 	kvStore     mcli_interface.KVStorer
 }
 
-type ContextKey string
+// type ContextKey string
 
 func NewAuth(userStore mcli_interface.CredentialStorer, kvStore mcli_interface.KVStorer, isEnc bool) *Auth {
 
@@ -27,7 +27,7 @@ func NewAuth(userStore mcli_interface.CredentialStorer, kvStore mcli_interface.K
 
 func (auth *Auth) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
-	_, ok := req.Context().Value(ContextKey("router")).(*Router)
+	_, ok := req.Context().Value(mcli_interface.ContextKey("router")).(*Router)
 	if !ok {
 		http.Error(res, "Status Unauthorized: No router in Context", http.StatusUnauthorized)
 		return
@@ -41,8 +41,8 @@ func (auth *Auth) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	cookie, err := auth.GetCookie(req, cookieName)
 	// if no cookieName = "session-token" then sets noAuth in context
 	if len(cookie) == 0 || err != nil {
-		ctx = context.WithValue(ctx, ContextKey("IsAuth"), false)
-		ctx = context.WithValue(ctx, ContextKey("AuthUser"), nil)
+		ctx = context.WithValue(ctx, mcli_interface.ContextKey("IsAuth"), false)
+		ctx = context.WithValue(ctx, mcli_interface.ContextKey("AuthUser"), nil)
 
 	} else {
 
@@ -102,8 +102,8 @@ func (auth *Auth) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		ctx = context.WithValue(ctx, ContextKey("IsAuth"), true)
-		ctx = context.WithValue(ctx, ContextKey("AuthUser"), user)
+		ctx = context.WithValue(ctx, mcli_interface.ContextKey("IsAuth"), true)
+		ctx = context.WithValue(ctx, mcli_interface.ContextKey("AuthUser"), user)
 	}
 	auth.Inner.ServeHTTP(res, req.WithContext(ctx))
 }

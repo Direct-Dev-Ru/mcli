@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	mcli_interface "mcli/packages/mcli-interface"
 	"os"
 
 	// mcli_utils "mcli/packages/mcli-utils"
@@ -148,7 +149,7 @@ func signIn(w http.ResponseWriter, r *http.Request, template *template.Template,
 	}
 
 	if r.Method == http.MethodPost {
-		router, ok := r.Context().Value(ContextKey("router")).(*Router)
+		router, ok := r.Context().Value(mcli_interface.ContextKey("router")).(*Router)
 		if !ok {
 			http.Error(w, "no router object in context", http.StatusInternalServerError)
 			return

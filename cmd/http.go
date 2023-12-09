@@ -34,6 +34,7 @@ var httpCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		var port, baseUrl, staticPath, staticPrefix, tlsKey, tlsCert string
 		var timeout int64 = 0
+		var routerV2 bool
 
 		port, _ = cmd.Flags().GetString("port")
 		isPortSet := cmd.Flags().Lookup("port").Changed
@@ -48,8 +49,11 @@ var httpCmd = &cobra.Command{
 		tlsCert, _ = cmd.Flags().GetString("tls-cert")
 		timeout, _ = cmd.Flags().GetInt64("timeout")
 		isTimeoutSet := cmd.Flags().Lookup("timeout").Changed
+		routerV2, _ = cmd.Flags().GetBool("v2-router")
 
 		// process configuration or setup defaults
+		Config.Http.Server.RouterV2 = routerV2
+
 		if !isPortSet && len(Config.Http.Server.Port) > 0 {
 			port = Config.Http.Server.Port
 		}
@@ -77,8 +81,8 @@ var httpCmd = &cobra.Command{
 		// mcli_http.InitMainRoutes(staticPath, staticPrefix)
 
 		mcli_http.HttpConfig = Config.Http
-
-		r := mcli_http.NewRouter(staticPath, staticPrefix, Ilogger, Elogger, mcli_http.RouterOptions{BaseUrl: baseUrl})
+		rOpts := mcli_http.RouterOptions{BaseUrl: baseUrl}
+		r := mcli_http.NewRouter(staticPath, staticPrefix, Ilogger, Elogger, &rOpts)
 
 		// root route
 
@@ -116,9 +120,17 @@ var httpCmd = &cobra.Command{
 		}
 		r.SetTemplatesRoutes(ctx, serverTemplates)
 
-		r.AddRouteWithHandler("/echo", mcli_http.Prefix, mcli_http.Http_Echo)
+		r.AddRouteWithHandler("/echo", mcli_http.Equal, mcli_http.Http_Echo)
+
+		r.AddRouteWithHandler(`/regexp-test/([a-zA-Z]+)/(\d+)`, mcli_http.Regexp, mcli_http.Regexp_Test)
 
 		// setting up middleware
+
+		err = r.Use(mcli_http.NewCORS(Ilogger, Elogger, ""))
+		if err != nil {
+			Elogger.Error().Err(err)
+		}
+
 		// err := r.Use(mcli_http.NewLogger(Ilogger, Elogger, mcli_http.LoggerOpts{ShowUrl: true, ShowIp: false}))
 		// if err != nil {
 		// 	Elogger.Error().Err(err)
@@ -319,4 +331,5 @@ func init() {
 	httpCmd.Flags().String("tmpl-datapath", tmplDataPath, "Specify relative or absolute path to bson or json files for templates")
 	httpCmd.Flags().String("tls-cert", "", "Specify tls-cert file")
 	httpCmd.Flags().String("tls-key", "", "Specify tls-key file")
+	httpCmd.Flags().BoolP("v2-router", "R", true, "Specify if use experimental v2 router")
 }

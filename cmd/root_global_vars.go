@@ -19,7 +19,7 @@ var InputDataFromFile string
 var RootPath string
 
 var GlobalMap map[string]string = make(map[string]string)
-var ClobalCache mcli_utils.CCache = *mcli_utils.NewCCache(0, nil)
+var ClobalCache mcli_utils.CCache = *mcli_utils.NewCCache(0, 0, nil)
 
 var Version string = "0.2.0"
 var Input InputData = InputData{InputSlice: []string{},

@@ -22,24 +22,22 @@ func (ds DefaultSerializer) Unmarshal(data []byte, v any) error {
 }
 
 type SecretEntry struct {
-	Name        string
-	Login       string
-	Secret      string
-	Description string
-	CreatedAt   time.Time
-	store       *SecretsEntries
+	SecretPlainEntry
+	store *SecretsEntries
 }
 type SecretPlainEntry struct {
 	Name        string
 	Login       string
 	Secret      string
 	Description string
+	ExtraData   map[string]string
+	UpdatedAt   time.Time
 	CreatedAt   time.Time
 }
 
 func (se *SecretEntry) GetPlainEntry() SecretPlainEntry {
 	return SecretPlainEntry{Name: se.Name, Login: se.Login, Secret: se.Secret,
-		Description: se.Description, CreatedAt: se.CreatedAt}
+		Description: se.Description, CreatedAt: se.CreatedAt, UpdatedAt: se.UpdatedAt, ExtraData: se.ExtraData}
 }
 
 func (se *SecretEntry) encodeSecret(phrase string, keyPath string, isSalted bool) (string, error) {
@@ -111,6 +109,7 @@ func (se *SecretEntry) Update(seSource SecretEntry) error {
 type SecretsEntries struct {
 	sync.Mutex
 	Secrets   []SecretEntry
+	SecretMap map[string]SecretEntry
 	Wrt       mcli_interface.SecretsWriter
 	Rdr       mcli_interface.SecretsReader
 	Srl       mcli_interface.SecretsSerializer
@@ -127,7 +126,8 @@ func NewSecretsEntries(rd mcli_interface.SecretsReader, wr mcli_interface.Secret
 	if ser == nil {
 		ser = DefaultSer
 	}
-	return SecretsEntries{Secrets: make([]SecretEntry, 0, 10), Wrt: wr, Rdr: rd, Srl: ser, Cypher: cyp}
+	return SecretsEntries{Secrets: make([]SecretEntry, 0, 10),
+		SecretMap: make(map[string]SecretEntry, 0), Wrt: wr, Rdr: rd, Srl: ser, Cypher: cyp}
 }
 
 func (ses *SecretsEntries) NewEntry(name, login, descr string) (SecretEntry, error) {
@@ -136,8 +136,9 @@ func (ses *SecretsEntries) NewEntry(name, login, descr string) (SecretEntry, err
 	if len(name) == 0 {
 		return SecretEntry{}, fmt.Errorf("add secret entry: name is empty")
 	}
-	secretEntry := SecretEntry{Name: name, Description: descr,
-		Login: login, Secret: "", CreatedAt: time.Now(), store: ses}
+	spe := SecretPlainEntry{Name: name, Description: descr, ExtraData: make(map[string]string, 0),
+		Login: login, Secret: "", CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	secretEntry := SecretEntry{SecretPlainEntry: spe, store: ses}
 	return secretEntry, nil
 }
 

@@ -12,7 +12,7 @@ func TestCCache_TestParallel(t *testing.T) {
 	var err error
 	var wg sync.WaitGroup
 
-	cc := NewCCache(10000, func(params ...interface{}) (interface{}, error) {
+	cc := NewCCache(10000, 0, func(params ...interface{}) (interface{}, error) {
 		if len(params) == 0 {
 			return nil, fmt.Errorf("no params provided")
 		}
@@ -58,7 +58,7 @@ func TestCCache_TestParallel(t *testing.T) {
 }
 
 func TestCCache_GetAndSetIfNotExists(t *testing.T) {
-	cc := NewCCache(1000, nil)
+	cc := NewCCache(1000, 0, nil)
 
 	// Test case 1: Get non-existent key
 	_, err := cc.GetAndSetIfNotExists("key1")
@@ -104,7 +104,7 @@ func TestCCache_GetAndSetIfNotExists(t *testing.T) {
 }
 
 func TestCCache_Remove(t *testing.T) {
-	cc := NewCCache(1000, nil)
+	cc := NewCCache(1000, 0, nil)
 
 	// Test case 1: Remove non-existent key
 	err := cc.Remove("key1")
@@ -131,7 +131,7 @@ func TestCCache_Remove(t *testing.T) {
 }
 
 func TestCCache_Optimize(t *testing.T) {
-	cc := NewCCache(100, nil)
+	cc := NewCCache(100, 0, nil)
 	cc.MaxEntries = 3
 	// Set some values
 	cc.GetAndSetIfNotExists("key1", "value1")
@@ -161,7 +161,7 @@ func TestCCache_Optimize(t *testing.T) {
 	}
 
 	// Optimize cache
-	_ = cc.Optimize()
+	_ = cc.Optimize(false)
 	if len(cc.Cache) > 3 {
 		t.Errorf("Expected cache optimization to be successful, and count of entries less then 3, got count equal to len(cc.Cache)")
 	}
@@ -169,7 +169,7 @@ func TestCCache_Optimize(t *testing.T) {
 	// Sleep for a while to allow entries to expire
 	time.Sleep(200 * time.Millisecond)
 
-	_ = cc.Optimize()
+	_ = cc.Optimize(false)
 
 	// Verify that expired entries are removed
 	if _, err := cc.GetAndSetIfNotExists("key1"); err == nil {
