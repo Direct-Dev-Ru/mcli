@@ -1,6 +1,3 @@
-[submodule "plugins/default_plugins"]
-	path = plugins/default_plugins
-	url = git@gitlab.com:Direct-Dev-Ru/http_go_plugins.git
 [submodule "plugins/http_default_plugins"]
 	path = plugins/http_default_plugins
 	url = git@gitlab.com:Direct-Dev-Ru/http_go_plugins.git
