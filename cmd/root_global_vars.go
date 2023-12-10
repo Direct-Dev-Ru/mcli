@@ -16,6 +16,9 @@ var OS string
 var WgGlb sync.WaitGroup
 var ConfigPath string
 var InputDataFromFile string
+var RedisHost string
+var RedisPort string
+var RedisPwd string
 var RootPath string
 
 var GlobalMap map[string]string = make(map[string]string)

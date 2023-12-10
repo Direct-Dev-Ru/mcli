@@ -158,8 +158,37 @@ func initConfig() {
 		Input.InputSlice = inputSlice
 	}
 
-	// read config file
+	// process root parameters
 	configFile, _ := rootCmd.Flags().GetString("config")
+
+	RedisHost, _ = rootCmd.Flags().GetString("redis-host")
+	isRedisHostSet := rootCmd.Flags().Lookup("redis-host").Changed
+	if !isRedisHostSet && len(os.Getenv("REDIS_HOST")) > 0 {
+		RedisHost = os.Getenv("REDIS_HOST")
+	}
+	if isRedisHostSet || len(os.Getenv("REDIS_HOST")) == 0 {
+		os.Setenv("REDIS_HOST", RedisHost)
+	}
+
+	RedisPort, _ = rootCmd.Flags().GetString("redis-port")
+	isRedisPortSet := rootCmd.Flags().Lookup("redis-port").Changed
+	if !isRedisPortSet && len(os.Getenv("REDIS_PORT")) > 0 {
+		RedisHost = os.Getenv("REDIS_PORT")
+	}
+	if isRedisPortSet || len(os.Getenv("REDIS_PORT")) == 0 {
+		os.Setenv("REDIS_PORT", RedisPort)
+	}
+
+	RedisPwd, _ = rootCmd.Flags().GetString("redis-password")
+	isRedisPwdSet := rootCmd.Flags().Lookup("redis-password").Changed
+	if !isRedisPwdSet && len(os.Getenv("REDIS_PWD")) > 0 {
+		RedisHost = os.Getenv("REDIS_PWD")
+	}
+	if isRedisPwdSet || len(os.Getenv("REDIS_PWD")) == 0 {
+		os.Setenv("REDIS_PWD", RedisPwd)
+	}
+
+	// read config file
 	if len(configFile) == 0 {
 		configFile = GlobalMap["DefaultConfigPath"]
 	}

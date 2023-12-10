@@ -15,7 +15,7 @@ const (
 	Regexp
 )
 
-type HandleFunc func(http.ResponseWriter, *http.Request)
+type HandlerFunc func(http.ResponseWriter, *http.Request)
 
 // Route
 type Route struct {
@@ -24,7 +24,7 @@ type Route struct {
 	regexp    *regexp.Regexp
 	routeType RouteType
 	method    string
-	Handler   HandleFunc
+	Handler   HandlerFunc
 }
 
 func NewRoute(pattern string, routeType RouteType) *Route {
@@ -46,7 +46,7 @@ func NewRouteWithMethod(pattern string, routeType RouteType, method string) *Rou
 	return route
 }
 
-func NewRouteWithHandler(pattern string, routeType RouteType, f HandleFunc) *Route {
+func NewRouteWithHandler(pattern string, routeType RouteType, f HandlerFunc) *Route {
 	if routeType < 1 || routeType > 3 {
 		routeType = Equal
 	}
@@ -56,7 +56,7 @@ func NewRouteWithHandler(pattern string, routeType RouteType, f HandleFunc) *Rou
 	return &Route{"", pattern, nil, routeType, "", f}
 }
 
-func NewRouteWithMethodAndHandler(pattern string, routeType RouteType, method string, f HandleFunc) *Route {
+func NewRouteWithMethodAndHandler(pattern string, routeType RouteType, method string, f HandlerFunc) *Route {
 	method = strings.ToUpper(method)
 	if !(method == http.MethodGet || method == http.MethodPost || method == http.MethodPut ||
 		method == http.MethodPatch || method == http.MethodDelete) {
@@ -86,7 +86,7 @@ func (r *Route) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (r *Route) SetHandler(f HandleFunc) http.Handler {
+func (r *Route) SetHandler(f HandlerFunc) http.Handler {
 	r.Handler = f
 	return r
 }

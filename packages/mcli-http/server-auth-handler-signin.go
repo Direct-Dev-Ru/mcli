@@ -118,7 +118,7 @@ var tmplSignIn string = `
 var tmplSignInParsed *template.Template
 var loginData signInData
 
-func GetSignInHandler(signInTemplatePath, baseUrl, action, redirect string) (HandleFunc, error) {
+func GetSignInHandler(signInTemplatePath, baseUrl, action, redirect string) (HandlerFunc, error) {
 
 	tmplContent, err := os.ReadFile(signInTemplatePath)
 	if err != nil {

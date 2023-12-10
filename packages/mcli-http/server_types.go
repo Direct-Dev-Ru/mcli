@@ -8,16 +8,17 @@ import (
 var HttpConfig Http
 
 type Server struct {
-	Timeout      int64           `yaml:"timeout"`
-	Port         string          `yaml:"port"`
-	BaseUrl      string          `yaml:"base-url"`
-	StaticPath   string          `yaml:"static-path"`
-	StaticPrefix string          `yaml:"static-prefix"`
-	TmplPath     string          `yaml:"tmpl-path"`
-	TmplPrefix   string          `yaml:"tmpl-prefix"`
-	TmplDataPath string          `yaml:"tmpl-datapath"`
-	Templates    []TemplateEntry `yaml:"templates"`
-	RouterV2     bool
+	Timeout           int64           `yaml:"timeout"`
+	Port              string          `yaml:"port"`
+	BaseUrl           string          `yaml:"base-url"`
+	StaticPath        string          `yaml:"static-path"`
+	StaticPrefix      string          `yaml:"static-prefix"`
+	TmplPath          string          `yaml:"tmpl-path"`
+	TmplPrefix        string          `yaml:"tmpl-prefix"`
+	TmplDataPath      string          `yaml:"tmpl-datapath"`
+	Templates         []TemplateEntry `yaml:"templates"`
+	CorsParamFilePath string          `yaml:"cors-filepath"`
+	RouterV2          bool
 
 	RootPage struct {
 		RootPageTemplate     string `yaml:"rootpage-template"`

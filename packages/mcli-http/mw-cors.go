@@ -43,7 +43,7 @@ func (cors *CORS) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		cors.Inner.ServeHTTP(res, req)
 	}
 	origin := req.Header.Get("Origin")
-	cors.InfoLog.Trace().Msgf("cors check. origin =: %v", origin)
+	cors.InfoLog.Trace().Msgf("cors check. origin = %v", origin)
 
 	if _, ok := cors.AllowedDomains["*"]; ok || len(origin) == 0 || origin == "localhost" {
 		res.Header().Set("Access-Control-Allow-Origin", "*")

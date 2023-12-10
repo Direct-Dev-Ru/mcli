@@ -205,7 +205,7 @@ func (r *Router) getResultPattern(partial string) string {
 	return HttpConfig.GetFullUrl(partial, r.sBaseURL)
 }
 
-func (r *Router) AddRouteWithHandler(pattern string, routeType RouteType, f HandleFunc) error {
+func (r *Router) AddRouteWithHandler(pattern string, routeType RouteType, f HandlerFunc) error {
 	if f == nil {
 		f = http.NotFound
 	}
@@ -329,7 +329,7 @@ func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 			for i := 0; i < len(mapRegExpArray); i++ {
 				mapRegExpRoutes := mapRegExpArray[i]
 				for _, regExpRoute := range mapRegExpRoutes {
-					fmt.Println(regExpRoute.pattern, regExpRoute.regexp)
+					// fmt.Println(regExpRoute.pattern, regExpRoute.regexp)
 					if regExpRoute.regexp != nil {
 						if match, reqParamsArray := regExpRoute.matchRouteParamArray(rPath); match {
 							ctx := context.WithValue(req.Context(), mcli_interface.ContextKey("reqParamArray"), reqParamsArray)

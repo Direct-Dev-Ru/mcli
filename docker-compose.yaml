@@ -9,8 +9,9 @@ volumes:
 services:
   redis:
     image: redis:7
+    container_name: redis-compose
     env_file:
-      - compose.env      
+      - compose.env
     command:
       - /bin/sh
       - -c
@@ -23,3 +24,15 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+  server:
+    build:
+      dockerfile: ./.Dockerfiles/main-image/Dockerfile
+      context: .
+    container_name: mcli_http
+    env_file:
+      - compose.env
+    command: --redis-host redis http -p 8088 --base-url srv-1
+    depends_on:
+      - redis
+    ports:
+      - "8088:8088"

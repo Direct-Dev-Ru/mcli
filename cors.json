@@ -5,10 +5,10 @@
                 "GET",
                 "POST",
                 "PUT",
-                "DELETE"                
+                "DELETE"
             ]
         },
-        "https://main-direc-dev.ru": {
+        "https://main.direct-dev.ru": {
             "methods": [
                 "GET",
                 "POST",

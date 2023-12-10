@@ -20,7 +20,7 @@ type rootInData struct {
 	Data rootInDataMember
 }
 
-func GetRootHandler(signInTemplatePath, baseUrl, title, action, redirect string) (HandleFunc, error) {
+func GetRootHandler(signInTemplatePath, baseUrl, title, action, redirect string) (HandlerFunc, error) {
 
 	tmplRootDefault := `
 	<!DOCTYPE html>

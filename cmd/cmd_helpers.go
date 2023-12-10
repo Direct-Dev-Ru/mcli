@@ -8,10 +8,12 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"plugin"
 	"regexp"
 	"strings"
 
 	mcli_fs "mcli/packages/mcli-filesystem"
+	mcli_interface "mcli/packages/mcli-interface"
 	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/spf13/cobra"
@@ -284,4 +286,35 @@ func getFullPath(partialPath string) (string, error) {
 		return filepath.Join(rootPath, partialPath), nil
 	}
 	return "", fmt.Errorf("partial path format doesn't support")
+}
+
+func LoadHttpPlugins(module string, name string) (map[string]http.HandlerFunc, error) {
+
+	if module == "" {
+		module = "plugins/http_default_plugins/http_plugins_compiled/http_default_handlers.so"
+	}
+	// 1. open the so file to load the symbols
+	plug, err := plugin.Open(module)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. look up a symbol (an exported function or variable)
+	// in this case, variable Greeter
+	symVariable, err := plug.Lookup(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Assert that loaded symbol is of a desired type
+	// in this case interface type Greeter (defined above)
+	var handlerFuncs mcli_interface.HandlerFuncsPlugin
+	handlerFuncs, ok := symVariable.(mcli_interface.HandlerFuncsPlugin)
+	if !ok {
+		return nil, err
+	}
+
+	mapHandlerFuncs := handlerFuncs.GetHandlerFuncs()
+
+	return mapHandlerFuncs, nil
 }

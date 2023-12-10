@@ -126,7 +126,7 @@ var httpCmd = &cobra.Command{
 
 		// setting up middleware
 
-		err = r.Use(mcli_http.NewCORS(Ilogger, Elogger, ""))
+		err = r.Use(mcli_http.NewCORS(Ilogger, Elogger, mcli_http.HttpConfig.Server.CorsParamFilePath))
 		if err != nil {
 			Elogger.Error().Err(err)
 		}
