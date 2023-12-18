@@ -29,19 +29,35 @@ func NewDefaultKeyAndVaultProvider(vaultPath, keyPath string) (*DefaultKeyAndVau
 	return &result, nil
 }
 
-func (dkvp DefaultKeyAndVaultProvider) GetKey() ([]byte, error) {
+func (dkvp *DefaultKeyAndVaultProvider) GetKey() ([]byte, error) {
 	return dkvp.key, nil
 }
+func (dkvp *DefaultKeyAndVaultProvider) SetKey(data []byte) error {
 
-func (dkvp DefaultKeyAndVaultProvider) GetKeyPath() (string, error) {
+	if len(data) == 0 {
+		data = GenKey(1024)
+	}
+	err := os.WriteFile(dkvp.vaultPath, data, 0700)
+	if err != nil {
+		return fmt.Errorf("error writing vault file: %w", err)
+	}
+	return nil
+}
+
+func (dkvp *DefaultKeyAndVaultProvider) GetKeyPath() (string, error) {
 	return dkvp.keyPath, nil
 }
 
-func (dkvp DefaultKeyAndVaultProvider) GetVaultPath() (string, error) {
+func (dkvp *DefaultKeyAndVaultProvider) SetKeyPath(keyPath string) error {
+	dkvp.keyPath = keyPath
+	return nil
+}
+
+func (dkvp *DefaultKeyAndVaultProvider) GetVaultPath() (string, error) {
 	return dkvp.vaultPath, nil
 }
 
-func (dkvp DefaultKeyAndVaultProvider) GetVault() ([]byte, error) {
+func (dkvp *DefaultKeyAndVaultProvider) GetVault() ([]byte, error) {
 	_, _, err := mcli_utils.IsExistsAndCreate(dkvp.vaultPath, true, true)
 	if err != nil {
 		return nil, fmt.Errorf("error detecting or creating vault file: %w", err)
@@ -50,11 +66,10 @@ func (dkvp DefaultKeyAndVaultProvider) GetVault() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading vaultfile: %w", err)
 	}
-
 	return content, nil
 }
 
-func (dkvp DefaultKeyAndVaultProvider) SetVault(data []byte) error {
+func (dkvp *DefaultKeyAndVaultProvider) SetVault(data []byte) error {
 	_, _, err := mcli_utils.IsExistsAndCreate(dkvp.vaultPath, true, false)
 	if err != nil {
 		return fmt.Errorf("error detecting or creating vault file containing folder: %w", err)

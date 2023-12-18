@@ -75,7 +75,7 @@ func TestErrorPackage(cmd *cobra.Command, args []string) {
 }
 
 func RedisTestCommand(cmd *cobra.Command, args []string) {
-	redisStore, err := mcli_redis.NewRedisStore("127.0.0.1:6379", "!mySuperPwd0", "userlist")
+	redisStore, err := mcli_redis.NewRedisStore("redistest_"+Config.Common.AppName, "127.0.0.1:6379", "!mySuperPwd0", "userlist", 0)
 	if err != nil {
 		log.Fatalln("RedisInit:", err)
 	}
@@ -86,7 +86,7 @@ func RedisTestCommand(cmd *cobra.Command, args []string) {
 
 	var user1 *mcli_http.Credential = mcli_http.NewCredential("admin", hashPassword1, false, nil)
 	user1.Email = "info@direct-dev.ru"
-	user1.Phone = "+79059400071"
+	user1.Phone = "+790594XXXXXX"
 	user1.Description = "this is admin user"
 	user1.Roles = []string{"admin", "user-rw"}
 

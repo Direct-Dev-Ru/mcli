@@ -84,8 +84,14 @@ var httpCmd = &cobra.Command{
 		rOpts := mcli_http.RouterOptions{BaseUrl: baseUrl}
 		r := mcli_http.NewRouter(staticPath, staticPrefix, Ilogger, Elogger, &rOpts)
 
-		// root route
+		// load plugins route handlers
 
+		HttpDefaultPluginRouteMap, err := LoadHttpPlugins("", "HandlerFuncsPlugin")
+		if err != nil {
+			Elogger.Error().Msg(err.Error())
+		}
+		fmt.Println(HttpDefaultPluginRouteMap)
+		// root route
 		// get path to root template
 		rootPageTmplPath, err := getFullPath(Config.Http.Server.RootPage.RootPageTemplate)
 		if err != nil {
@@ -120,7 +126,12 @@ var httpCmd = &cobra.Command{
 		}
 		r.SetTemplatesRoutes(ctx, serverTemplates)
 
-		r.AddRouteWithHandler("/echo", mcli_http.Equal, mcli_http.Http_Echo)
+		// echo route for testing and debugging
+		if echoRouteFromPlugin, ok := HttpDefaultPluginRouteMap["HTTP_ECHO"]; ok {
+			r.AddRouteWithHandler("/echo", mcli_http.Equal, mcli_http.HandlerFunc(echoRouteFromPlugin))
+		} else {
+			r.AddRouteWithHandler("/echo", mcli_http.Equal, mcli_http.Http_Echo)
+		}
 
 		r.AddRouteWithHandler(`/regexp-test/([a-zA-Z]+)/(\d+)`, mcli_http.Regexp, mcli_http.Regexp_Test)
 
@@ -136,18 +147,35 @@ var httpCmd = &cobra.Command{
 		// 	Elogger.Error().Err(err)
 		// }
 
-		if Config.Http.Server.Auth.IsAuthenticate {
-			// _, err = mcli_redis.InitCache(Config.Http.Server.Auth.RedisHost, Config.Http.Server.Auth.RedisPwd)
-			redisStore, err := mcli_redis.NewRedisStore(Config.Http.Server.Auth.RedisHost, Config.Http.Server.Auth.RedisPwd, "userlist")
-			if err != nil {
-				Elogger.Fatal().Msg(fmt.Sprintf("error init redis store: %v\n", err.Error()))
-			}
-			_, err = redisStore.RedisPool.Get().Do("PING")
-			if err != nil {
-				Elogger.Fatal().Msgf("redis connection error: %v", err.Error())
-			}
-			Ilogger.Trace().Msg("Ping Pong to redis server is successful")
+		var redisStore *mcli_redis.RedisStore
 
+		if Config.Http.Server.Auth.IsAuthenticate {
+			var err error
+			if Config.Http.Server.Auth.RedisUseCommon && CommonRedisStore != nil {
+				redisStore = CommonRedisStore
+			} else {
+
+				if Config.Http.Server.Auth.RedisHost == "" {
+					Config.Http.Server.Auth.RedisHost = Config.Common.RedisHost
+					Config.Http.Server.Auth.RedisPwd = Config.Common.RedisPwd
+				}
+				if Config.Http.Server.Auth.RedisHost == ":" {
+					Config.Http.Server.Auth.RedisHost = fmt.Sprintf("%s:%s", "localhost", "6379")
+				}
+
+				// Ilogger.Trace().Msgf("%v, %v", Config.Common.RedisHost, Config.Common.RedisPwd)
+				// _, err = mcli_redis.InitCache(Config.Http.Server.Auth.RedisHost, Config.Http.Server.Auth.RedisPwd)
+				redisStore, err = mcli_redis.NewRedisStore("redishttp_"+Config.Common.AppName, Config.Http.Server.Auth.RedisHost,
+					Config.Http.Server.Auth.RedisPwd, "userlist", Config.Http.Server.Auth.RedisDatabaseNo)
+				if err != nil {
+					Elogger.Fatal().Msg(fmt.Sprintf("error init redis store: %v\n", err.Error()))
+				}
+				_, err = redisStore.RedisPool.Get().Do("PING")
+				if err != nil {
+					Elogger.Fatal().Msgf("redis connection error: %v", err.Error())
+				}
+				Ilogger.Trace().Msg("Ping Pong to redis server is successful")
+			}
 			r.KVStore = redisStore
 			r.CredentialStore = mcli_http.NewUserStore(redisStore, "userlist")
 
@@ -274,7 +302,12 @@ var httpCmd = &cobra.Command{
 
 			go func() {
 				if Config.Http.Server.Auth.IsAuthenticate {
-					defer mcli_redis.RedisPool.Close()
+					defer func() {
+						// for _, pool := range mcli_redis.MapRedisPool {
+						// 	pool.Close()
+						// }
+						redisStore.RedisPool.Close()
+					}()
 				}
 				if err := srv.ListenAndServeTLS(tlsCert, tlsKey); err != nil && err != http.ErrServerClosed {
 					Elogger.Fatal().Msg(err.Error())
@@ -291,7 +324,12 @@ var httpCmd = &cobra.Command{
 
 			go func() {
 				if Config.Http.Server.Auth.IsAuthenticate {
-					defer mcli_redis.RedisPool.Close()
+					defer func() {
+						// for _, pool := range mcli_redis.MapRedisPool {
+						// 	pool.Close()
+						// }
+						redisStore.RedisPool.Close()
+					}()
 				}
 				if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 					Elogger.Fatal().Msg(err.Error())

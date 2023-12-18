@@ -8,6 +8,8 @@ import (
 
 	// "github.com/rs/zerolog/pkgerrors"
 	mcli_interface "mcli/packages/mcli-interface"
+
+	go_common_ddru "github.com/Direct-Dev-Ru/go_common_ddru"
 )
 
 type Auth struct {
@@ -27,7 +29,7 @@ func NewAuth(userStore mcli_interface.CredentialStorer, kvStore mcli_interface.K
 
 func (auth *Auth) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
-	_, ok := req.Context().Value(mcli_interface.ContextKey("router")).(*Router)
+	_, ok := req.Context().Value(go_common_ddru.ContextKey("router")).(*Router)
 	if !ok {
 		http.Error(res, "Status Unauthorized: No router in Context", http.StatusUnauthorized)
 		return
@@ -41,9 +43,8 @@ func (auth *Auth) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	cookie, err := auth.GetCookie(req, cookieName)
 	// if no cookieName = "session-token" then sets noAuth in context
 	if len(cookie) == 0 || err != nil {
-		ctx = context.WithValue(ctx, mcli_interface.ContextKey("IsAuth"), false)
-		ctx = context.WithValue(ctx, mcli_interface.ContextKey("AuthUser"), nil)
-
+		ctx = context.WithValue(ctx, go_common_ddru.ContextKey("IsAuth"), false)
+		ctx = context.WithValue(ctx, go_common_ddru.ContextKey("AuthUser"), nil)
 	} else {
 
 		// fmt.Printf("%s cookie in context of route %s: %s\n", cookieName, req.URL, cookie)
@@ -102,8 +103,8 @@ func (auth *Auth) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		ctx = context.WithValue(ctx, mcli_interface.ContextKey("IsAuth"), true)
-		ctx = context.WithValue(ctx, mcli_interface.ContextKey("AuthUser"), user)
+		ctx = context.WithValue(ctx, go_common_ddru.ContextKey("IsAuth"), true)
+		ctx = context.WithValue(ctx, go_common_ddru.ContextKey("AuthUser"), user)
 	}
 	auth.Inner.ServeHTTP(res, req.WithContext(ctx))
 }

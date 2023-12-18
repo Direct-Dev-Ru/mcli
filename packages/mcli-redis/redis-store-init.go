@@ -11,7 +11,8 @@ import (
 )
 
 // vars
-var RedisPool *redis.Pool
+// var RedisPool *redis.Pool
+var MapRedisPool map[string]*redis.Pool = make(map[string]*redis.Pool)
 
 // types
 type KeyNotFoundError struct {
@@ -28,49 +29,65 @@ func (e *KeyNotFoundError) Error() string {
 }
 
 type RedisStore struct {
-	RedisPool  *redis.Pool
-	KeyPrefix  string
-	Encrypt    bool
-	Cypher     mcli_interface.SecretsCypher
-	Marshal    func(any) ([]byte, error)
-	Unmarshal  func([]byte, any) error
-	encryptKey []byte
+	RedisPool       *redis.Pool
+	RedisDatabaseNo int
+	KeyPrefix       string
+	Encrypt         bool
+	Cypher          mcli_interface.SecretsCypher
+	Marshal         func(any) ([]byte, error)
+	Unmarshal       func([]byte, any) error
+	encryptKey      []byte
 }
 
-func NewRedisStore(host, password, keyPrefix string) (*RedisStore, error) {
-	if RedisPool == nil || len(host) > 0 || len(password) > 0 {
-		_, err := InitCache(host, password)
+func NewRedisStore(poolname, host, password, keyPrefix string, databaseNo int) (*RedisStore, error) {
+	if poolname == "" {
+		poolname = "default"
+	}
+	if host == "" || host == ":" {
+		host = "localhost:6379"
+	}
+	redisPool := MapRedisPool[poolname]
+
+	var err error
+	if redisPool == nil && len(host) > 0 && len(password) > 0 {
+		redisPool, err = InitCache(host, password, databaseNo)
 		if err != nil {
 			return nil, err
 		}
+		MapRedisPool[poolname] = redisPool
 	}
-	return &RedisStore{RedisPool: RedisPool, KeyPrefix: keyPrefix,
+	return &RedisStore{RedisPool: redisPool, KeyPrefix: keyPrefix, RedisDatabaseNo: databaseNo,
 		Encrypt: false, Marshal: json.Marshal, Unmarshal: json.Unmarshal}, nil
 }
 
-func InitCache(host, password string) (*redis.Pool, error) {
+func InitCache(host, password string, databaseNo int) (*redis.Pool, error) {
 	// Initialize the redis connection to a redis instance running on your local machine
-	conn, err := redis.Dial("tcp", host, redis.DialPassword(password))
+	conn, err := redis.Dial("tcp", host, redis.DialPassword(password), redis.DialDatabase(databaseNo))
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
+
 	// Ping the Redis server
+	// Select the desired database (e.g., database 1)
+	_, err = conn.Do("SELECT", databaseNo)
+	if err != nil {
+		return nil, fmt.Errorf("error selecting database: %w", err)
+	}
 	_, err = redis.String(conn.Do("PING"))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error ping redis: %w", err)
 	}
-
-	RedisPool = NewRedisPool(host, password)
-	return RedisPool, nil
+	redisPool := NewRedisPool(host, password, databaseNo)
+	return redisPool, nil
 }
 
-func NewRedisPool(host, password string) *redis.Pool {
+func NewRedisPool(host, password string, databaseNo int) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     3,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redis.Conn, error) {
-			c, err := redis.Dial("tcp", host, redis.DialPassword(password))
+			c, err := redis.Dial("tcp", host, redis.DialPassword(password), redis.DialDatabase(databaseNo))
 			if err != nil {
 				return nil, err
 			}

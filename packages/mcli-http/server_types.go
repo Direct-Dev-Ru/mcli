@@ -49,8 +49,11 @@ type Server struct {
 		AuthTokenName       string `yaml:"auth-token-name"`
 		SessionsRedisPrefix string `yaml:"sessions-redis-prefix"`
 
-		RedisHost string `yaml:"redis-host"`
-		RedisPwd  string `yaml:"redis-password"`
+		RedisHost       string `yaml:"redis-host"`
+		RedisPwd        string `yaml:"redis-password"`
+		RedisDatabaseNo int    `yaml:"redis-database-no"`
+		RedisRequire    bool   `yaml:"redis-require"`
+		RedisUseCommon  bool   `yaml:"redis-use-common"`
 	} `yaml:"auth"`
 }
 

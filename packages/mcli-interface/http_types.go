@@ -1,9 +1,14 @@
 package mcliinterface
 
-import "net/http"
+import (
+	"net/http"
+
+	_ "github.com/Direct-Dev-Ru/go_common_ddru"
+)
 
 type ContextKey string
 
 type HandlerFuncsPlugin interface {
-	GetHandlerFuncs() map[string]http.HandlerFunc
+	GetHandlerFuncsV2(inputArgs ...interface{}) map[string]http.HandlerFunc
+	GetHandlerFuncs()
 }

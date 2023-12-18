@@ -1,26 +1,36 @@
-FROM golang:1.21-alpine as builder
+FROM golang:1.21.5-bullseye as builder
 
 WORKDIR /app
 
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
 COPY go.mod go.sum ./
+
 RUN go mod download && go mod verify
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o mcli
 
+RUN go build -buildmode=plugin \
+    -o plugins/http_default_plugins/http_plugins_compiled/http_default_handlers.so \
+    plugins/http_default_plugins/src/default_http_handlers/http_default_handlers.go
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/mcli
+
+# FROM busybox:stable-glibc as busybox
 # final stage
 
-FROM alpine:latest
-
-RUN apk add --update \
-    curl \
-    && rm -rf /var/cache/apk/*
+FROM alpine:3.19.0
 # FROM scratch
-# COPY --from=busybox:1.35 /bin/busybox /bin/busybox
-# FROM busybox:stable-glibc
+# FROM gcr.io/distroless/static-debian10
 
-RUN mkdir -p /app
+# COPY --from=busybox:1.35.0-uclibc /bin/sh /bin/sh
+COPY --from=busybox:1.35.0-uclibc /bin/busybox /bin/busybox
+
+
+# RUN apk add --no-cache curl && mkdir -p /app
+    # && rm -rf /var/cache/apk/*
+
+RUN busybox mkdir -p /app
+    # && rm -rf /var/cache/apk/*
 
 WORKDIR /app/
 

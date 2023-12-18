@@ -13,6 +13,7 @@ import (
 
 	mcli_crypto "mcli/packages/mcli-crypto"
 	mcli_fs "mcli/packages/mcli-filesystem"
+	mcli_interface "mcli/packages/mcli-interface"
 	mcli_secrets "mcli/packages/mcli-secrets"
 	mcli_utils "mcli/packages/mcli-utils"
 
@@ -82,15 +83,27 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 		runesReplaces[2] = mcli_crypto.ReplaceEntry{OriginRune: 'i', ReplaceRune: '1', Number: 1000}
 	}
 
-	secretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile,
-		mcli_crypto.AesCypher, nil)
+	var knvp mcli_interface.KeyAndVaultProvider
+	var err error
+	knvp, err = mcli_secrets.NewDefaultKeyAndVaultProvider(vaultPath, keyFilePath)
+	if err != nil {
+		Elogger.Fatal().Msgf("get default knv provider fault: %v", err)
+	}
+	// init secret store
+	secretStore := mcli_secrets.NewSecretsEntriesV2(mcli_fs.GetFile, mcli_fs.SetFile,
+		mcli_crypto.AesCypher, nil, knvp)
 
 	var phrase string
-	var err error
-
-	if err := secretStore.FillStore(vaultPath, keyFilePath); err != nil {
+	// fill secret store
+	if err := secretStore.FillStoreV2(); err != nil {
 		Elogger.Fatal().Msg(err.Error())
 	}
+	// if err := secretStore.FillStore(vaultPath, keyFilePath); err != nil {
+	// 	Elogger.Fatal().Msg(err.Error())
+	// }
+
+	fmt.Println(secretStore.Secrets)
+
 	if IsCommandInPipe() && len(Input.InputSlice) == 0 {
 		Elogger.Fatal().Msg("input from pipe is empty: provide not empty pipe or run without pipe")
 	}
@@ -192,7 +205,8 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 				inputSecrets[i].Secret, _ = mcli_crypto.Base64Decode(ssecret)
 			}
 		}
-		// ok now we a ready to generate secrets and save it to secret vault
+
+		// now we are ready to generate secrets and save it to secret vault
 		for _, sec := range inputSecrets {
 			WgGlb.Add(1)
 			go func(sec InputSecretEntry) {
@@ -224,7 +238,7 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 
 				err = secretStore.AddEntry(secretEntry)
 				if err != nil {
-					Elogger.Fatal().Msgf("generate: save secret error: %v", err)
+					Elogger.Fatal().Msgf("generate: add secret entry error: %v", err)
 				}
 			}(sec)
 		}
@@ -299,7 +313,8 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 
 			if strings.Contains("y да yes д ", cmd+" ") {
 				secretStore.AddEntry(secretEntry)
-				secretStore.Save("", "")
+
+				secretStore.SaveV2()
 			}
 
 			fmt.Println(ColorGreen + "-----------------------------------------------------------------" + ColorReset)

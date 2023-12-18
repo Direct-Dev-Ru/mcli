@@ -10,12 +10,15 @@ type ConfigData struct {
 
 	ConfigVersion string `yaml:"config-version"`
 	Common        struct {
+		AppName             string `yaml:"app-name"`
 		OutputFile          string `yaml:"output-file"`
 		OutputFormat        string `yaml:"output-format"`
 		InternalKeyFilePath string `yaml:"internal-keyfile-path"`
 		InternalVaultPath   string `yaml:"internal-vault-path"`
 		RedisHost           string `yaml:"redis-host"`
 		RedisPwd            string `yaml:"redis-password"`
+		RedisDatabaseNo     int    `yaml:"redis-database-no"`
+		RedisRequire        bool   `yaml:"redis-require"`
 	}
 	Http mcli_http.Http
 	// Http struct {

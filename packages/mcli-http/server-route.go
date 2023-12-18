@@ -1,7 +1,6 @@
 package mclihttp
 
 import (
-	"fmt"
 	"net/http"
 	"regexp"
 	"strings"
@@ -137,7 +136,7 @@ func (r *Route) matchRouteParamArray(path string) (bool, []string) {
 		if i == 0 {
 			continue
 		}
-		fmt.Println(match)
+		// fmt.Println(match)
 		params = append(params, match)
 	}
 

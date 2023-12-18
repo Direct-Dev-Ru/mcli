@@ -2,6 +2,9 @@
 ## explicit; go 1.16
 github.com/Azure/go-ansiterm
 github.com/Azure/go-ansiterm/winterm
+# github.com/Direct-Dev-Ru/go_common_ddru v0.1.0
+## explicit; go 1.21.4
+github.com/Direct-Dev-Ru/go_common_ddru
 # github.com/Microsoft/go-winio v0.6.1
 ## explicit; go 1.17
 github.com/Microsoft/go-winio

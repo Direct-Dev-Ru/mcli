@@ -5,29 +5,26 @@ package cmd
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"os"
-	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
-	mcli_secrets "mcli/packages/mcli-secrets"
+	mcli_redis "mcli/packages/mcli-redis"
 	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
-func set(newData *SomeData, wc chan *SomeData) {
+func Set(newData *SomeData, wc chan *SomeData) {
 	wc <- newData
 }
-func get(rc chan *SomeData) *SomeData {
+
+func Get(rc chan *SomeData) *SomeData {
 	return <-rc
 }
 
@@ -85,13 +82,13 @@ var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 		w.Add(1)
 		go func() {
 			defer w.Done()
-			set(&SomeData{payload: rand.Intn(10 * n)}, writeData)
+			Set(&SomeData{payload: rand.Intn(10 * n)}, writeData)
 		}()
 	}
 	w.Wait()
 
-	Ilogger.Trace().Msg(fmt.Sprintf("mcli: Last value : %v\n", get(readData).payload))
-	Ilogger.Trace().Msg(fmt.Sprintf("mcli: data : %v\n", accuData.data))
+	// Ilogger.Trace().Msg(fmt.Sprintf("mcli: Last value : %v\n", Get(readData).payload))
+	// Ilogger.Trace().Msg(fmt.Sprintf("mcli: data : %v\n", accuData.data))
 
 	// closure variables - danger in gorutines
 	// for i := 1; i < 21; i++ {
@@ -125,7 +122,6 @@ func Execute(loggers []zerolog.Logger) {
 }
 
 func initConfig() {
-	var err error
 
 	// Check if piped to StdIn
 
@@ -158,139 +154,60 @@ func initConfig() {
 		Input.InputSlice = inputSlice
 	}
 
-	// process root parameters
 	configFile, _ := rootCmd.Flags().GetString("config")
-
-	RedisHost, _ = rootCmd.Flags().GetString("redis-host")
-	isRedisHostSet := rootCmd.Flags().Lookup("redis-host").Changed
-	if !isRedisHostSet && len(os.Getenv("REDIS_HOST")) > 0 {
-		RedisHost = os.Getenv("REDIS_HOST")
-	}
-	if isRedisHostSet || len(os.Getenv("REDIS_HOST")) == 0 {
-		os.Setenv("REDIS_HOST", RedisHost)
-	}
-
-	RedisPort, _ = rootCmd.Flags().GetString("redis-port")
-	isRedisPortSet := rootCmd.Flags().Lookup("redis-port").Changed
-	if !isRedisPortSet && len(os.Getenv("REDIS_PORT")) > 0 {
-		RedisHost = os.Getenv("REDIS_PORT")
-	}
-	if isRedisPortSet || len(os.Getenv("REDIS_PORT")) == 0 {
-		os.Setenv("REDIS_PORT", RedisPort)
-	}
-
-	RedisPwd, _ = rootCmd.Flags().GetString("redis-password")
-	isRedisPwdSet := rootCmd.Flags().Lookup("redis-password").Changed
-	if !isRedisPwdSet && len(os.Getenv("REDIS_PWD")) > 0 {
-		RedisHost = os.Getenv("REDIS_PWD")
-	}
-	if isRedisPwdSet || len(os.Getenv("REDIS_PWD")) == 0 {
-		os.Setenv("REDIS_PWD", RedisPwd)
-	}
-
 	// read config file
-	if len(configFile) == 0 {
-		configFile = GlobalMap["DefaultConfigPath"]
+	ReadConfigFile(configFile)
+
+	// now Config var is filled
+
+	if Config.Common.AppName == "" {
+		Config.Common.AppName = "default_mcli"
 	}
-	if configFile != "" {
-		Ilogger.Trace().Msg(fmt.Sprint("parsing config file:", configFile))
 
-		if _, err := os.Stat(configFile); err == nil {
-			configContent, err := os.ReadFile(configFile)
-			configContentString := string(configContent)
+	RedisHost, _ = ProcessCommandParameter("redis-host", "REDIS_HOST", rootCmd)
+	RedisPort, _ = ProcessCommandParameter("redis-port", "REDIS_PORT", rootCmd)
+	RedisPwd, _ = ProcessCommandParameter("redis-password", "REDIS_PWD", rootCmd)
 
-			templateRegExp := regexp.MustCompile(`{{\$.+?}}`)
-			allVarsEntries := mcli_utils.RemoveDuplicatesStr(templateRegExp.FindAllString(configContentString, -1))
-			for _, varEntry := range allVarsEntries {
-				// fmt.Println(varEntry)
-				if strings.HasSuffix(varEntry, "$}}") {
-
-					mapkey := strings.ReplaceAll(varEntry, "{{$", "")
-					mapkey = strings.ReplaceAll(mapkey, "$}}", "")
-					configContentString = strings.ReplaceAll(configContentString, varEntry, GlobalMap[mapkey])
-				}
-				if strings.HasSuffix(varEntry, "}}") && !strings.HasSuffix(varEntry, "$}}") {
-
-					osEnv := strings.ReplaceAll(varEntry, "{{$", "")
-					osEnv = strings.ReplaceAll(osEnv, "}}", "")
-					configContentString = strings.ReplaceAll(configContentString, varEntry, os.Getenv(osEnv))
-				}
-			}
-
-			if err == nil {
-				err = yaml.Unmarshal([]byte(configContentString), &Config)
-				if err != nil {
-					Elogger.Fatal().Msg(err.Error())
-				}
-			}
-			// fmt.Println("Configuration content :", string(configContent))
-			Ilogger.Trace().Msg(fmt.Sprintf("Configuration struct : %+v", Config))
-		} else if errors.Is(err, os.ErrNotExist) {
-			Ilogger.Trace().Msg("config file " + configFile + " does not exist")
-		} else {
-			Elogger.Trace().Msg("config file detect error " + err.Error())
-		}
+	if Config.Common.RedisHost == "" {
+		Config.Common.RedisHost = fmt.Sprintf("%s:%s", RedisHost, RedisPort)
+	} else if Config.Common.RedisHost == ":" {
+		Config.Common.RedisHost = fmt.Sprintf("%s:%s", "localhost", "6379")
 	}
+
+	if Config.Common.RedisPwd == "" {
+		Config.Common.RedisPwd = RedisPwd
+	}
+
+	// common redis connection init
+	var err error
+	CommonRedisStore, err = mcli_redis.NewRedisStore("rediscommon_"+Config.Common.AppName, Config.Common.RedisHost, Config.Common.RedisPwd,
+		Config.Common.AppName, Config.Common.RedisDatabaseNo)
+	if Config.Common.RedisRequire && err != nil {
+		Elogger.Fatal().Msg(fmt.Sprintf("error init redis store: %v\n", err.Error()))
+	}
+	_, err = CommonRedisStore.RedisPool.Get().Do("PING")
+	if Config.Common.RedisRequire && err != nil {
+		Elogger.Fatal().Msgf("redis connection error: %v", err.Error())
+	}
+	if err == nil {
+		Ilogger.Trace().Msg("Ping Pong to common Redis server is successful")
+	}
+
+	if CommonRedisStore != nil {
+		defer func() {
+			CommonRedisStore.RedisPool.Close()
+		}()
+	}
+
+	//end of common redis connection init
 
 	Config.Cache = mcli_utils.NewCCache(0, 0, nil)
 
-	// read or create key for internal secrets
-	var rootKeySecretStorePath = filepath.Dir(Config.Common.InternalKeyFilePath)
-	var rootSecretStore_key = Config.Common.InternalKeyFilePath
+	InitInternalSecreVault(&Config)
 
-	if len(Config.Common.InternalKeyFilePath) == 0 {
-		rootKeySecretStorePath = filepath.Join(GlobalMap["HomeDir"], ".mcli", "root")
-		rootSecretStore_key = filepath.Join(rootKeySecretStorePath, "rootkey.key")
-		Config.Common.InternalKeyFilePath = rootSecretStore_key
-	}
-	_, _, err = mcli_utils.IsExistsAndCreate(rootKeySecretStorePath, true, false)
-	if err != nil {
-		Elogger.Fatal().Msgf("root secret store error - path do not exists: %s", err.Error())
-	}
-	ok, _, _ := mcli_utils.IsExistsAndCreate(rootSecretStore_key, false, false)
+	// TODO:Hide passwords
 
-	if !ok {
-		err = mcli_secrets.SaveKeyToFilePlain(rootSecretStore_key, mcli_secrets.GenKey(1024))
-		if err != nil {
-			Elogger.Fatal().Msgf("root secret store error - save rootSecretStore_key error: %s", err.Error())
-		}
-	}
-	// read root secret from file
-	rootInternalSecret, err := mcli_secrets.LoadKeyFromFilePlain(rootSecretStore_key)
-	if err != nil {
-		Elogger.Fatal().Msgf("root secret store error - load rootSecretStore_key error: %s", err.Error())
-	}
-	_, err = Config.Cache.Set("RootInternalSecret", rootInternalSecret)
-	if err != nil {
-		Elogger.Fatal().Msgf("root secret store in cache error: %s", err.Error())
-	}
-	GlobalMap["RootSecretKeyPath"] = rootSecretStore_key
-
-	// paths to internal secret vault
-	var internalSecretVaultBasePath = filepath.Dir(Config.Common.InternalVaultPath)
-	var internalSecretVaultPath = Config.Common.InternalVaultPath
-	if len(Config.Common.InternalVaultPath) == 0 {
-		internalSecretVaultBasePath = filepath.Join(GlobalMap["RootPath"], "internal-secrets")
-		internalSecretVaultPath = filepath.Join(internalSecretVaultBasePath, "internal.vault")
-		Config.Common.InternalVaultPath = internalSecretVaultPath
-	}
-	_, _, err = mcli_utils.IsExistsAndCreate(internalSecretVaultBasePath, true, false)
-	if err != nil {
-		Elogger.Fatal().Msgf("internal vault secret store error : %v", err.Error())
-	}
-	GlobalMap["RootSecretVaultPath"] = internalSecretVaultPath
-
-	for gKey, gValue := range GlobalMap {
-		_, err = Config.Cache.Set(gKey, gValue)
-		if err != nil {
-			Elogger.Fatal().Msg("set cache value error " + err.Error())
-		}
-	}
-
-	// fmt.Println("-------------")
-	// fmt.Println("Global Map :", GlobalMap)
 	Ilogger.Trace().Msgf("Global Map: %v", GlobalMap)
-	// fmt.Println("-------------")
-	// fmt.Println("Global Cache :", Config.Cache)
+
 	Ilogger.Trace().Msgf("Global Cache: %v", Config.Cache)
 }

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,10 +11,12 @@ import (
 	"path/filepath"
 	"plugin"
 	"regexp"
+	"runtime"
 	"strings"
 
 	mcli_fs "mcli/packages/mcli-filesystem"
 	mcli_interface "mcli/packages/mcli-interface"
+	mcli_secrets "mcli/packages/mcli-secrets"
 	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/spf13/cobra"
@@ -288,11 +291,27 @@ func getFullPath(partialPath string) (string, error) {
 	return "", fmt.Errorf("partial path format doesn't support")
 }
 
+// LoadHttpPlugins loads HTTP plugins from a shared object (.so) file.
+//
+// It takes two parameters:
+//   - module: The path to the shared object file containing the HTTP plugins.
+//     If empty, it defaults to "plugins/http_default_plugins/http_plugins_compiled/http_default_handlers.so".
+//   - name:   The name of the symbol (exported function or variable) to be looked up in the shared object.
+//     This symbol is expected to implement the mcli_interface.HandlerFuncsPlugin interface.
+//
+// The function returns a map of string to http.HandlerFunc, representing the loaded HTTP handler functions.
+// If successful, the map and nil error are returned. If any error occurs during the loading process, the function
+// returns nil map and an error describing the issue.
 func LoadHttpPlugins(module string, name string) (map[string]http.HandlerFunc, error) {
+	// Check if the operating system is Linux
+	if runtime.GOOS != "linux" {
+		return nil, errors.New("current platform not supported, plugins are only supported on Linux")
+	}
 
 	if module == "" {
 		module = "plugins/http_default_plugins/http_plugins_compiled/http_default_handlers.so"
 	}
+
 	// 1. open the so file to load the symbols
 	plug, err := plugin.Open(module)
 	if err != nil {
@@ -314,7 +333,209 @@ func LoadHttpPlugins(module string, name string) (map[string]http.HandlerFunc, e
 		return nil, err
 	}
 
-	mapHandlerFuncs := handlerFuncs.GetHandlerFuncs()
+	// handlerFuncs.GetHandlerFuncs()
+	mapHandlerFuncs := handlerFuncs.GetHandlerFuncsV2("HTTP_ECHO")
 
 	return mapHandlerFuncs, nil
+}
+
+func LoadPlugin(modulePath string, objectName string) (plugin.Symbol, error) {
+	// Check if the operating system is Linux
+	if runtime.GOOS != "linux" {
+		return nil, errors.New("current platform not supported plugins, plugins are only supported on Linux")
+	}
+
+	if modulePath == "" {
+		modulePath = "plugins/default_plugin.so"
+	}
+
+	// 1. open the so file to load the symbols
+	plug, err := plugin.Open(modulePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. look up a symbol (an exported function or variable)
+	// in this case, variable Greeter
+	symVariable, err := plug.Lookup(objectName)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Assert that loaded symbol is of a desired type
+	// in this case interface type Greeter (defined above)
+	// var handlerFuncs mcli_interface.HandlerFuncsPlugin
+	// handlerFuncs, ok := symVariable.(mcli_interface.HandlerFuncsPlugin)
+	// if !ok {
+	// 	return nil, err
+	// }
+
+	// handlerFuncs.GetHandlerFuncs()
+	// mapHandlerFuncs := handlerFuncs.GetHandlerFuncsV2("HTTP_ECHO")
+
+	return symVariable, nil
+}
+
+func InitInternalSecreVault(cfg *ConfigData) {
+	// TODO: add store this secret values in redis db
+	// read or create key for internal secrets
+	var rootKeySecretStorePath = filepath.Dir(cfg.Common.InternalKeyFilePath)
+	var rootSecretStore_key = cfg.Common.InternalKeyFilePath
+
+	if len(cfg.Common.InternalKeyFilePath) == 0 {
+		rootKeySecretStorePath = filepath.Join(GlobalMap["HomeDir"], ".mcli", "root")
+		rootSecretStore_key = filepath.Join(rootKeySecretStorePath, "rootkey.key")
+		cfg.Common.InternalKeyFilePath = rootSecretStore_key
+	}
+
+	_, _, err := mcli_utils.IsExistsAndCreate(rootKeySecretStorePath, true, false)
+	if err != nil {
+		Elogger.Fatal().Msgf("root secret store error - path do not exists: %s", err.Error())
+	}
+	ok, _, _ := mcli_utils.IsExistsAndCreate(rootSecretStore_key, false, false)
+
+	if !ok {
+		err = mcli_secrets.SaveKeyToFilePlain(rootSecretStore_key, mcli_secrets.GenKey(1024))
+		if err != nil {
+			Elogger.Fatal().Msgf("root secret store error - save rootSecretStore_key error: %s", err.Error())
+		}
+	}
+	// read root secret from file
+	rootInternalSecret, err := mcli_secrets.LoadKeyFromFilePlain(rootSecretStore_key)
+	if err != nil {
+		Elogger.Fatal().Msgf("root secret store error - load rootSecretStore_key error: %s", err.Error())
+	}
+	_, err = Config.Cache.Set("RootInternalSecret", rootInternalSecret)
+	if err != nil {
+		Elogger.Fatal().Msgf("root secret store in cache error: %s", err.Error())
+	}
+	GlobalMap["RootSecretKeyPath"] = rootSecretStore_key
+
+	// paths to internal secret vault
+	var internalSecretVaultBasePath = filepath.Dir(Config.Common.InternalVaultPath)
+	var internalSecretVaultPath = Config.Common.InternalVaultPath
+	if len(Config.Common.InternalVaultPath) == 0 {
+		internalSecretVaultBasePath = filepath.Join(GlobalMap["RootPath"], "internal-secrets")
+		internalSecretVaultPath = filepath.Join(internalSecretVaultBasePath, "internal.vault")
+		Config.Common.InternalVaultPath = internalSecretVaultPath
+	}
+	_, _, err = mcli_utils.IsExistsAndCreate(internalSecretVaultBasePath, true, false)
+	if err != nil {
+		Elogger.Fatal().Msgf("internal vault secret store error : %v", err.Error())
+	}
+	GlobalMap["RootSecretVaultPath"] = internalSecretVaultPath
+
+	for gKey, gValue := range GlobalMap {
+		_, err = Config.Cache.Set(gKey, gValue)
+		if err != nil {
+			Elogger.Fatal().Msg("set cache value error " + err.Error())
+		}
+	}
+}
+
+func ReadConfigFile(configFile string) (err error) {
+
+	if len(configFile) == 0 {
+		configFile = GlobalMap["DefaultConfigPath"]
+	}
+
+	if configFile != "" {
+		Ilogger.Trace().Msg(fmt.Sprint("parsing config file:", configFile))
+
+		if _, err := os.Stat(configFile); err == nil {
+			configContent, err := os.ReadFile(configFile)
+			if err != nil {
+				Elogger.Err(err).Msg("config file " + configFile + " does not exist")
+				return err
+			}
+			configContentString := string(configContent)
+
+			templateRegExp, err := regexp.Compile(`{{\$.+?}}`)
+			if err != nil {
+				Elogger.Err(err).Msg("config file " + configFile + " does not exist")
+				return err
+			}
+			allVarsEntries := mcli_utils.RemoveDuplicatesStr(templateRegExp.FindAllString(configContentString, -1))
+			for _, varEntry := range allVarsEntries {
+				// if template entry end on $}} - we replace it from GlobalMap
+				if strings.HasSuffix(varEntry, "$}}") {
+					mapkey := strings.ReplaceAll(varEntry, "{{$", "")
+					mapkey = strings.ReplaceAll(mapkey, "$}}", "")
+					configContentString = strings.ReplaceAll(configContentString, varEntry, GlobalMap[mapkey])
+				}
+				// if template entry end on }} - we replace it from env
+				if strings.HasSuffix(varEntry, "}}") && !strings.HasSuffix(varEntry, "$}}") {
+					osEnv := strings.ReplaceAll(varEntry, "{{$", "")
+					osEnv = strings.ReplaceAll(osEnv, "}}", "")
+					configContentString = strings.ReplaceAll(configContentString, varEntry, os.Getenv(osEnv))
+				}
+			}
+
+			if err == nil {
+				err = yaml.Unmarshal([]byte(configContentString), &Config)
+				if err != nil {
+					Elogger.Fatal().Msg(err.Error())
+				}
+			}
+			// fmt.Println("Configuration content :", string(configContent))
+			Ilogger.Trace().Msg(fmt.Sprintf("Configuration struct : %+v", Config))
+		} else if errors.Is(err, os.ErrNotExist) {
+			Elogger.Err(err).Msg("config file " + configFile + " does not exist")
+			return err
+		} else {
+			Elogger.Err(err).Msg("config file detect error " + err.Error())
+			return err
+		}
+	}
+	return
+}
+
+func Deprecated_ProcessInputParameter(paramName, envName string, command *cobra.Command) (string, error) {
+	resultValue, _ := command.Flags().GetString(paramName)
+	isParamSet := command.Flags().Lookup(paramName).Changed
+	if !isParamSet && len(os.Getenv(envName)) > 0 {
+		resultValue = os.Getenv(envName)
+	}
+	if isParamSet || len(os.Getenv(envName)) == 0 {
+		os.Setenv(envName, resultValue)
+	}
+	return resultValue, nil
+}
+
+// ProcessInputParameter handles input parameters for a Cobra command,
+// setting environment variables based on command line flags and vice versa.
+//
+// It retrieves the parameter value from the command flags, and if the flag
+// is not set and an environment variable with the specified name exists,
+// it uses the environment variable value. If the flag is set or no environment
+// variable is found, it sets the environment variable with the flag value.
+//
+// Parameters:
+//   - paramName: The name of the command line flag.
+//   - envName: The name of the environment variable.
+//   - command: The Cobra command to extract the flag value from.
+//
+// Returns:
+//   - The resulting parameter value (from flag or environment variable).
+//   - An error if there is an issue with flag retrieval or setting the environment variable.
+func ProcessCommandParameter(paramName, envName string, command *cobra.Command) (string, error) {
+	flag := command.Flags().Lookup(paramName)
+	if flag == nil {
+		return "", errors.New("flag not found")
+	}
+
+	resultValue, err := command.Flags().GetString(paramName)
+	if err != nil {
+		return "", err
+	}
+
+	if !flag.Changed && len(os.Getenv(envName)) > 0 {
+		resultValue = os.Getenv(envName)
+	}
+
+	if flag.Changed || len(os.Getenv(envName)) == 0 {
+		os.Setenv(envName, resultValue)
+	}
+
+	return resultValue, nil
 }

@@ -186,7 +186,7 @@ func importToRedis(cmd *cobra.Command, args []string) {
 		// ok now we are ready to import records to kv store
 		var kvStore mcli_interface.KVStorer
 
-		kvStore, err = mcli_redis.NewRedisStore(redisHost, redisPwd, "")
+		kvStore, err = mcli_redis.NewRedisStore("redisutils_"+Config.Common.AppName, redisHost, redisPwd, "", 0)
 		if err != nil {
 			Elogger.Fatal().Msg(err.Error())
 		}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/rs/zerolog"
 
+	mcli_redis "mcli/packages/mcli-redis"
 	mcli_utils "mcli/packages/mcli-utils"
 )
 
@@ -19,6 +20,9 @@ var InputDataFromFile string
 var RedisHost string
 var RedisPort string
 var RedisPwd string
+var RedisRequire string
+var CommonRedisStore *mcli_redis.RedisStore
+
 var RootPath string
 
 var GlobalMap map[string]string = make(map[string]string)

@@ -129,7 +129,7 @@ func (rs *RedisStore) SetRecordEx(key string, value interface{}, expiration int,
 	return nil
 }
 
-func (rs *RedisStore) SetRecords(values map[string]interface{}, keyPrefixes ...string) error {
+func (rs *RedisStore) SetRecords(values map[string]interface{}, hknv map[string]map[string]interface{}, keyPrefixes ...string) error {
 
 	conn := rs.RedisPool.Get()
 	defer conn.Close()

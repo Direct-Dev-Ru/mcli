@@ -109,16 +109,29 @@ func (se *SecretEntry) Update(seSource SecretEntry) error {
 type SecretsEntries struct {
 	sync.Mutex
 	Secrets   []SecretEntry
-	SecretMap map[string]SecretEntry
+	SecretMap map[string]*SecretEntry
 	Wrt       mcli_interface.SecretsWriter
 	Rdr       mcli_interface.SecretsReader
 	Srl       mcli_interface.SecretsSerializer
 	Cypher    mcli_interface.SecretsCypher
 	vaultPath string
 	keyPath   string
+	knvp      mcli_interface.KeyAndVaultProvider
 }
 
 var DefaultSer DefaultSerializer = DefaultSerializer{}
+
+func NewSecretsEntriesV2(rd mcli_interface.SecretsReader, wr mcli_interface.SecretsWriter, cyp mcli_interface.SecretsCypher,
+	ser mcli_interface.SecretsSerializer, knvp mcli_interface.KeyAndVaultProvider) *SecretsEntries {
+
+	ses := NewSecretsEntries(rd, wr, cyp, ser)
+	if knvp == nil {
+		knvp, _ = NewDefaultKeyAndVaultProvider("secrets.vault", "default.key")
+	}
+	ses.knvp = knvp
+
+	return &ses
+}
 
 func NewSecretsEntries(rd mcli_interface.SecretsReader, wr mcli_interface.SecretsWriter, cyp mcli_interface.SecretsCypher,
 	ser mcli_interface.SecretsSerializer) SecretsEntries {
@@ -127,7 +140,7 @@ func NewSecretsEntries(rd mcli_interface.SecretsReader, wr mcli_interface.Secret
 		ser = DefaultSer
 	}
 	return SecretsEntries{Secrets: make([]SecretEntry, 0, 10),
-		SecretMap: make(map[string]SecretEntry, 0), Wrt: wr, Rdr: rd, Srl: ser, Cypher: cyp}
+		SecretMap: make(map[string]*SecretEntry, 0), Wrt: wr, Rdr: rd, Srl: ser, Cypher: cyp}
 }
 
 func (ses *SecretsEntries) NewEntry(name, login, descr string) (SecretEntry, error) {
@@ -154,45 +167,44 @@ func (ses *SecretsEntries) AddEntry(se SecretEntry) error {
 			return nil
 		}
 	}
-
 	if !update {
 		se.store = ses
 		ses.Secrets = append(ses.Secrets, se)
 	}
 
+	se.store = ses
+	ses.SecretMap[se.Name] = &se
+
 	return nil
 }
 
-func (ses *SecretsEntries) FillStoreV2(knvp mcli_interface.KeyAndVaultProvider) error {
-	iContent, err := knvp.GetVault()
+func (ses *SecretsEntries) FillStoreV2() error {
+	knvp := ses.knvp
+	vaultContent, err := knvp.GetVault()
 	if err != nil {
-		return fmt.Errorf("read store fault: %w", err)
+		return fmt.Errorf("reading vault store fault: %w", err)
 	}
-	if vaultContent, ok := iContent.([]byte); ok {
-
-		if len(vaultContent) > 0 {
-			key, err := knvp.GetKey()
-			if err != nil {
-				return fmt.Errorf("get key error %w", err)
-			}
-			cypherData, err := hex.DecodeString(string(vaultContent))
-			if err != nil {
-				return fmt.Errorf("hex decrypting fault: %w", err)
-			}
-
-			vaultContent, err = ses.Cypher.Decrypt(key, cypherData, true)
-			if err != nil {
-				return fmt.Errorf("decrypting fault: %v", err)
-			}
-			ses.Srl.Unmarshal(vaultContent, &ses.Secrets)
+	if len(vaultContent) > 0 {
+		key, err := knvp.GetKey()
+		if err != nil {
+			return fmt.Errorf("geting key error %w", err)
 		}
-		for i := 0; i < len(ses.Secrets); i++ {
-			ses.Secrets[i].store = ses
+		cypherData, err := hex.DecodeString(string(vaultContent))
+		if err != nil {
+			return fmt.Errorf("hex vault content decrypting fault: %w", err)
 		}
-
-		ses.vaultPath, _ = knvp.GetVaultPath()
-		ses.keyPath, _ = knvp.GetKeyPath()
+		vaultContent, err = ses.Cypher.Decrypt(key, cypherData, true)
+		if err != nil {
+			return fmt.Errorf("decrypting vault content fault: %v", err)
+		}
+		ses.Srl.Unmarshal(vaultContent, &ses.Secrets)
 	}
+	for i := 0; i < len(ses.Secrets); i++ {
+		ses.Secrets[i].store = ses
+		ses.SecretMap[ses.Secrets[i].Name] = &ses.Secrets[i]
+	}
+	ses.vaultPath, _ = knvp.GetVaultPath()
+	ses.keyPath, _ = knvp.GetKeyPath()
 	return nil
 }
 
@@ -211,15 +223,16 @@ func (ses *SecretsEntries) FillStore(vaultPath, keyPath string) error {
 		if err != nil {
 			return fmt.Errorf("hex decrypting fault: %w", err)
 		}
-
 		storeContent, err = ses.Cypher.Decrypt(key, cypherData, true)
 		if err != nil {
 			return fmt.Errorf("decrypting fault: %v", err)
 		}
 		ses.Srl.Unmarshal(storeContent, &ses.Secrets)
 	}
+	ses.SecretMap = make(map[string]*SecretEntry)
 	for i := 0; i < len(ses.Secrets); i++ {
 		ses.Secrets[i].store = ses
+		ses.SecretMap[ses.Secrets[i].Name] = &ses.Secrets[i]
 	}
 
 	ses.vaultPath = vaultPath
@@ -246,6 +259,7 @@ func (ses *SecretsEntries) Save(vaultPath, keyPath string) error {
 	if err != nil {
 		return fmt.Errorf("%w", err)
 	}
+
 	cypherData, err := ses.Cypher.Encrypt(key, raw, true)
 	if err != nil {
 		return fmt.Errorf("encrypt fault: %w", err)
@@ -259,7 +273,8 @@ func (ses *SecretsEntries) Save(vaultPath, keyPath string) error {
 	return nil
 }
 
-func (ses *SecretsEntries) SaveV2(knvp mcli_interface.KeyAndVaultProvider) error {
+func (ses *SecretsEntries) SaveV2() error {
+	knvp := ses.knvp
 	ses.Lock()
 	defer ses.Unlock()
 	vaultPath, _ := knvp.GetVaultPath()

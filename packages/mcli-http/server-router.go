@@ -10,6 +10,7 @@ import (
 	mcli_interface "mcli/packages/mcli-interface"
 	mcli_utils "mcli/packages/mcli-utils"
 
+	"github.com/Direct-Dev-Ru/go_common_ddru"
 	"github.com/rs/zerolog"
 )
 
@@ -123,7 +124,7 @@ func (r *Router) injectToContext(next http.HandlerFunc, keyCtx string, valueCtx 
 		// userID := "user123"
 		var ctx = req.Context()
 		if valueCtx != nil {
-			ctx = context.WithValue(req.Context(), mcli_interface.ContextKey(keyCtx), valueCtx)
+			ctx = context.WithValue(req.Context(), go_common_ddru.ContextKey(keyCtx), valueCtx)
 		}
 		// Call the next handler with the updated context
 		next(res, req.WithContext(ctx))
@@ -283,7 +284,7 @@ func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 						}
 						//  if url path matches regexp calculated during route adding
 						if match, reqParams := route.matchRoute(rPath); match {
-							ctx := context.WithValue(req.Context(), mcli_interface.ContextKey("reqParams"), reqParams)
+							ctx := context.WithValue(req.Context(), go_common_ddru.ContextKey("reqParams"), reqParams)
 							// we do not use cache in this case cause we must parse request parameters
 							// and set them to req.ctx
 							// TODO: make caching route with parameters - wrap in some struct
@@ -332,13 +333,13 @@ func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 					// fmt.Println(regExpRoute.pattern, regExpRoute.regexp)
 					if regExpRoute.regexp != nil {
 						if match, reqParamsArray := regExpRoute.matchRouteParamArray(rPath); match {
-							ctx := context.WithValue(req.Context(), mcli_interface.ContextKey("reqParamArray"), reqParamsArray)
+							ctx := context.WithValue(req.Context(), go_common_ddru.ContextKey("reqParamArray"), reqParamsArray)
 							// we do not use cache in this case cause we must parse request parameters
 							// and set them to req.ctx
 							// TODO: make caching route with parameters - wrap in some struct
 							// in handler we access them for example such way:
-							// article := req.Context().Value(mcli_interface.ContextKey("reqParamsArray")).([]string)[0]
-							// post := req.Context().Value(mcli_interface.ContextKey("reqParamsArray")).([]string)[1]
+							// article := req.Context().Value(go_common_ddru.ContextKey("reqParamsArray")).([]string)[0]
+							// post := req.Context().Value(go_common_ddru.ContextKey("reqParamsArray")).([]string)[1]
 
 							regExpRoute.ServeHTTP(res, req.WithContext(ctx))
 							return

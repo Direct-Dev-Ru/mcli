@@ -80,7 +80,7 @@ func TestRedisStore(t *testing.T) {
 			MaxIdle:     3,
 			IdleTimeout: 240 * time.Second,
 			Dial: func() (redis.Conn, error) {
-				c, err := redis.Dial("tcp", "localhost:6380", redis.DialPassword(""))
+				c, err := redis.Dial("tcp", "localhost:6380", redis.DialPassword(""), redis.DialDatabase(10))
 				if err != nil {
 					return nil, err
 				}

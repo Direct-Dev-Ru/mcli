@@ -7,6 +7,7 @@ import (
 	"fmt"
 	mcli_crypto "mcli/packages/mcli-crypto"
 	mcli_fs "mcli/packages/mcli-filesystem"
+	mcli_interface "mcli/packages/mcli-interface"
 	mcli_secrets "mcli/packages/mcli-secrets"
 	mcli_utils "mcli/packages/mcli-utils"
 	"strings"
@@ -53,10 +54,20 @@ var listCmd = &cobra.Command{
 			outputType = "plain"
 		}
 
-		secretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile,
-			mcli_crypto.AesCypher, nil)
+		var knvp mcli_interface.KeyAndVaultProvider
+		var err error
+		knvp, err = mcli_secrets.NewDefaultKeyAndVaultProvider(vaultPath, keyFilePath)
+		if err != nil {
+			Elogger.Fatal().Msgf("get default knv provider fault: %v", err)
+		}
+		// init secret store
+		secretStore := mcli_secrets.NewSecretsEntriesV2(mcli_fs.GetFile, mcli_fs.SetFile,
+			mcli_crypto.AesCypher, nil, knvp)
 
-		if err := secretStore.FillStore(vaultPath, keyFilePath); err != nil {
+		// secretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile,
+		// 	mcli_crypto.AesCypher, nil)
+
+		if err := secretStore.FillStoreV2(); err != nil {
 			Elogger.Fatal().Msg(err.Error())
 		}
 		if len(args) > 0 {

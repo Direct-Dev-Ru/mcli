@@ -2,9 +2,11 @@ package mcliinterface
 
 type KeyAndVaultProvider interface {
 	GetKey() ([]byte, error)
+	SetKey([]byte) error
 	GetKeyPath() (string, error)
-	GetVault() (interface{}, error)
-	SetVault() (interface{}, error)
+	SetKeyPath(string) error
+	GetVault() ([]byte, error)
+	SetVault([]byte) error
 	GetVaultPath() (string, error)
 }
 

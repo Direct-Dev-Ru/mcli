@@ -1,11 +1,16 @@
 config-version: v1
 common:
+  app-name: general-applicaton
   output-file: results.json
   output-format: json
   internal-keyfile-path: "{{$HomeDir$}}/.mcli/root/secrets/rootkey.key"
+  # internal-keyfile-path: "FROM_REDIS:secrets:internal_kay"
   internal-vault-path: "{{$RootPath$}}/intvault/int.vault"
+  # internal-keyfile-path: "FROM_REDIS:secrets:internal_vault"
   redis-host: "{{$REDIS_HOST}}:{{$REDIS_PORT}}"
   redis-password: "{{$REDIS_PWD}}"
+  redis-database-no: 10
+  redis-require: true
 secrets:
   common:
     use-words: false
@@ -41,7 +46,6 @@ http:
       profile-route: /users-profile
       profile-template: ./http-data/internal-templates/profile/profile.page.html
 
-
       auth-ttl: 3600
       secure-auth-token: true
       auth-token-name: session-token
@@ -49,6 +53,9 @@ http:
 
       redis-host: "{{$REDIS_HOST}}:{{$REDIS_PORT}}"      
       redis-password: "{{$REDIS_PWD}}"
+      redis-database-no: 10
+      redis-use-common: false
+      redis-require: true
     static-path: http-static
     static-prefix: static
     templates:
