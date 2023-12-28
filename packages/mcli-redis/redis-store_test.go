@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	mcli_crypto "mcli/packages/mcli-crypto"
-	mcli_interface "mcli/packages/mcli-interface"
+	mcli_type "mcli/packages/mcli-type"
 	"testing"
 	"time"
 
@@ -14,7 +14,7 @@ import (
 	"github.com/ory/dockertest/v3/docker"
 )
 
-var cypher mcli_interface.SecretsCypher = mcli_crypto.AesCypher
+var cypher mcli_type.SecretsCypher = mcli_crypto.AesCypher
 
 func GenKey(length int) []byte {
 	if length == 0 {
@@ -74,7 +74,7 @@ func TestRedisStore(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	// Initialize your RedisStore
+	// Initialize RedisStore
 	rs := &RedisStore{
 		RedisPool: &redis.Pool{
 			MaxIdle:     3,

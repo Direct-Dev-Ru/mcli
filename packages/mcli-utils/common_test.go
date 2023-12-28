@@ -19,7 +19,7 @@ func TestStructToMapStringValues(t *testing.T) {
 	}
 	ptrP := &p
 
-	result := StructToMapStringValues(*ptrP)
+	result, _ := StructToMapStringValues(*ptrP)
 
 	expected := map[string]string{
 		"Name":  "John Doe",

@@ -1,4 +1,4 @@
-package mcliinterface
+package mclitype
 
 import (
 	"net/http"

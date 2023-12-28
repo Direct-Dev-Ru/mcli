@@ -11,9 +11,9 @@ import (
 	mcli_crypto "mcli/packages/mcli-crypto"
 	mcli_error "mcli/packages/mcli-error"
 	mcli_fs "mcli/packages/mcli-filesystem"
-	mcli_interface "mcli/packages/mcli-interface"
 	mcli_redis "mcli/packages/mcli-redis"
 	mcli_secrets "mcli/packages/mcli-secrets"
+	mcli_type "mcli/packages/mcli-type"
 	mcli_utils "mcli/packages/mcli-utils"
 	"os"
 	"regexp"
@@ -26,7 +26,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var cypher mcli_interface.SecretsCypher = mcli_crypto.AesCypher
+var cypher mcli_type.SecretsCypher = mcli_crypto.AesCypher
 var Err mcli_error.CommonError
 var F map[string]func(string) (string, error) = make(map[string]func(string) (string, error), 0)
 
@@ -184,7 +184,7 @@ func importToRedis(cmd *cobra.Command, args []string) {
 		// fmt.Printf("\nAfter: %v\n", mcli_utils.PrettyPrintMap(inputRecords))
 
 		// ok now we are ready to import records to kv store
-		var kvStore mcli_interface.KVStorer
+		var kvStore mcli_type.KVStorer
 
 		kvStore, err = mcli_redis.NewRedisStore("redisutils_"+Config.Common.AppName, redisHost, redisPwd, "", 0)
 		if err != nil {

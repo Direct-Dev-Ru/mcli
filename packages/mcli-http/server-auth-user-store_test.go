@@ -4,8 +4,8 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	mcli_crypto "mcli/packages/mcli-crypto"
-	mcli_interface "mcli/packages/mcli-interface"
 	mcli_redis "mcli/packages/mcli-redis"
+	mcli_type "mcli/packages/mcli-type"
 	"testing"
 	"time"
 
@@ -14,7 +14,7 @@ import (
 	"github.com/ory/dockertest/v3/docker"
 )
 
-var cypher mcli_interface.SecretsCypher = mcli_crypto.AesCypher
+var cypher mcli_type.SecretsCypher = mcli_crypto.AesCypher
 
 func GenKey(length int) []byte {
 	if length == 0 {

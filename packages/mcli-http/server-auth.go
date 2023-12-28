@@ -3,7 +3,7 @@ package mclihttp
 import (
 	"errors"
 	"fmt"
-	mcli_interface "mcli/packages/mcli-interface"
+	mcli_type "mcli/packages/mcli-type"
 	mcli_utils "mcli/packages/mcli-utils"
 	"net/http"
 	"regexp"
@@ -45,7 +45,7 @@ type Credential struct {
 	BackupPhone string   `json:"backup-phone"`
 	Description string   `json:"description"`
 	Roles       []string `json:"roles"`
-	CredStore   mcli_interface.CredentialStorer
+	CredStore   mcli_type.CredentialStorer
 }
 
 // func (f *Credential) UnmarshalJSON(b []byte) (err error) {
@@ -58,7 +58,7 @@ type Credential struct {
 // 	return err
 // }
 
-func NewCredential(username, password string, expired bool, credStore mcli_interface.CredentialStorer) *Credential {
+func NewCredential(username, password string, expired bool, credStore mcli_type.CredentialStorer) *Credential {
 	username = strings.TrimSpace(username)
 	emailPattern := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 	emailRegex, err := regexp.Compile(emailPattern)
@@ -88,7 +88,7 @@ func (cred *Credential) SetCredential(username, password string) error {
 }
 
 func (cred *Credential) GetString(field string) (string, error) {
-	mapCred := mcli_utils.StructToMapStringValues(*cred)
+	mapCred, _ := mcli_utils.StructToMapStringValues(*cred)
 	fieldValue, ok := mapCred[field]
 	if ok {
 		return *fieldValue, nil
@@ -101,10 +101,10 @@ type Session struct {
 	Token      string
 	Value      interface{}
 	Expire     time.Duration
-	Store      mcli_interface.KVStorer
+	Store      mcli_type.KVStorer
 }
 
-func NewSession(cookieName string, s mcli_interface.KVStorer) *Session {
+func NewSession(cookieName string, s mcli_type.KVStorer) *Session {
 	session := Session{CookieName: cookieName, Store: s}
 	return &session
 }

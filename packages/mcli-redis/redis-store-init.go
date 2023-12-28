@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	mcli_interface "mcli/packages/mcli-interface"
+	mcli_type "mcli/packages/mcli-type"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -33,7 +33,7 @@ type RedisStore struct {
 	RedisDatabaseNo int
 	KeyPrefix       string
 	Encrypt         bool
-	Cypher          mcli_interface.SecretsCypher
+	Cypher          mcli_type.SecretsCypher
 	Marshal         func(any) ([]byte, error)
 	Unmarshal       func([]byte, any) error
 	encryptKey      []byte
@@ -113,7 +113,7 @@ func (r *RedisStore) GetUnMarshal() func([]byte, any) error {
 	return r.Unmarshal
 }
 
-func (r *RedisStore) SetEcrypt(encrypt bool, encryptKey []byte, cypher mcli_interface.SecretsCypher) {
+func (r *RedisStore) SetEcrypt(encrypt bool, encryptKey []byte, cypher mcli_type.SecretsCypher) {
 	r.Encrypt = encrypt
 	r.Cypher = cypher
 	r.encryptKey = encryptKey

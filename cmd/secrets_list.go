@@ -7,8 +7,8 @@ import (
 	"fmt"
 	mcli_crypto "mcli/packages/mcli-crypto"
 	mcli_fs "mcli/packages/mcli-filesystem"
-	mcli_interface "mcli/packages/mcli-interface"
 	mcli_secrets "mcli/packages/mcli-secrets"
+	mcli_type "mcli/packages/mcli-type"
 	mcli_utils "mcli/packages/mcli-utils"
 	"strings"
 
@@ -54,7 +54,7 @@ var listCmd = &cobra.Command{
 			outputType = "plain"
 		}
 
-		var knvp mcli_interface.KeyAndVaultProvider
+		var knvp mcli_type.KeyAndVaultProvider
 		var err error
 		knvp, err = mcli_secrets.NewDefaultKeyAndVaultProvider(vaultPath, keyFilePath)
 		if err != nil {

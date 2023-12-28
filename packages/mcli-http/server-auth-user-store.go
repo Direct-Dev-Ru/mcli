@@ -4,23 +4,23 @@ import (
 	"errors"
 	"fmt"
 	mcli_crypto "mcli/packages/mcli-crypto"
-	mcli_interface "mcli/packages/mcli-interface"
+	mcli_type "mcli/packages/mcli-type"
 )
 
 type UserStore struct {
-	kvStore          mcli_interface.KVStorer
+	kvStore          mcli_type.KVStorer
 	CollectionPrefix string
 	UserCache        map[string]*Credential
 }
 
-func NewUserStore(kvstore mcli_interface.KVStorer, collectionPrefix string) *UserStore {
+func NewUserStore(kvstore mcli_type.KVStorer, collectionPrefix string) *UserStore {
 	if collectionPrefix == "" {
 		collectionPrefix = "userlist"
 	}
 	return &UserStore{kvStore: kvstore, CollectionPrefix: collectionPrefix}
 }
 
-func (us *UserStore) SetUser(u mcli_interface.Credentialer) error {
+func (us *UserStore) SetUser(u mcli_type.Credentialer) error {
 	user, ok := u.(*Credential)
 	if !ok {
 		return fmt.Errorf("method SetUser error - wrong input parameter for *Credential")
@@ -52,7 +52,7 @@ func (us *UserStore) SetUser(u mcli_interface.Credentialer) error {
 	return nil
 }
 
-func (us *UserStore) GetUser(username string) (mcli_interface.Credentialer, error, bool) {
+func (us *UserStore) GetUser(username string) (mcli_type.Credentialer, error, bool) {
 	// TODO: make user cache in memory with capacity and ttl and search hear first
 	user := Credential{}
 	userRaw, err, ok := us.kvStore.GetRecord(username, us.CollectionPrefix)
@@ -108,8 +108,8 @@ func (us *UserStore) CheckPassword(username, password string) (bool, error) {
 	return mcli_crypto.CheckHashedPassword(user.Password, password)
 }
 
-func (us *UserStore) GetUsers(pattern string) (map[string]mcli_interface.Credentialer, error) {
-	result := make(map[string]mcli_interface.Credentialer)
+func (us *UserStore) GetUsers(pattern string) (map[string]mcli_type.Credentialer, error) {
+	result := make(map[string]mcli_type.Credentialer)
 	users, err := us.kvStore.GetRecords(pattern, us.CollectionPrefix)
 	if err != nil {
 		return nil, err

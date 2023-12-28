@@ -15,8 +15,8 @@ import (
 	"strings"
 
 	mcli_fs "mcli/packages/mcli-filesystem"
-	mcli_interface "mcli/packages/mcli-interface"
 	mcli_secrets "mcli/packages/mcli-secrets"
+	mcli_type "mcli/packages/mcli-type"
 	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/spf13/cobra"
@@ -297,7 +297,7 @@ func getFullPath(partialPath string) (string, error) {
 //   - module: The path to the shared object file containing the HTTP plugins.
 //     If empty, it defaults to "plugins/http_default_plugins/http_plugins_compiled/http_default_handlers.so".
 //   - name:   The name of the symbol (exported function or variable) to be looked up in the shared object.
-//     This symbol is expected to implement the mcli_interface.HandlerFuncsPlugin interface.
+//     This symbol is expected to implement the mcli_type.HandlerFuncsPlugin interface.
 //
 // The function returns a map of string to http.HandlerFunc, representing the loaded HTTP handler functions.
 // If successful, the map and nil error are returned. If any error occurs during the loading process, the function
@@ -327,8 +327,8 @@ func LoadHttpPlugins(module string, name string) (map[string]http.HandlerFunc, e
 
 	// 3. Assert that loaded symbol is of a desired type
 	// in this case interface type Greeter (defined above)
-	var handlerFuncs mcli_interface.HandlerFuncsPlugin
-	handlerFuncs, ok := symVariable.(mcli_interface.HandlerFuncsPlugin)
+	var handlerFuncs mcli_type.HandlerFuncsPlugin
+	handlerFuncs, ok := symVariable.(mcli_type.HandlerFuncsPlugin)
 	if !ok {
 		return nil, err
 	}
@@ -364,8 +364,8 @@ func LoadPlugin(modulePath string, objectName string) (plugin.Symbol, error) {
 
 	// 3. Assert that loaded symbol is of a desired type
 	// in this case interface type Greeter (defined above)
-	// var handlerFuncs mcli_interface.HandlerFuncsPlugin
-	// handlerFuncs, ok := symVariable.(mcli_interface.HandlerFuncsPlugin)
+	// var handlerFuncs mcli_type.HandlerFuncsPlugin
+	// handlerFuncs, ok := symVariable.(mcli_type.HandlerFuncsPlugin)
 	// if !ok {
 	// 	return nil, err
 	// }

@@ -66,7 +66,7 @@ func Tiif(ifCase bool, trueValue interface{}, falseValue interface{}) interface{
 	return falseValue
 }
 
-// StructToMapStringValues converts a struct to a map containing only string values.
+// StructToMapStringValues converts a struct or ptr to a struct to a map containing only string values.
 //
 // It iterates over the fields of the input struct, checks if they are of string type,
 // and adds them to the resulting map.
@@ -100,9 +100,17 @@ func Tiif(ifCase bool, trueValue interface{}, falseValue interface{}) interface{
 //	}
 //
 // This example will output: map[Email:john@example.com Name:John Doe]
-func StructToMapStringValues(input interface{}) map[string]*string {
+func StructToMapStringValues(input interface{}) (map[string]*string, error) {
 	result := make(map[string]*string)
 	v := reflect.ValueOf(input)
+
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("input is not a struct or a pointer to a struct")
+	}
 
 	if v.Kind() == reflect.Struct {
 		t := v.Type()
@@ -118,7 +126,31 @@ func StructToMapStringValues(input interface{}) map[string]*string {
 		}
 	}
 
-	return result
+	return result, nil
+}
+
+func StructToMap(input interface{}) (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+	v := reflect.ValueOf(input)
+
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if v.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("input is not a struct or a pointer to a struct")
+	}
+
+	typ := v.Type()
+	if v.Kind() == reflect.Struct {
+		for i := 0; i < v.NumField(); i++ {
+			field := v.Field(i)
+			fieldName := typ.Field(i).Name
+			result[fieldName] = field.Interface()
+		}
+	}
+
+	return result, nil
 }
 
 func PrintAsTable(data map[string][]string, columnDivider string) {

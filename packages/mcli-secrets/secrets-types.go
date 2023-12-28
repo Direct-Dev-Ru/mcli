@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	mcli_interface "mcli/packages/mcli-interface"
+	mcli_type "mcli/packages/mcli-type"
 )
 
 type DefaultSerializer struct {
@@ -110,19 +110,19 @@ type SecretsEntries struct {
 	sync.Mutex
 	Secrets   []SecretEntry
 	SecretMap map[string]*SecretEntry
-	Wrt       mcli_interface.SecretsWriter
-	Rdr       mcli_interface.SecretsReader
-	Srl       mcli_interface.SecretsSerializer
-	Cypher    mcli_interface.SecretsCypher
+	Wrt       mcli_type.SecretsWriter
+	Rdr       mcli_type.SecretsReader
+	Srl       mcli_type.SecretsSerializer
+	Cypher    mcli_type.SecretsCypher
 	vaultPath string
 	keyPath   string
-	knvp      mcli_interface.KeyAndVaultProvider
+	knvp      mcli_type.KeyAndVaultProvider
 }
 
 var DefaultSer DefaultSerializer = DefaultSerializer{}
 
-func NewSecretsEntriesV2(rd mcli_interface.SecretsReader, wr mcli_interface.SecretsWriter, cyp mcli_interface.SecretsCypher,
-	ser mcli_interface.SecretsSerializer, knvp mcli_interface.KeyAndVaultProvider) *SecretsEntries {
+func NewSecretsEntriesV2(rd mcli_type.SecretsReader, wr mcli_type.SecretsWriter, cyp mcli_type.SecretsCypher,
+	ser mcli_type.SecretsSerializer, knvp mcli_type.KeyAndVaultProvider) *SecretsEntries {
 
 	ses := NewSecretsEntries(rd, wr, cyp, ser)
 	if knvp == nil {
@@ -133,8 +133,8 @@ func NewSecretsEntriesV2(rd mcli_interface.SecretsReader, wr mcli_interface.Secr
 	return &ses
 }
 
-func NewSecretsEntries(rd mcli_interface.SecretsReader, wr mcli_interface.SecretsWriter, cyp mcli_interface.SecretsCypher,
-	ser mcli_interface.SecretsSerializer) SecretsEntries {
+func NewSecretsEntries(rd mcli_type.SecretsReader, wr mcli_type.SecretsWriter, cyp mcli_type.SecretsCypher,
+	ser mcli_type.SecretsSerializer) SecretsEntries {
 
 	if ser == nil {
 		ser = DefaultSer

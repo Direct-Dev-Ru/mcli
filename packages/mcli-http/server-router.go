@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	mcli_interface "mcli/packages/mcli-interface"
+	mcli_type "mcli/packages/mcli-type"
 	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/Direct-Dev-Ru/go_common_ddru"
@@ -25,17 +25,17 @@ type Router struct {
 	routes        []*Route
 	// RouteType -- Method -- Pattern
 	mapRoutes       map[RouteType]map[string]map[string]*Route
-	middleware      []mcli_interface.Middleware
+	middleware      []mcli_type.Middleware
 	finalHandler    http.Handler
-	KVStore         mcli_interface.KVStorer
-	CredentialStore mcli_interface.CredentialStorer
-	Cache           mcli_interface.Cacher
+	KVStore         mcli_type.KVStorer
+	CredentialStore mcli_type.CredentialStorer
+	Cache           mcli_type.Cacher
 }
 
 type RouterOptions struct {
 	BaseUrl         string
-	KVStore         mcli_interface.KVStorer
-	CredentialStore mcli_interface.CredentialStorer
+	KVStore         mcli_type.KVStorer
+	CredentialStore mcli_type.CredentialStorer
 }
 
 func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, Elogger zerolog.Logger, opts *RouterOptions) *Router {
@@ -60,7 +60,7 @@ func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, Elogger zerolo
 	mapRoutes[Regexp] = make(map[string]map[string]*Route, 0)
 	baseURL := ""
 	router := Router{infoLog: iLog, errorLog: Elogger, sPath: sPath, sPrefix: sPrefix, staticHandler: fileServer,
-		sBaseURL: baseURL, middleware: make([]mcli_interface.Middleware, 0, 3), routes: make([]*Route, 0, 3),
+		sBaseURL: baseURL, middleware: make([]mcli_type.Middleware, 0, 3), routes: make([]*Route, 0, 3),
 		mapRoutes: mapRoutes}
 	if opts != nil {
 		baseURL = strings.TrimSpace(opts.BaseUrl)
@@ -98,7 +98,7 @@ func (r *Router) PrintRoutes() {
 	}
 }
 
-func (r *Router) Use(mw mcli_interface.Middleware) error {
+func (r *Router) Use(mw mcli_type.Middleware) error {
 	r.middleware = append(r.middleware, mw)
 	return nil
 }
@@ -108,7 +108,7 @@ func (r *Router) ConstructFinalHandler() error {
 	r.finalHandler = http.HandlerFunc(r.innerHandler)
 
 	if len(r.middleware) > 0 {
-		var currentMw mcli_interface.Middleware
+		var currentMw mcli_type.Middleware
 		for i := len(r.middleware) - 1; i >= 0; i-- {
 			currentMw = r.middleware[i]
 			currentMw.SetInnerHandler(r.finalHandler)

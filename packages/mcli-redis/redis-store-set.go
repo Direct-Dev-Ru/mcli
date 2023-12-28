@@ -12,6 +12,11 @@ type StoreFormat struct {
 	Value     []byte
 	TimeStamp time.Time
 }
+type StoreFormatString struct {
+	ValueType string
+	Value     string
+	TimeStamp time.Time
+}
 
 func (rs *RedisStore) getValueToStore(value interface{}) (string, error) {
 	var (
@@ -40,7 +45,7 @@ func (rs *RedisStore) getValueToStore(value interface{}) (string, error) {
 		// 	valueType = "struct"
 		// }
 	}
-	toStore := StoreFormat{ValueType: valueType, Value: rawValue, TimeStamp: time.Now().UTC()}
+	toStore := StoreFormatString{ValueType: valueType, Value: string(rawValue), TimeStamp: time.Now().UTC()}
 	// fmt.Println(toStore)
 	// strBytes := []byte(valueType)
 
@@ -129,7 +134,7 @@ func (rs *RedisStore) SetRecordEx(key string, value interface{}, expiration int,
 	return nil
 }
 
-func (rs *RedisStore) SetRecords(values map[string]interface{}, hknv map[string]map[string]interface{}, keyPrefixes ...string) error {
+func (rs *RedisStore) SetRecords(values map[string]interface{}, keyPrefixes ...string) error {
 
 	conn := rs.RedisPool.Get()
 	defer conn.Close()

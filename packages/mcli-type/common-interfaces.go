@@ -1,4 +1,4 @@
-package mcliinterface
+package mclitype
 
 type Cacher interface {
 	GetAndSetIfNotExists(key string, value ...interface{}) (interface{}, error)

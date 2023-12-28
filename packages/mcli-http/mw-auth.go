@@ -7,7 +7,7 @@ import (
 	"time"
 
 	// "github.com/rs/zerolog/pkgerrors"
-	mcli_interface "mcli/packages/mcli-interface"
+	mcli_type "mcli/packages/mcli-type"
 
 	go_common_ddru "github.com/Direct-Dev-Ru/go_common_ddru"
 )
@@ -16,13 +16,13 @@ type Auth struct {
 	User        *Credential
 	Inner       http.Handler
 	isEncCookie bool
-	userStore   mcli_interface.CredentialStorer
-	kvStore     mcli_interface.KVStorer
+	userStore   mcli_type.CredentialStorer
+	kvStore     mcli_type.KVStorer
 }
 
 // type ContextKey string
 
-func NewAuth(userStore mcli_interface.CredentialStorer, kvStore mcli_interface.KVStorer, isEnc bool) *Auth {
+func NewAuth(userStore mcli_type.CredentialStorer, kvStore mcli_type.KVStorer, isEnc bool) *Auth {
 
 	return &Auth{userStore: userStore, kvStore: kvStore, isEncCookie: isEnc}
 }

@@ -13,8 +13,8 @@ import (
 
 	mcli_crypto "mcli/packages/mcli-crypto"
 	mcli_fs "mcli/packages/mcli-filesystem"
-	mcli_interface "mcli/packages/mcli-interface"
 	mcli_secrets "mcli/packages/mcli-secrets"
+	mcli_type "mcli/packages/mcli-type"
 	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/spf13/cobra"
@@ -83,7 +83,7 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 		runesReplaces[2] = mcli_crypto.ReplaceEntry{OriginRune: 'i', ReplaceRune: '1', Number: 1000}
 	}
 
-	var knvp mcli_interface.KeyAndVaultProvider
+	var knvp mcli_type.KeyAndVaultProvider
 	var err error
 	knvp, err = mcli_secrets.NewDefaultKeyAndVaultProvider(vaultPath, keyFilePath)
 	if err != nil {

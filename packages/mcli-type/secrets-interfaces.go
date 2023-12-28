@@ -1,4 +1,4 @@
-package mcliinterface
+package mclitype
 
 type KeyAndVaultProvider interface {
 	GetKey() ([]byte, error)
