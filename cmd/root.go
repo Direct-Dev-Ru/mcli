@@ -5,6 +5,7 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"math/rand"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	mcli_redis "mcli/packages/mcli-redis"
 	mcli_utils "mcli/packages/mcli-utils"
@@ -201,7 +203,19 @@ func initConfig() {
 
 	//end of common redis connection init
 
-	Config.Cache = mcli_utils.NewCCache(0, 0, nil)
+	Ctx, CtxCancel = context.WithCancel(context.Background())
+	defer func() {
+		// extra handling here
+		//fmt.Println("extra handling done")
+		CtxCancel()
+		time.Sleep(5 * time.Second)
+	}()
+
+	Config.Cache = mcli_utils.NewCCache(0, 0, nil, Ctx, Notify)
+	GlobalCache = *mcli_utils.NewCCache(0, 0, nil, Ctx, Notify)
+
+	Config.Cache.Set("Ctx", nil, 0, Ctx)
+	Config.Cache.Set("CtxCancel", nil, 0, CtxCancel)
 
 	InitInternalSecreVault(&Config)
 

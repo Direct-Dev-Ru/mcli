@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"sync"
 
 	"github.com/rs/zerolog"
@@ -25,10 +26,14 @@ var CommonRedisStore *mcli_redis.RedisStore
 
 var RootPath string
 
-var GlobalMap map[string]string = make(map[string]string)
-var ClobalCache mcli_utils.CCache = *mcli_utils.NewCCache(0, 0, nil)
+var Ctx context.Context
+var CtxCancel context.CancelFunc
+var Notify chan interface{} = make(chan interface{})
 
-var Version string = "0.2.0"
+var GlobalMap map[string]string = make(map[string]string)
+var GlobalCache mcli_utils.CCache
+
+var Version string = "0.5.0"
 var Input InputData = InputData{InputSlice: []string{},
 	InputMap:   make(map[string][]string),
 	InputTable: make([]map[string]string, 0),

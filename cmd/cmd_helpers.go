@@ -405,7 +405,7 @@ func InitInternalSecreVault(cfg *ConfigData) {
 	if err != nil {
 		Elogger.Fatal().Msgf("root secret store error - load rootSecretStore_key error: %s", err.Error())
 	}
-	_, err = Config.Cache.Set("RootInternalSecret", rootInternalSecret)
+	_, err = Config.Cache.Set("RootInternalSecret", nil, 0, rootInternalSecret)
 	if err != nil {
 		Elogger.Fatal().Msgf("root secret store in cache error: %s", err.Error())
 	}
@@ -426,7 +426,7 @@ func InitInternalSecreVault(cfg *ConfigData) {
 	GlobalMap["RootSecretVaultPath"] = internalSecretVaultPath
 
 	for gKey, gValue := range GlobalMap {
-		_, err = Config.Cache.Set(gKey, gValue)
+		_, err = Config.Cache.Set(gKey, nil, 0, gValue)
 		if err != nil {
 			Elogger.Fatal().Msg("set cache value error " + err.Error())
 		}

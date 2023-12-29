@@ -1,6 +1,7 @@
 package mcliutils
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -26,14 +27,14 @@ func TestCCache_TestParallel(t *testing.T) {
 			result = append(result, strings.ToUpper(valToProcess))
 		}
 		return result, nil
-	})
+	}, context.Background(), nil)
 
 	values := []interface{}{"val1.1", "val1.2"}
-	_, err = cc.Set(testingkey, values...)
+	_, err = cc.Set(testingkey, nil, 0, values...)
 	if err != nil {
 		t.Errorf("Expected no error for non-existent key1, but got error: %v", err)
 	}
-	_, err = cc.Set("key2", "val2")
+	_, err = cc.Set("key2", nil, 0, "val2")
 	if err != nil {
 		t.Errorf("Expected no error for non-existent key2, but got error: %v", err)
 	}
@@ -58,7 +59,7 @@ func TestCCache_TestParallel(t *testing.T) {
 }
 
 func TestCCache_GetAndSetIfNotExists(t *testing.T) {
-	cc := NewCCache(1000, 0, nil)
+	cc := NewCCache(1000, 0, nil, context.Background(), nil)
 
 	// Test case 1: Get non-existent key
 	_, err := cc.GetAndSetIfNotExists("key1")
@@ -94,7 +95,7 @@ func TestCCache_GetAndSetIfNotExists(t *testing.T) {
 	}
 
 	// Test case 4: Set new value for an existing key
-	val, err = cc.Set("key1", "newvalue1")
+	val, err = cc.Set("key1", nil, 0, "newvalue1")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -104,7 +105,7 @@ func TestCCache_GetAndSetIfNotExists(t *testing.T) {
 }
 
 func TestCCache_Remove(t *testing.T) {
-	cc := NewCCache(1000, 0, nil)
+	cc := NewCCache(1000, 0, nil, context.Background(), nil)
 
 	// Test case 1: Remove non-existent key
 	err := cc.Remove("key1")
@@ -131,7 +132,7 @@ func TestCCache_Remove(t *testing.T) {
 }
 
 func TestCCache_Optimize(t *testing.T) {
-	cc := NewCCache(100, 0, nil)
+	cc := NewCCache(100, 0, nil, context.Background(), nil)
 	cc.MaxEntries = 3
 	// Set some values
 	cc.GetAndSetIfNotExists("key1", "value1")

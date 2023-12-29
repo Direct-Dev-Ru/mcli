@@ -58,7 +58,7 @@ func init() {
 	// println(GlobalMap["RootPath"])
 	// println(GlobalMap["DefaultConfigPath"])
 
-	// // generate rootkey for internal secrets
+	// generate rootkey for internal secrets
 	// rootSecretStorePath := filepath.Join(GlobalMap["HomeDir"], ".mcli", "root", "secret")
 	// _, _, err = mcli_utils.IsExistsAndCreate(rootSecretStorePath, true)
 	// if err != nil {

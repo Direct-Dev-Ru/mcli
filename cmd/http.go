@@ -4,7 +4,6 @@ Copyright © 2022 DIRECT-DEV.RU <INFO@DIRECT-DEV.RU>
 package cmd
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -82,6 +81,8 @@ var httpCmd = &cobra.Command{
 
 		mcli_http.HttpConfig = Config.Http
 		rOpts := mcli_http.RouterOptions{BaseUrl: baseUrl}
+		rOpts.Ctx = Ctx
+		rOpts.Notify = Notify
 		r := mcli_http.NewRouter(staticPath, staticPrefix, Ilogger, Elogger, &rOpts)
 
 		// load plugins route handlers
@@ -110,13 +111,8 @@ var httpCmd = &cobra.Command{
 		r.AddRouteWithHandler("/", mcli_http.Equal, rootHandler)
 
 		// Context to stop server and pass into other goroutines
-		ctx, cancel := context.WithCancel(context.Background())
-		defer func() {
-			// extra handling here
-			//fmt.Println("extra handling done")
-			cancel()
-			time.Sleep(5 * time.Second)
-		}()
+		// ctx, cancel := context.WithCancel(context.Background())
+
 		serverTemplates := Config.Http.Server.Templates
 
 		if len(tmplPath) > 0 {
@@ -124,7 +120,7 @@ var httpCmd = &cobra.Command{
 			serverTemplates[0] = mcli_http.TemplateEntry{TmplName: "fromcmdline", TmplType: "standart",
 				TmplPath: tmplPath, TmplPrefix: tmplPrefix, TmplDataPath: tmplDataPath}
 		}
-		r.SetTemplatesRoutes(ctx, serverTemplates)
+		r.SetTemplatesRoutes(Ctx, serverTemplates)
 
 		// echo route for testing and debugging
 		if echoRouteFromPlugin, ok := HttpDefaultPluginRouteMap["HTTP_ECHO"]; ok {
@@ -344,7 +340,7 @@ var httpCmd = &cobra.Command{
 
 		Ilogger.Info().Msg(fmt.Sprintf("http server stopped on port %s", port))
 
-		if err := srv.Shutdown(ctx); err != nil {
+		if err := srv.Shutdown(Ctx); err != nil {
 			Elogger.Fatal().Msg(fmt.Sprintf("server shutdown failed: %+v", err))
 		}
 		Ilogger.Info().Msg("server shutting down properly")

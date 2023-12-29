@@ -30,12 +30,16 @@ type Router struct {
 	KVStore         mcli_type.KVStorer
 	CredentialStore mcli_type.CredentialStorer
 	Cache           mcli_type.Cacher
+	Ctx             context.Context
+	Notify          chan interface{}
 }
 
 type RouterOptions struct {
 	BaseUrl         string
 	KVStore         mcli_type.KVStorer
 	CredentialStore mcli_type.CredentialStorer
+	Ctx             context.Context
+	Notify          chan interface{}
 }
 
 func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, Elogger zerolog.Logger, opts *RouterOptions) *Router {
@@ -74,6 +78,12 @@ func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, Elogger zerolo
 		if opts.CredentialStore != nil {
 			router.CredentialStore = opts.CredentialStore
 		}
+		if opts.Ctx != nil {
+			router.Ctx = opts.Ctx
+		}
+		if opts.Notify != nil {
+			router.Notify = opts.Notify
+		}
 	}
 	router.Cache = mcli_utils.NewCCache(600, 100, func(params ...interface{}) (interface{}, error) {
 		if len(params) == 0 {
@@ -87,7 +97,7 @@ func NewRouter(sPath string, sPrefix string, iLog zerolog.Logger, Elogger zerolo
 			return nil, fmt.Errorf("wrong type parameter for cache function")
 		}
 		return nil, fmt.Errorf("too many parameters for cache function")
-	})
+	}, router.Ctx, router.Notify)
 
 	return &router
 }
@@ -269,7 +279,7 @@ func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 					if route, exists := mapRoutes[rPath]; exists {
 						r.infoLog.Trace().Msgf("path %s try to set cache for equal route %v", rPath, []*Route{route})
 
-						_, err := r.Cache.Set(reqPath, route)
+						_, err := r.Cache.Set(reqPath, nil, 0, route)
 						if err != nil {
 							r.errorLog.Err(err).Msgf("set route cache for path %s has fault:", rPath)
 						}
@@ -311,7 +321,7 @@ func (r *Router) innerHandler(res http.ResponseWriter, req *http.Request) {
 				for _, prefixRoute := range *mapPrefixRoutes {
 					if strings.HasPrefix(rPath, prefixRoute.pattern) {
 						// fmt.Println("try to set cache for ", []*Route{prefixRoute})
-						_, err := r.Cache.Set(reqPath, prefixRoute)
+						_, err := r.Cache.Set(reqPath, nil, 0, prefixRoute)
 						if err != nil {
 							r.errorLog.Err(err).Msgf("set route cache for path %s has fault:", rPath)
 						}

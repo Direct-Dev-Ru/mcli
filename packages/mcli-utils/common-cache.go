@@ -1,6 +1,7 @@
 package mcliutils
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"sync"
@@ -11,27 +12,29 @@ var testingkey = "testing4893472"
 
 type wrapCacheEntry struct {
 	key string
-	e   *cacheEntry
+	e   *CacheEntry
 }
-type cacheEntry struct {
-	Value     interface{}
-	TimeStamp time.Time
-	mu        sync.Mutex // guards
-	Count     uint
+type CacheEntry struct {
+	mu         sync.Mutex // guards
+	Value      interface{}
+	UpdateFunc CacheFunc
+	Ttl        time.Duration
+	TimeStamp  time.Time
+	Count      uint
 }
 
 type CCache struct {
 	Func       CacheFunc
 	mu         sync.RWMutex
-	Cache      map[string]*cacheEntry
-	Ttl        int // time in milliseconds to store entry in cache
-	MaxEntries int //store max number of entries in Optimized cache if <=0 --> no limits
+	Cache      map[string]*CacheEntry
+	Ttl        time.Duration // time in milliseconds to store entry in cache
+	MaxEntries int           //store max number of entries in Optimized cache if <=0 --> no limits
 }
 
 type CacheFunc func(params ...interface{}) (interface{}, error)
 
-func NewCCache(ttl int, maxEntries int, f CacheFunc) *CCache {
-	return &CCache{Ttl: ttl, MaxEntries: maxEntries, Cache: make(map[string]*cacheEntry), Func: f}
+func NewCCache(ttl time.Duration, maxEntries int, f CacheFunc, ctx context.Context, notify chan interface{}) *CCache {
+	return &CCache{Ttl: ttl, MaxEntries: maxEntries, Cache: make(map[string]*CacheEntry), Func: f}
 }
 
 type CCacheEntries []wrapCacheEntry
@@ -43,7 +46,7 @@ func (c CCacheEntries) Less(i, j int) bool {
 }
 
 func (cc *CCache) Get(key string) (interface{}, error) {
-	var entry *cacheEntry
+	var entry *CacheEntry
 
 	cc.mu.RLock()
 	entry, ok := cc.Cache[key]
@@ -58,7 +61,7 @@ func (cc *CCache) Get(key string) (interface{}, error) {
 }
 
 func (cc *CCache) GetAndSetIfNotExists(key string, value ...interface{}) (interface{}, error) {
-	var entry *cacheEntry
+	var entry *CacheEntry
 	var err error
 	cc.mu.RLock()
 	entry, ok := cc.Cache[key]
@@ -79,7 +82,7 @@ func (cc *CCache) GetAndSetIfNotExists(key string, value ...interface{}) (interf
 		if len(value) == 0 {
 			return nil, fmt.Errorf("no value provided to store in cache")
 		}
-		entry = &cacheEntry{Count: 1}
+		entry = &CacheEntry{Count: 1}
 		if cc.Func != nil {
 			entry.Value, err = cc.Func(value...)
 			if err != nil {
@@ -105,15 +108,19 @@ func (cc *CCache) GetAndSetIfNotExists(key string, value ...interface{}) (interf
 	return entry.Value, nil
 }
 
-func (cc *CCache) Set(key string, value ...interface{}) (interface{}, error) {
-	var entry *cacheEntry = &cacheEntry{Count: 1, TimeStamp: time.Now()}
+func (cc *CCache) Set(key string, updateFunc func(params ...interface{}) (interface{}, error), ttl time.Duration, value ...interface{}) (interface{}, error) {
+	var entry *CacheEntry = &CacheEntry{Count: 1, UpdateFunc: updateFunc, Ttl: ttl, TimeStamp: time.Now()}
 	var err error
 
 	if len(value) == 0 {
 		return nil, fmt.Errorf("no value provided to store in cache")
 	}
-
-	if cc.Func != nil {
+	if updateFunc != nil {
+		entry.Value, err = updateFunc(value...)
+		if err != nil {
+			return nil, err
+		}
+	} else if cc.Func != nil {
 		entry.Value, err = cc.Func(value...)
 		if err != nil {
 			return nil, err
