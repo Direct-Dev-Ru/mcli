@@ -4,14 +4,17 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -122,7 +125,12 @@ func GenerateRSACert(crtName, path string, isCA bool, crtDomains []string) error
 
 	// save private key
 	pkey := x509.MarshalPKCS1PrivateKey(privatekey)
-	os.WriteFile(filepath.Clean(path+"/"+crtName+"-private"), pkey, 0777)
+	pathToSave := filepath.Clean(path + "/" + crtName + "-private")
+	err = os.WriteFile(pathToSave, pkey, 0777)
+
+	if err != nil {
+		return err
+	}
 
 	// save public key
 	pubkey, _ := x509.MarshalPKIXPublicKey(publickey)
@@ -283,6 +291,236 @@ func RSAConfigSetup(rsaPrivateKeyLocation, privatePassphrase, rsaPublicKeyLocati
 
 // GenRSA returns a new RSA key of bits length
 func GenRSA(bits int) (*rsa.PrivateKey, error) {
+
 	key, err := rsa.GenerateKey(rand.Reader, bits)
 	return key, err
+}
+
+// GenerateCACertificate generates a self-signed Certificate Authority (CA) certificate and saves it to the specified path (specify only folder).
+// It also saves private key in the same folder
+// It takes the following parameters:
+// - pathToSaveCA: The directory where the CA certificate and private key will be saved.
+// - caFileName: The base filename for the CA certificate and private key files.
+// - commonName: The common name (CN) for the CA certificate.
+// - orgName: The organization name (O) for the CA certificate.
+// - country: The country (C) for the CA certificate.
+// - location: The location (L) for the CA certificate.
+// It returns an error if any.
+func GenerateCACertificate(pathToSaveCA, caFileName, commonName, orgName, country, location string) error {
+
+	var ca *x509.Certificate = &x509.Certificate{
+		SerialNumber: big.NewInt(2019),
+		Subject: pkix.Name{
+			Organization: []string{orgName},
+			Country:      []string{country},
+			Province:     []string{location},
+			Locality:     []string{location},
+			// StreetAddress: []string{""},
+			// PostalCode:    []string{""},
+			CommonName: commonName,
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+
+	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		return err
+	}
+
+	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
+	if err != nil {
+		return err
+	}
+
+	// Now in caBytes we have our generated certificate, which we can PEM encode for later use:
+	caPEM := new(bytes.Buffer)
+	pem.Encode(caPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caBytes,
+	})
+
+	err = os.WriteFile(filepath.Clean(pathToSaveCA+"/"+caFileName+".crt"), caPEM.Bytes(), 0644)
+	if err != nil {
+		return err
+	}
+
+	caPrivKeyPEM := new(bytes.Buffer)
+	pem.Encode(caPrivKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
+	})
+	err = os.WriteFile(filepath.Clean(pathToSaveCA+"/"+caFileName+".key"), caPrivKeyPEM.Bytes(), 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ReadCertificateFromFile(certFilePath string) (*x509.Certificate, error) {
+	// Read certificate file
+	certPEM, err := os.ReadFile(certFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decode PEM-encoded certificate
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return nil, fmt.Errorf("failed to parse certificate PEM")
+	}
+
+	// Parse certificate
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return cert, nil
+}
+
+// GenerateCertificateWithCASign generates a certificate signed by a Certificate Authority (CA) and saves it to the specified path.
+// It takes the following parameters:
+//   - pathToSaveCertificate: The directory where the certificate and private key will be saved ( specify with .crt filename -
+//     .key file will be placed nearly in the same folder).
+//   - caPath: The path to the CA certificate file (.crt - key file must be in the same folder).
+//   - orgName: The organization name (O) for the certificate.
+//   - country: The country (C) for the certificate.
+//   - location: The location (L) for the certificate.
+//   - DNSNames: A list of DNS names for the certificate.
+//   - IPAddresses: A list of IP addresses for the certificate.
+//
+// It returns the certificate and private key bytes, along with any error encountered.
+// if caPath dont contain vlid cert - ca files (.crt and .key) will be generated in the {{pathToSaveCertificate}}/ca folder
+func GenerateCertificateWithCASign(pathToSaveCertificate, caPath, orgName, country, location string, DNSNames []string, IPAddresses []net.IP) ([]byte, []byte, error) {
+
+	if len(DNSNames) == 0 {
+		DNSNames = []string{"localhost"}
+	}
+
+	if len(IPAddresses) == 0 {
+		IPAddresses = []net.IP{net.IPv4(127, 0, 0, 1), net.IPv6loopback}
+	}
+	// read ca certificate
+	commonName := DNSNames[0]
+	ca, err := ReadCertificateFromFile(caPath)
+	if err != nil {
+		caPath = pathToSaveCertificate + "/ca/ca.crt"
+		ca, err = ReadCertificateFromFile(caPath)
+		if err != nil {
+			os.MkdirAll(filepath.Clean(pathToSaveCertificate+"/ca"), 0755)
+			err = GenerateCACertificate(filepath.Clean(pathToSaveCertificate+"/ca"), "ca", commonName, orgName, country, location)
+			if err != nil {
+				return nil, nil, err
+			}
+			ca, err = ReadCertificateFromFile(caPath)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+
+	caPrivKey, err := GetPrivateKeyFromFile(strings.ReplaceAll(caPath, ".crt", ".key"))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// set up our server certificate
+	cert := &x509.Certificate{
+		SerialNumber: big.NewInt(2019),
+		Subject: pkix.Name{
+			Organization:  []string{orgName},
+			Country:       []string{country},
+			Province:      []string{location},
+			Locality:      []string{location},
+			StreetAddress: []string{""},
+			PostalCode:    []string{""},
+			CommonName:    commonName,
+		},
+		IPAddresses:  IPAddresses,
+		DNSNames:     DNSNames,
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().AddDate(10, 0, 0),
+		SubjectKeyId: []byte{1, 2, 3, 4, 6},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+	}
+
+	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	certBytes, err := x509.CreateCertificate(rand.Reader, cert, ca, &certPrivKey.PublicKey, caPrivKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	certPEM := new(bytes.Buffer)
+	pem.Encode(certPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	})
+
+	certPrivKeyPEM := new(bytes.Buffer)
+	pem.Encode(certPrivKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(certPrivKey),
+	})
+
+	err = os.WriteFile(filepath.Clean(pathToSaveCertificate+"/"+commonName+".crt"), certPEM.Bytes(), 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	err = os.WriteFile(filepath.Clean(pathToSaveCertificate+"/"+commonName+".key"), certPrivKeyPEM.Bytes(), 0644)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return certPEM.Bytes(), certPrivKeyPEM.Bytes(), nil
+}
+
+// CertSetup sets up TLS configurations for server and client communication.
+// It takes the paths to the certificate (.crt file and .key file must be placed in the same folder)
+// and CA (Certificate Authority) files as input - .crt file.
+// It returns the TLS configurations for the server and client, along with any error encountered.
+func CertSetup(certPath, caPath string) (serverTLSConf *tls.Config, clientTLSConf *tls.Config, err error) {
+
+	certPEM, err := os.ReadFile(filepath.Clean(certPath))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	certPrivKeyPEM, err := os.ReadFile(filepath.Clean(strings.ReplaceAll(certPath, ".crt", ".key")))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	caPEM, err := os.ReadFile(filepath.Clean(caPath))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	serverCert, err := tls.X509KeyPair(certPEM, certPrivKeyPEM)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	serverTLSConf = &tls.Config{
+		Certificates: []tls.Certificate{serverCert},
+	}
+
+	certpool := x509.NewCertPool()
+	certpool.AppendCertsFromPEM(caPEM)
+	clientTLSConf = &tls.Config{
+		RootCAs: certpool,
+	}
+
+	return
 }

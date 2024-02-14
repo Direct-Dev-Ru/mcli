@@ -2,7 +2,13 @@ package mclicrypto
 
 import (
 	"bytes"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -56,8 +62,9 @@ func TestGetKey(t *testing.T) {
 }
 
 func TestGenerateRSACert(t *testing.T) {
+	pathToSave := "/home/kay/project/golang/golang-cli/.test-data"
 	// Test case for generating a certificate with default values
-	err := GenerateRSACert("test1", ".test-data", false, nil)
+	err := GenerateRSACert("test1", pathToSave, false, nil)
 	if err != nil {
 		t.Errorf("Failed to generate certificate: %v", err)
 	}
@@ -65,35 +72,100 @@ func TestGenerateRSACert(t *testing.T) {
 	// Check if certificate files exist
 	files := []string{"test1-private", "test1-public", "test1-cert", "test1.key", "test1.crt"}
 	for _, file := range files {
-		if _, err := os.Stat(file); os.IsNotExist(err) {
+		if _, err := os.Stat(pathToSave + "/" + file); os.IsNotExist(err) {
 			t.Errorf("Certificate file %s does not exist", file)
 		}
 	}
 
 	// Clean up generated files
-	os.Remove("test1-private")
-	os.Remove("test1-public")
-	os.Remove("test1-cert")
-	os.Remove("test1.key")
-	os.Remove("test1.crt")
+	os.Remove(pathToSave + "/" + "test1-private")
+	os.Remove(pathToSave + "/" + "test1-public")
+	os.Remove(pathToSave + "/" + "test1-cert")
 
 	// Test case for generating a certificate with custom domains
-	err = GenerateRSACert("test2", ".", false, []string{"example.com", "www.example.com"})
+	err = GenerateRSACert("test2", pathToSave, false, []string{"site.direct-dev.ru", "www.site.direct-dev.ru"})
 	if err != nil {
 		t.Errorf("Failed to generate certificate: %v", err)
 	}
 
 	// Check if certificate files exist
+	files = []string{"test2-private", "test2-public", "test2-cert", "test2.key", "test2.crt"}
 	for _, file := range files {
-		if _, err := os.Stat(file); os.IsNotExist(err) {
+		if _, err := os.Stat(pathToSave + "/" + file); os.IsNotExist(err) {
 			t.Errorf("Certificate file %s does not exist", file)
 		}
 	}
 
 	// Clean up generated files
-	os.Remove("test2-private")
-	os.Remove("test2-public")
-	os.Remove("test2-cert")
-	os.Remove("test2.key")
-	os.Remove("test2.crt")
+	os.Remove(pathToSave + "/" + "test2-private")
+	os.Remove(pathToSave + "/" + "test2-public")
+	os.Remove(pathToSave + "/" + "test2-cert")
+}
+
+func TestGenerateCACert(t *testing.T) {
+	pathToSave := "/home/kay/project/golang/golang-cli/.test-data"
+	caFileName := "ca-test"
+	// Test case for generating a certificate with default values
+	err := GenerateCACertificate(pathToSave, caFileName, "Direct-Dev.Ru", "Direct-Dev.Ru", "RU", "OMSK")
+	if err != nil {
+		t.Errorf("Failed to generate certificate: %v", err)
+	}
+
+	// Check if certificate files exist
+	files := []string{"ca-test.crt", "ca-test.key"}
+	for _, file := range files {
+		if _, err := os.Stat(pathToSave + "/" + file); os.IsNotExist(err) {
+			t.Errorf("Certificate file %s does not exist", file)
+		}
+	}
+}
+
+func TestGenerateCertWithCASign(t *testing.T) {
+	pathToSave := "/home/kay/project/golang/golang-cli/.test-data"
+	caPath := "/home/kay/project/golang/golang-cli/.test-data" + "/ca-test.crt"
+
+	_, _, err := GenerateCertificateWithCASign(pathToSave, caPath, "Direct-Dev.ru", "RU", "OMSK", []string{"example.direct-dev.ru"}, []net.IP{})
+	if err != nil {
+		t.Errorf("Failed to generate certificate: %v", err)
+	}
+
+	serverTLSConf, clientTLSConf, err := CertSetup("/home/kay/project/golang/golang-cli/.test-data/example.direct-dev.ru.crt",
+		"/home/kay/project/golang/golang-cli/.test-data/ca/ca.crt")
+	if err != nil {
+		t.Errorf("Failed to get tls configs: %v", err)
+	}
+
+	// set up the httptest.Server using our certificate signed by our CA
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "success!")
+		t.Logf("success!")
+	}))
+	server.TLS = serverTLSConf
+	server.StartTLS()
+	defer server.Close()
+
+	// communicate with the server using an http.Client configured to trust our CA
+	transport := &http.Transport{
+		TLSClientConfig: clientTLSConf,
+	}
+	http := http.Client{
+		Transport: transport,
+	}
+	resp, err := http.Get(server.URL)
+	if err != nil {
+		t.Errorf("Failed to GET server: %v", err)
+	}
+
+	// verify the response
+	respBodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Errorf("Failed to read response body: %v", err)
+	}
+	body := strings.TrimSpace(string(respBodyBytes[:]))
+	if body == "success!" {
+		t.Log(body)
+	} else {
+		t.Errorf("not success !!!")
+	}
+
 }
