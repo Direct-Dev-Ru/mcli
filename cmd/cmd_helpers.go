@@ -478,7 +478,9 @@ func ReadConfigFile(configFile string) (err error) {
 				}
 			}
 			// fmt.Println("Configuration content :", string(configContent))
-			Ilogger.Trace().Msg(fmt.Sprintf("Configuration struct : %+v", Config))
+			if IsVerbose {
+				Ilogger.Trace().Msg(fmt.Sprintf("Configuration struct : %+v", Config))
+			}
 		} else if errors.Is(err, os.ErrNotExist) {
 			Elogger.Err(err).Msg("config file " + configFile + " does not exist")
 			return err

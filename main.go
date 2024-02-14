@@ -23,7 +23,9 @@ func main() {
 	eLogger := zerolog.New(os.Stderr).Level(zerolog.ErrorLevel).With().Timestamp().Logger()
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	eLogger.Level(zerolog.ErrorLevel)
+
 	ENV_DEBUG := strings.ToLower(os.Getenv("DEBUG"))
+	
 	if ENV_DEBUG == "true" {
 		zerolog.SetGlobalLevel(zerolog.TraceLevel)
 		buildInfo, _ := debug.ReadBuildInfo()

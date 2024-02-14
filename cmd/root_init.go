@@ -83,6 +83,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&RedisHost, "redis-host", "127.0.0.1", "specify redis host")
 	rootCmd.PersistentFlags().StringVar(&RedisPort, "redis-port", "6379", "specify redis port")
 	rootCmd.PersistentFlags().StringVar(&RedisPwd, "redis-password", "", "specify redis Pa$$w0rd")
+	rootCmd.PersistentFlags().BoolVarP(&IsVerbose, "verbose", "V", false, "specify verbose toggle")
+
 	rootCmd.Flags().StringP("root-args", "a", "", "args for root command")
 
 }

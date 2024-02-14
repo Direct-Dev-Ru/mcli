@@ -66,6 +66,7 @@ type ConfigData struct {
 		Common struct {
 			VaultPath   string `yaml:"vault-path"`
 			KeyFilePath string `yaml:"keyfile-path"`
+			KeyEnvVar   string `yaml:"key-envvar"`
 			DictPath    string `yaml:"dict-path"`
 			UseWords    bool   `yaml:"use-words"`
 			Obfuscate   bool   `yaml:"obfuscate"`

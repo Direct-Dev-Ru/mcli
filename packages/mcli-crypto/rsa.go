@@ -74,14 +74,20 @@ func GenerateRsaCrtRequest(name, user, path string) error {
 	return nil
 }
 
-func GenerateRsaCert(crtName, path string, crtDomains []string) error {
+// GenerateRSACert generates an RSA certificate and saves it to the specified path.
+// crtName specifies the base name for the certificate files (without extension).
+// path specifies the directory where the certificate files will be saved.
+// isCA specifies whether the certificate is a certificate authority (CA) certificate.
+// crtDomains specifies the list of domains for the certificate.
+// If crtDomains is empty, the default domain "localhost" will be used
+func GenerateRSACert(crtName, path string, isCA bool, crtDomains []string) error {
 
 	if len(crtDomains) == 0 {
 		crtDomains = []string{"localhost"}
 	}
 	// http://golang.org/pkg/crypto/x509/#Certificate
 	template := &x509.Certificate{
-		IsCA:                  true,
+		IsCA:                  isCA,
 		BasicConstraintsValid: true,
 		SubjectKeyId:          []byte{1, 2, 3},
 		SerialNumber:          big.NewInt(1234),
@@ -129,7 +135,7 @@ func GenerateRsaCert(crtName, path string, crtDomains []string) error {
 	pem.Encode(&certOut, &pem.Block{Type: "CERTIFICATE", Bytes: cert})
 	pem.Encode(&keyOut, &pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(privatekey)})
 	os.WriteFile(filepath.Clean(path+"/"+crtName+".key"), keyOut.Bytes(), 0644)
-	os.WriteFile(filepath.Clean(path+"/"+crtName+".cert"), certOut.Bytes(), 0644)
+	os.WriteFile(filepath.Clean(path+"/"+crtName+".crt"), certOut.Bytes(), 0644)
 
 	// these are the files save with encoding/gob style
 	// privkeyfile, _ := os.Create(filepath.Clean(path + "/" + "privategob.key"))

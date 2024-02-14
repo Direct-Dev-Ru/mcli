@@ -5,6 +5,8 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"fmt"
+	"os"
+	"strings"
 
 	"golang.org/x/crypto/scrypt"
 )
@@ -17,14 +19,34 @@ func AesCypherDefault(opts any) AesCypherType {
 
 var AesCypher AesCypherType = AesCypherDefault
 
-// Get sec key from file. if error fom file anf random set to true - returns random key
+// GetKey generates or retrieves an encryption key based on the provided path and random flag.
+//
+// If random is true, it generates a new random encryption key.
+// Otherwise, it retrieves the encryption key based on the provided path.
+// The path can be one of the following formats:
+//   - If path starts with "env:", it retrieves the key from the environment variable specified in the path.
+//     Length of env value should be more than 8 symbols.
+//   - Otherwise, it retrieves the key from the file specified in the path.
+//
+// If an error occurs during key generation or retrieval, it returns an error.
+// If an error is nil in returns []byte containing 32 byte key
 func (aesct AesCypherType) GetKey(path string, random bool) ([]byte, error) {
+	if random {
+		return GenerateKey()
+	}
+
+	if strings.HasPrefix(path, "env:") {
+		envVarName := strings.Replace(path, "env:", "", 1)
+		strKey := strings.TrimSpace(os.Getenv(envVarName))
+		if len(strKey) < 8 {
+			return nil, fmt.Errorf("value of environment variable %v is empty or less then 8 symbols", envVarName)
+		}
+		byteKey := SHA_256(strKey)
+		return byteKey, nil
+	}
 
 	result, err := GetKeyFromFile(path)
 	if err != nil {
-		if random {
-			return GenerateKey()
-		}
 		return nil, fmt.Errorf("get key: %w", err)
 	}
 	return result, nil

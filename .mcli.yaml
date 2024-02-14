@@ -10,12 +10,14 @@ common:
   redis-host: "{{$REDIS_HOST}}:{{$REDIS_PORT}}"
   redis-password: "{{$REDIS_PWD}}"
   redis-database-no: 10
-  redis-require: true
+  redis-require: false
 secrets:
   common:
     use-words: false
     vault-path: "{{$HomeDir$}}/.mcli/secrets/default.vault"
-    keyfile-path: "{{$HomeDir$}}/.ssh/id_rsa"
+    # keyfile-path: "{{$HomeDir$}}/.ssh/id_rsa"
+    keyfile-path: "env:VAULT_KEY"
+    key-envvar: "VAULT_KEY"
     dict-path: "{{$HomeDir$}}/.mcli/pwdgen/dict.csv"
     min-lenght: 14
     max-lenght: 32

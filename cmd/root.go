@@ -166,42 +166,46 @@ func initConfig() {
 		Config.Common.AppName = "default_mcli"
 	}
 
-	RedisHost, _ = ProcessCommandParameter("redis-host", "REDIS_HOST", rootCmd)
-	RedisPort, _ = ProcessCommandParameter("redis-port", "REDIS_PORT", rootCmd)
-	RedisPwd, _ = ProcessCommandParameter("redis-password", "REDIS_PWD", rootCmd)
-
-	if Config.Common.RedisHost == "" {
-		Config.Common.RedisHost = fmt.Sprintf("%s:%s", RedisHost, RedisPort)
-	} else if Config.Common.RedisHost == ":" {
-		Config.Common.RedisHost = fmt.Sprintf("%s:%s", "localhost", "6379")
-	}
-
-	if Config.Common.RedisPwd == "" {
-		Config.Common.RedisPwd = RedisPwd
-	}
-
-	// common redis connection init
 	var err error
-	CommonRedisStore, err = mcli_redis.NewRedisStore("rediscommon_"+Config.Common.AppName, Config.Common.RedisHost, Config.Common.RedisPwd,
-		Config.Common.AppName, Config.Common.RedisDatabaseNo)
-	if Config.Common.RedisRequire && err != nil {
-		Elogger.Fatal().Msg(fmt.Sprintf("error init redis store: %v\n", err.Error()))
-	}
-	_, err = CommonRedisStore.RedisPool.Get().Do("PING")
-	if Config.Common.RedisRequire && err != nil {
-		Elogger.Fatal().Msgf("redis connection error: %v", err.Error())
-	}
-	if err == nil {
-		Ilogger.Trace().Msg("Ping Pong to common Redis server is successful")
-	}
+	if Config.Common.RedisRequire {
 
-	if CommonRedisStore != nil {
-		defer func() {
-			CommonRedisStore.RedisPool.Close()
-		}()
-	}
+		RedisHost, _ = ProcessCommandParameter("redis-host", "REDIS_HOST", rootCmd)
+		RedisPort, _ = ProcessCommandParameter("redis-port", "REDIS_PORT", rootCmd)
+		RedisPwd, _ = ProcessCommandParameter("redis-password", "REDIS_PWD", rootCmd)
 
-	//end of common redis connection init
+		if Config.Common.RedisHost == "" {
+			Config.Common.RedisHost = fmt.Sprintf("%s:%s", RedisHost, RedisPort)
+		} else if Config.Common.RedisHost == ":" {
+			Config.Common.RedisHost = fmt.Sprintf("%s:%s", "localhost", "6379")
+		}
+
+		if Config.Common.RedisPwd == "" {
+			Config.Common.RedisPwd = RedisPwd
+		}
+
+		// common redis connection init
+		CommonRedisStore, err = mcli_redis.NewRedisStore("rediscommon_"+Config.Common.AppName, Config.Common.RedisHost, Config.Common.RedisPwd,
+			Config.Common.AppName, Config.Common.RedisDatabaseNo)
+		if Config.Common.RedisRequire && err != nil {
+			Elogger.Fatal().Msg(fmt.Sprintf("error init redis store: %v\n", err.Error()))
+		}
+
+		_, err = CommonRedisStore.RedisPool.Get().Do("PING")
+		if Config.Common.RedisRequire && err != nil {
+			Elogger.Fatal().Msgf("redis connection error: %v", err.Error())
+		}
+		if err == nil {
+			Ilogger.Trace().Msg("Ping Pong to common Redis server is successful")
+		}
+
+		if CommonRedisStore != nil {
+			defer func() {
+				CommonRedisStore.RedisPool.Close()
+			}()
+		}
+
+		//end of common redis connection init
+	}
 
 	Ctx, CtxCancel = context.WithCancel(context.Background())
 	defer func() {
@@ -220,8 +224,10 @@ func initConfig() {
 	InitInternalSecreVault(&Config)
 
 	// TODO:Hide passwords
+	
+	if IsVerbose {
+		Ilogger.Trace().Msgf("Global Map: %v", GlobalMap)
 
-	Ilogger.Trace().Msgf("Global Map: %v", GlobalMap)
-
-	Ilogger.Trace().Msgf("Global Cache: %v", Config.Cache)
+		Ilogger.Trace().Msgf("Global Cache: %v", Config.Cache)
+	}
 }
