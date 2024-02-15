@@ -15,6 +15,7 @@ var Ilogger, Elogger zerolog.Logger
 var TermWidth, TermHeight int = 0, 0
 var IsTerminal bool = false
 var IsVerbose bool = false
+var IsRedis bool = false
 var OS string
 var WgGlb sync.WaitGroup
 var ConfigPath string

@@ -33,6 +33,9 @@ func (rs *RedisStore) getValueToStore(value interface{}) (string, error) {
 		// Handle string value
 		rawValue = []byte(v)
 		valueType = "string"
+	case []byte:
+		rawValue = v
+		valueType = "[]byte"
 	default:
 		// Handle other types
 		rawValue, err = rs.Marshal(v)
@@ -45,7 +48,8 @@ func (rs *RedisStore) getValueToStore(value interface{}) (string, error) {
 		// 	valueType = "struct"
 		// }
 	}
-	toStore := StoreFormatString{ValueType: valueType, Value: string(rawValue), TimeStamp: time.Now().UTC()}
+	// toStore := StoreFormatString{ValueType: valueType, Value: string(rawValue), TimeStamp: time.Now().UTC()}
+	toStore := StoreFormat{ValueType: valueType, Value: rawValue, TimeStamp: time.Now().UTC()}
 	// fmt.Println(toStore)
 	// strBytes := []byte(valueType)
 
@@ -62,6 +66,8 @@ func (rs *RedisStore) getValueToStore(value interface{}) (string, error) {
 			return "", fmt.Errorf("encryption error: %w", err)
 		}
 	}
+
+	// strValueToStore := mcli_crypto.Base64ByteSliceEncode(valueToStore)
 
 	return string(valueToStore), nil
 }

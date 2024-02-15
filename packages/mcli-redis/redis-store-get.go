@@ -42,10 +42,18 @@ func (rs *RedisStore) GetRecord(key string, keyPrefixes ...string) (result []byt
 		return nil, err, false
 	} else {
 		// Key exists, retrieve its value
-		rawValue, err := redis.Bytes(conn.Do("GET", resultKey))
+		redisData, err := redis.Bytes(conn.Do("GET", resultKey))
 		if err != nil {
 			return nil, err, true
 		}
+
+		// rawValue, err := mcli_crypto.Base64ToByteSliceDecode(strValue)
+		// if err != nil {
+		// 	return nil, err, true
+		// }
+
+		rawValue := redisData
+
 		if rs.Encrypt {
 			if rs.Cypher == nil {
 				return nil, fmt.Errorf("decryption error: %s", "cypher is nil"), false
@@ -55,6 +63,7 @@ func (rs *RedisStore) GetRecord(key string, keyPrefixes ...string) (result []byt
 				return nil, fmt.Errorf("decryption error: %w", err), false
 			}
 		}
+		// storedData := StoreFormatString{}
 		storedData := StoreFormat{}
 		err = rs.Unmarshal(rawValue, &storedData)
 		if err != nil {

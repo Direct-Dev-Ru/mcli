@@ -105,10 +105,10 @@ var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 // rootCmd represents the base command when running without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "mcli",
-	Short: "cli tool for some operations in Linux and Windows",
-	Long: `Yes there is an standart tools is 
-But self made is more clearer and more manageble
-`,
+	Short: "This is set of cli tool for some operations in Linux and Windows(not tested properly)",
+	Long: `	Yes there is an Unix pattern: one thing one programm
+		    But this is just top level link of other things
+	`,
 	Run: rootCmdRunFunc,
 }
 
@@ -116,10 +116,25 @@ But self made is more clearer and more manageble
 // This is cviewed by main.main(). It only needs to happen once to the rootCmd.
 func Execute(loggers []zerolog.Logger) {
 	Ilogger, Elogger = loggers[0], loggers[1]
-	// Elogger.Error().Msg("Some Test Error")
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
+	}
+
+	if Ctx != nil {
+		defer func() {
+			Ilogger.Trace().Msg("Ctx context now will be canceled - extra handling done")
+			CtxCancel()
+			time.Sleep(1 * time.Second)
+		}()
+	}
+
+	if CommonRedisStore != nil {
+		defer func() {
+			Ilogger.Trace().Msg("Closing Common Redis Pool")
+			CommonRedisStore.RedisPool.Close()
+		}()
 	}
 }
 
@@ -167,7 +182,8 @@ func initConfig() {
 	}
 
 	var err error
-	if Config.Common.RedisRequire {
+	IsRedis, _ = ProcessBoolCommandParameter("is-redis", Config.Common.RedisRequire, rootCmd)
+	if IsRedis {
 
 		RedisHost, _ = ProcessCommandParameter("redis-host", "REDIS_HOST", rootCmd)
 		RedisPort, _ = ProcessCommandParameter("redis-port", "REDIS_PORT", rootCmd)
@@ -198,22 +214,17 @@ func initConfig() {
 			Ilogger.Trace().Msg("Ping Pong to common Redis server is successful")
 		}
 
-		if CommonRedisStore != nil {
-			defer func() {
-				CommonRedisStore.RedisPool.Close()
-			}()
-		}
+		// if CommonRedisStore != nil {
+		// 	defer func() {
+		// 		fmt.Println("defer: close common redis pool")
+		// 		CommonRedisStore.RedisPool.Close()
+		// 	}()
+		// }
 
 		//end of common redis connection init
 	}
 
 	Ctx, CtxCancel = context.WithCancel(context.Background())
-	defer func() {
-		// extra handling here
-		//fmt.Println("extra handling done")
-		CtxCancel()
-		time.Sleep(5 * time.Second)
-	}()
 
 	Config.Cache = mcli_utils.NewCCache(0, 0, nil, Ctx, Notify)
 	GlobalCache = *mcli_utils.NewCCache(0, 0, nil, Ctx, Notify)
@@ -224,7 +235,7 @@ func initConfig() {
 	InitInternalSecreVault(&Config)
 
 	// TODO:Hide passwords
-	
+
 	if IsVerbose {
 		Ilogger.Trace().Msgf("Global Map: %v", GlobalMap)
 

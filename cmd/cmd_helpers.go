@@ -504,7 +504,7 @@ func Deprecated_ProcessInputParameter(paramName, envName string, command *cobra.
 	return resultValue, nil
 }
 
-// ProcessInputParameter handles input parameters for a Cobra command,
+// ProcessCommandParameter handles input parameters for a Cobra command,
 // setting environment variables based on command line flags and vice versa.
 //
 // It retrieves the parameter value from the command flags, and if the flag
@@ -537,6 +537,24 @@ func ProcessCommandParameter(paramName, envName string, command *cobra.Command) 
 
 	if flag.Changed || len(os.Getenv(envName)) == 0 {
 		os.Setenv(envName, resultValue)
+	}
+
+	return resultValue, nil
+}
+
+func ProcessBoolCommandParameter(paramName string, defaultValue bool, command *cobra.Command) (bool, error) {
+	flag := command.Flags().Lookup(paramName)
+	if flag == nil {
+		return false, errors.New("bool flag not found")
+	}
+
+	resultValue, err := command.Flags().GetBool(paramName)
+	if err != nil {
+		return false, err
+	}
+
+	if !flag.Changed {
+		resultValue = defaultValue
 	}
 
 	return resultValue, nil

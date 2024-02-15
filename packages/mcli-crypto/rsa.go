@@ -18,6 +18,16 @@ import (
 	"time"
 )
 
+func GenerateCertSerialNumber() (*big.Int, error) {
+	// Generate a random number using a secure random number generator
+	max := new(big.Int).Lsh(big.NewInt(1), 128) // 128-bit serial number
+	serial, err := rand.Int(rand.Reader, max)
+	if err != nil {
+		return nil, err
+	}
+	return serial, nil
+}
+
 func GenerateRsaCrtRequest(name, user, path string) error {
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -192,8 +202,8 @@ func GetPublicKeyFromFile(path string) (*rsa.PublicKey, error) {
 	var cert *x509.Certificate
 	cert, _ = x509.ParseCertificate(block.Bytes)
 	rsaPublicKey := cert.PublicKey.(*rsa.PublicKey)
-	fmt.Println(rsaPublicKey.N)
-	fmt.Println(rsaPublicKey.E)
+	// fmt.Println(rsaPublicKey.N)
+	// fmt.Println(rsaPublicKey.E)
 	return rsaPublicKey, nil
 }
 
@@ -212,7 +222,7 @@ func GetPrivateKeyFromFile(path string) (*rsa.PrivateKey, error) {
 		}
 		key = key8.(*rsa.PrivateKey)
 	}
-	fmt.Println(key.N)
+	// fmt.Println(key.N)
 	return key, nil
 }
 
@@ -308,8 +318,13 @@ func GenRSA(bits int) (*rsa.PrivateKey, error) {
 // It returns an error if any.
 func GenerateCACertificate(pathToSaveCA, caFileName, commonName, orgName, country, location string) error {
 
+	certSerial, err := GenerateCertSerialNumber()
+	if err != nil {
+		return err
+	}
+
 	var ca *x509.Certificate = &x509.Certificate{
-		SerialNumber: big.NewInt(2019),
+		SerialNumber: certSerial,
 		Subject: pkix.Name{
 			Organization: []string{orgName},
 			Country:      []string{country},
@@ -430,9 +445,14 @@ func GenerateCertificateWithCASign(pathToSaveCertificate, caPath, orgName, count
 		return nil, nil, err
 	}
 
+	certSerial, err := GenerateCertSerialNumber()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	// set up our server certificate
 	cert := &x509.Certificate{
-		SerialNumber: big.NewInt(2019),
+		SerialNumber: certSerial,
 		Subject: pkix.Name{
 			Organization:  []string{orgName},
 			Country:       []string{country},

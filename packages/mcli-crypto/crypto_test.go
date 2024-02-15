@@ -124,7 +124,7 @@ func TestGenerateCertWithCASign(t *testing.T) {
 	pathToSave := "/home/kay/project/golang/golang-cli/.test-data"
 	caPath := "/home/kay/project/golang/golang-cli/.test-data" + "/ca-test.crt"
 
-	_, _, err := GenerateCertificateWithCASign(pathToSave, caPath, "Direct-Dev.ru", "RU", "OMSK", []string{"example.direct-dev.ru"}, []net.IP{})
+	_, _, err := GenerateCertificateWithCASign(pathToSave, caPath, "Direct-Dev.ru", "RU", "OMSK", []string{"test.direct-dev.ru"}, []net.IP{})
 	if err != nil {
 		t.Errorf("Failed to generate certificate: %v", err)
 	}
@@ -168,4 +168,12 @@ func TestGenerateCertWithCASign(t *testing.T) {
 		t.Errorf("not success !!!")
 	}
 
+}
+
+func TestGenerateCertSerialNumber(t *testing.T) {
+	serial, err := GenerateCertSerialNumber()
+	if err != nil {
+		t.Errorf("Failed to generate serial: %v", err)
+	}
+	t.Log(serial)
 }
