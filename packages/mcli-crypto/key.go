@@ -8,8 +8,12 @@ import (
 	"strings"
 )
 
-func GenerateKey() (key []byte, err error) {
-	key = make([]byte, 32)
+func GenerateKey(args ...int) (key []byte, err error) {
+	keylen := 32
+	if len(args) > 0 {
+		keylen = args[0]
+	}
+	key = make([]byte, keylen)
 	_, err = rand.Read(key)
 	if err != nil {
 		return nil, err

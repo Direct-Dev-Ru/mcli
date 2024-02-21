@@ -11,6 +11,34 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// --------Parametrable--------- //
+
+type Parametrable interface {
+	String() (string, bool)
+	Int() (int, bool)
+	Bool() (bool, bool)
+}
+
+type GenParameter struct {
+	Value interface{}
+}
+
+func (v GenParameter) String() (ret string, ok bool) {
+	ret, ok = v.Value.(string)
+	return ret, ok
+
+}
+func (v GenParameter) Int() (ret int, ok bool) {
+	ret, ok = v.Value.(int)
+	return ret, ok
+}
+func (v GenParameter) Bool() (ret bool, ok bool) {
+	ret, ok = v.Value.(bool)
+	return ret, ok
+}
+
+// ---------
+
 type TerminalParams struct {
 	TermWidth  int
 	TermHeight int

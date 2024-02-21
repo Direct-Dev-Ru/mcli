@@ -6,4 +6,13 @@
     "go.delveConfig": {
         "debugAdapter": "legacy"
     },
+    "files.autoSave": "onFocusChange",
+    "editor.fontFamily": "'Droid Sans Mono','Source Code Pro','monospace', monospace",
+    "terminal.integrated.fontFamily": "'Droid Sans Mono','Source Code Pro','monospace', monospace",
+    "editor.mouseWheelZoom": true,
+    "terminal.integrated.mouseWheelZoom": false,
+    "editor.inlineSuggest.fontFamily": "'Droid Sans Mono','Source Code Pro','monospace', monospace",
+    "debug.console.fontFamily": "'Droid Sans Mono','Source Code Pro','monospace', monospace",
+    "scm.inputFontFamily": "'Droid Sans Mono','Source Code Pro','monospace', monospace",
+    "chat.editor.fontFamily": "'Droid Sans Mono','Source Code Pro','monospace', monospace",
 }

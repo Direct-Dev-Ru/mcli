@@ -31,3 +31,8 @@ Currently Git provides no standard interface to delete a submodule. To remove a 
     git submodule deinit -f — ${GitSubmodule}
     rm -rf .git/modules/${GitSubmodule}
     git rm -f ${GitSubmodule}
+
+
+## About openssl
+
+<https://hackware.ru/?p=12982>

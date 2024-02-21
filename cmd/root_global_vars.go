@@ -22,6 +22,7 @@ var ConfigPath string
 var InputDataFromFile string
 var RedisHost string
 var RedisPort string
+var RedisDb int
 var RedisPwd string
 var RedisRequire string
 var CommonRedisStore *mcli_redis.RedisStore

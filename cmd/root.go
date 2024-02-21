@@ -15,7 +15,10 @@ import (
 	"sync"
 	"time"
 
+	mcli_crypto "mcli/packages/mcli-crypto"
+	mcli_fs "mcli/packages/mcli-filesystem"
 	mcli_redis "mcli/packages/mcli-redis"
+	mcli_secrets "mcli/packages/mcli-secrets"
 	mcli_utils "mcli/packages/mcli-utils"
 
 	"github.com/rs/zerolog"
@@ -185,9 +188,25 @@ func initConfig() {
 	IsRedis, _ = ProcessBoolCommandParameter("is-redis", Config.Common.RedisRequire, rootCmd)
 	if IsRedis {
 
-		RedisHost, _ = ProcessCommandParameter("redis-host", "REDIS_HOST", rootCmd)
-		RedisPort, _ = ProcessCommandParameter("redis-port", "REDIS_PORT", rootCmd)
-		RedisPwd, _ = ProcessCommandParameter("redis-password", "REDIS_PWD", rootCmd)
+		// RedisHost, _ = ProcessCommandParameter("redis-host", "REDIS_HOST", rootCmd)
+		err = TProcessCommandParameter[string](&RedisHost, "redis-host", "REDIS_HOST", rootCmd)
+		if err != nil {
+			Elogger.Debug().Err(err)
+		}
+		// RedisPort, _ = ProcessCommandParameter("redis-port", "REDIS_PORT", rootCmd)
+		err = TProcessCommandParameter[string](&RedisPort, "redis-port", "REDIS_PORT", rootCmd)
+		if err != nil {
+			Elogger.Debug().Err(err)
+		}
+		// RedisPwd, _ = ProcessCommandParameter("redis-password", "REDIS_PWD", rootCmd)
+		err = TProcessCommandParameter[string](&RedisPwd, "redis-password", "REDIS_PWD", rootCmd)
+		if err != nil {
+			Elogger.Debug().Err(err)
+		}
+		err = TProcessCommandParameter[int](&RedisDb, "redis-db", "REDIS_DB", rootCmd)
+		if err != nil {
+			Elogger.Debug().Err(err)
+		}
 
 		if Config.Common.RedisHost == "" {
 			Config.Common.RedisHost = fmt.Sprintf("%s:%s", RedisHost, RedisPort)
@@ -212,6 +231,40 @@ func initConfig() {
 		}
 		if err == nil {
 			Ilogger.Trace().Msg("Ping Pong to common Redis server is successful")
+		}
+
+		// getting or generating enc key for encryption records in redis database
+		internalSecretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile, mcli_crypto.AesCypher, nil)
+
+		if err := internalSecretStore.FillStore(Config.Common.InternalVaultPath, Config.Common.InternalKeyFilePath); err != nil {
+			Elogger.Fatal().Msgf("error filling secret store %v", err)
+		}
+		secretMap := internalSecretStore.GetSecretPlainMap()
+		redisEncKey := ""
+		redisEncKeySecret, ok := secretMap["RedisEncKey"]
+
+		if ok {
+			redisEncKey = redisEncKeySecret.Secret
+			// Ilogger.Trace().Msgf("redis encryption key have been retrived from store: %s", fmt.Sprintf("%x", redisEncKey))
+		} else {
+			redisEncKey = string(mcli_secrets.GenKey(64))
+
+			redisSecretKeyEntry, err := internalSecretStore.NewEntry("RedisEncKey", "RedisEncKey", "Key fo redis records encryption")
+			if err != nil {
+				Elogger.Fatal().Msgf("redisEncKey new entry creation error: %v", err)
+			}
+			redisSecretKeyEntry.SetSecret(fmt.Sprintf("%x", redisEncKey), true, false)
+			// Ilogger.Trace().Msgf("redis encryption key have been generated: %s", fmt.Sprintf("%x", redisEncKey))
+
+			internalSecretStore.AddEntry(redisSecretKeyEntry)
+			if err != nil {
+				Elogger.Fatal().Msgf("secret store add entry error: %v", err)
+			}
+
+			internalSecretStore.Save(Config.Common.InternalVaultPath, Config.Common.InternalKeyFilePath)
+			if err != nil {
+				Elogger.Fatal().Msgf("secret store save error: %v", err)
+			}
 		}
 
 		// if CommonRedisStore != nil {

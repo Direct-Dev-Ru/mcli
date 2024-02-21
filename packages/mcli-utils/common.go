@@ -66,6 +66,13 @@ func Tiif(ifCase bool, trueValue interface{}, falseValue interface{}) interface{
 	return falseValue
 }
 
+func Iif[T ~string | ~int | ~float64](ifCase bool, trueValue T, falseValue T) T {
+	if ifCase {
+		return trueValue
+	}
+	return falseValue
+}
+
 // StructToMapStringValues converts a struct or ptr to a struct to a map containing only string values.
 //
 // It iterates over the fields of the input struct, checks if they are of string type,

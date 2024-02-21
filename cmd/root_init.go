@@ -82,6 +82,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&ConfigPath, "config", cPath, "specify path to config file *.yaml")
 	rootCmd.PersistentFlags().StringVar(&InputDataFromFile, "stdin-from-file", "", "specify path to file emulating data for stdin")
 	rootCmd.PersistentFlags().StringVar(&RedisHost, "redis-host", "127.0.0.1", "specify redis host")
+	rootCmd.PersistentFlags().IntVar(&RedisDb, "redis-db", 1, "specify redis database number")
 	rootCmd.PersistentFlags().StringVar(&RedisPort, "redis-port", "6379", "specify redis port")
 	rootCmd.PersistentFlags().StringVar(&RedisPwd, "redis-password", "", "specify redis Pa$$w0rd")
 	rootCmd.PersistentFlags().BoolVarP(&IsRedis, "is-redis", "", false, "specify connect to common redis database or not")

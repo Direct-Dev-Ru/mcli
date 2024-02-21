@@ -10,8 +10,10 @@ import (
 	"path"
 	"path/filepath"
 	"plugin"
+	"reflect"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	mcli_fs "mcli/packages/mcli-filesystem"
@@ -28,6 +30,16 @@ func GetStringParam(param string, cmd *cobra.Command, fromConfig string) (string
 	paramValue, err := cmd.Flags().GetString(param)
 	isParamSet := cmd.Flags().Lookup(param).Changed
 	if !isParamSet && len(fromConfig) > 0 {
+		paramValue = fromConfig
+	}
+	return paramValue, err
+}
+
+func GetIntParam(param string, cmd *cobra.Command, fromConfig int) (int, error) {
+
+	paramValue, err := cmd.Flags().GetInt(param)
+	isParamSet := cmd.Flags().Lookup(param).Changed
+	if !isParamSet {
 		paramValue = fromConfig
 	}
 	return paramValue, err
@@ -558,4 +570,89 @@ func ProcessBoolCommandParameter(paramName string, defaultValue bool, command *c
 	}
 
 	return resultValue, nil
+}
+
+func TProcessCommandParameter[T string | int](paramValue *T, paramName, envName string, command *cobra.Command) (err error) {
+	flag := command.Flags().Lookup(paramName)
+	if flag == nil {
+		return errors.New("flag not found")
+	}
+	typeOfT := reflect.TypeOf(paramValue).String()
+	// fmt.Println(typeOfT)
+
+	switch typeOfT {
+	case "*string":
+		resultValue, err := command.Flags().GetString(paramName)
+
+		if err != nil {
+			return err
+		}
+
+		if !flag.Changed && len(os.Getenv(envName)) > 0 {
+			resultValue = os.Getenv(envName)
+		}
+
+		if flag.Changed || len(os.Getenv(envName)) == 0 {
+			os.Setenv(envName, resultValue)
+		}
+
+		v := reflect.ValueOf(paramValue)
+		// Make sure v is addressable and is a pointer
+		if v.Kind() == reflect.Ptr && !v.IsNil() && v.Elem().CanSet() {
+			// Set the value using reflection
+			v.Elem().SetString(resultValue)
+		} else {
+			return errors.New("unable to set string value of parameter")
+		}
+
+		return nil
+
+	case "*int":
+		resultValue, err := command.Flags().GetInt(paramName)
+		if err != nil {
+			return err
+		}
+
+		if !flag.Changed && len(os.Getenv(envName)) > 0 {
+			if val, err := strconv.Atoi(os.Getenv(envName)); err == nil {
+				resultValue = val
+			}
+		}
+
+		if flag.Changed || len(os.Getenv(envName)) == 0 {
+			os.Setenv(envName, strconv.Itoa(resultValue))
+		}
+
+		v := reflect.ValueOf(paramValue)
+		// Make sure v is addressable and is a pointer
+		if v.Kind() == reflect.Ptr && !v.IsNil() && v.Elem().CanSet() {
+			// Set the value using reflection
+			v.Elem().SetInt(int64(resultValue))
+		} else {
+			return errors.New("unable to set string value of parameter")
+		}
+
+		return nil
+
+	// case "bool":
+	// 	retval, err := command.Flags().GetBool(paramName)
+	// 	if err != nil {
+	// 		return retval, err
+	// 	}
+
+	// 	if !flag.Changed && len(os.Getenv(envName)) > 0 {
+	// 		if val, err := strconv.ParseBool(os.Getenv(envName)); err == nil {
+	// 			resultValue = val
+	// 		}
+	// 	}
+
+	// 	if flag.Changed || len(os.Getenv(envName)) == 0 {
+	// 		os.Setenv(envName, strconv.FormatBool(resultValue))
+	// 	}
+
+	// 	return val, nil
+
+	default:
+		return errors.New("unsupported parameter type")
+	}
 }
