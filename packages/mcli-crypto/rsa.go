@@ -662,3 +662,53 @@ func GenerateCertificateWithCASignV2(pathToSaveCertificate, caPem, caPrKeyPem, o
 
 	return certPEM.Bytes(), certPrivKeyPEM.Bytes(), nil
 }
+
+func GenerateCACertificateV2(commonName, orgName, country, location string) ([]byte, []byte, error) {
+
+	certSerial, err := GenerateCertSerialNumber()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var ca *x509.Certificate = &x509.Certificate{
+		SerialNumber: certSerial,
+		Subject: pkix.Name{
+			Organization: []string{orgName},
+			Country:      []string{country},
+			Province:     []string{location},
+			Locality:     []string{location},
+			CommonName:   commonName,
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(15, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
+
+	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Now in caBytes we have our generated certificate, which we can PEM encode for later use:
+	caPEM := new(bytes.Buffer)
+	pem.Encode(caPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caBytes,
+	})
+
+	caPrivKeyPEM := new(bytes.Buffer)
+	pem.Encode(caPrivKeyPEM, &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
+	})
+
+	return caPEM.Bytes(), caPrivKeyPEM.Bytes(), nil
+}

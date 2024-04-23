@@ -6,10 +6,13 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
 	mcli_crypto "mcli/packages/mcli-crypto"
+	mcli_fs "mcli/packages/mcli-filesystem"
+	mcli_secrets "mcli/packages/mcli-secrets"
 
 	"github.com/spf13/cobra"
 )
@@ -29,16 +32,20 @@ func genCrtRun(cmd *cobra.Command, args []string) {
 	orgName, _ := GetStringParam("org-name", cmd, os.Getenv("MCLI_CRT_ORG_NAME"))
 	country, _ := GetStringParam("country", cmd, os.Getenv("MCLI_CRT_COUNTRY"))
 	location, _ := GetStringParam("location", cmd, os.Getenv("MCLI_CRT_LOCATION"))
-	commonName, _ := GetStringParam("common-name", cmd, os.Getenv("MCLI_CRT_CN"))
-	DNSNames := []string{commonName}
+	domainNames, _ := GetStringParam("domain-names", cmd, os.Getenv("MCLI_CRT_DNAMES"))
+	DNSNames := strings.Split(strings.ReplaceAll(domainNames, " ", ""), ",")
+
+	envEncrypt, _ := strconv.ParseBool(os.Getenv("MCLI_CRT_ENCRYPT_KEY"))
+	encrypt, _ := GetBoolParam("encrypt", cmd, envEncrypt)
 
 	var caInRedis, ok bool = false, false
 	var doCAGenerate bool = false
-	var caRedisPrefix string = "rootCA:"
+	var caRedisPrefix string = ""
 	var caRedisCrtKey, caRedisPKkey string = "", ""
 	var caCrtBytes, caPKBytes []byte
 	var err error
 
+	_ = encrypt
 	_ = caInRedis
 	_ = doCAGenerate
 	_ = ok
@@ -48,6 +55,23 @@ func genCrtRun(cmd *cobra.Command, args []string) {
 			Elogger.Fatal().Msgf("can not connect to redis database: CommonRedisStore is nil")
 			return
 		}
+		redisEncKey := ""
+		if true {
+			// getting encryption redis key
+			internalSecretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile, exportCypher, nil)
+			if err := internalSecretStore.FillStore(Config.Common.InternalVaultPath, Config.Common.InternalKeyFilePath); err != nil {
+				if encrypt {
+					Elogger.Fatal().Msgf("error fills secret store %v", err)
+				}
+			}
+			redisEncKeySecret, ok := internalSecretStore.GetSecretPlainMap()["RedisEncKey"]
+			if ok {
+				redisEncKey = redisEncKeySecret.Secret
+				// Ilogger.Trace().Msgf("redis encryption key have been retrived from store: %s", fmt.Sprintf("%x", redisEncKey))
+			}
+
+		}
+
 		caInRedis = true
 		caCrtPath = strings.ReplaceAll(caCrtPath, "redis://", "")
 		caParts := strings.Split(caCrtPath, ":")
@@ -71,8 +95,19 @@ func genCrtRun(cmd *cobra.Command, args []string) {
 		_ = ok
 		caPKBytes, err, ok = CommonRedisStore.GetRecord(caRedisPKkey, caRedisPrefix)
 		if err != nil {
-			Elogger.Fatal().Msgf("can not get ca pk from redis database: %v", err)
-			return
+			if !encrypt {
+				// setup encryption parameters and try decrypt
+				CommonRedisStore.SetEncrypt(true, []byte(redisEncKey), cypher)
+				caPKBytes, err, _ = CommonRedisStore.GetRecord(caRedisPKkey, caRedisPrefix)
+				if err != nil {
+					Elogger.Fatal().Msgf("can not get decrypted ca pk from redis database: %v", err)
+					return
+				}
+				CommonRedisStore.SetEncrypt(false, []byte(redisEncKey), cypher)
+			} else {
+				Elogger.Fatal().Msgf("can not get ca pk from redis database: %v", err)
+				return
+			}
 		}
 		_ = ok
 	} else {
@@ -85,6 +120,7 @@ func genCrtRun(cmd *cobra.Command, args []string) {
 			Elogger.Fatal().Msgf("can not read ca crt from file %v %v", caCrtPath, err)
 			return
 		}
+		// TODO: make decryption detect and decryption
 		caPKBytes, err = os.ReadFile(caPKPath)
 		if err != nil {
 			Elogger.Fatal().Msgf("can not read ca pk from file %v %v", caPKPath, err)
@@ -161,13 +197,12 @@ func genCrtRun(cmd *cobra.Command, args []string) {
 var gencrtCmd = &cobra.Command{
 	Use:   "gencrt",
 	Short: "Command to generate rsa certificate on given path, signed by CA.",
-	Long: `Command to generate rsa certificate on given path, signed by CA.
-	If CA is not provided? it will be  generated in the same path as crt.
+	Long: `Command to generate rsa certificate on given path, signed by CA.	
 	
-		--crt-store-path - it can be sets as /opt/cert for example or file://opt/cert or 
-			redis://certificates:domain.com - if redis selected as store, then it will make 2 keys
-			certificates:domain.com.crt and certificates:domain.key
-
+		--crt-store-path - it can be sets as /opt/cert for example or redis://certificates:domain.com
+		 	
+			if redis selected as store, then it will make 2 keys certificates:domain.com.crt and certificates:domain.key
+			if file - two files will be made in same folder .crt and .key
 
 	`,
 	Run: genCrtRun,
@@ -175,12 +210,13 @@ var gencrtCmd = &cobra.Command{
 
 func init() {
 	certCmd.AddCommand(gencrtCmd)
-	// gencrtCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	gencrtCmd.Flags().StringP("crt-store-path", "p", ".", "path to save crt and key files")
-	gencrtCmd.Flags().StringP("ca-path", "c", ".", "path to ca crt file(key must be near)")
-	gencrtCmd.Flags().StringP("common-name", "N", ".", "common domain name")
-	gencrtCmd.Flags().StringP("org-name", "O", ".", "organization name")
-	gencrtCmd.Flags().StringP("country", "C", ".", "country")
-	gencrtCmd.Flags().StringP("location", "L", ".", "location")
+
+	gencrtCmd.Flags().StringP("crt-store-path", "p", "", "path to save crt and key files")
+	gencrtCmd.Flags().StringP("ca-path", "c", "", "path to ca crt file(key must be near)")
+	gencrtCmd.Flags().StringP("domain-names", "N", "example.site, www.example.site", "comma separated domain names")
+	gencrtCmd.Flags().StringP("org-name", "O", "", "organization name")
+	gencrtCmd.Flags().StringP("country", "C", "", "country")
+	gencrtCmd.Flags().StringP("location", "L", "", "location")
+	gencrtCmd.Flags().BoolP("encrypt", "e", false, "encrypt private key file/record")
 
 }

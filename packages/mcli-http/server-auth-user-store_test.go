@@ -101,7 +101,7 @@ func TestUserStore(t *testing.T) {
 		KeyPrefix: "userlist",
 	}
 	rs.SetMarshalling(json.Marshal, json.Unmarshal)
-	rs.SetEcrypt(true, GenKey(32), cypher)
+	rs.SetEncrypt(true, GenKey(32), cypher)
 	us := NewUserStore(rs, "userlist")
 	user := NewCredential("user_test", "pwd1", true, nil)
 

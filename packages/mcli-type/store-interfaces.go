@@ -1,7 +1,7 @@
 package mclitype
 
 type KVStorer interface {
-	SetEcrypt(encrypt bool, key []byte, cypher SecretsCypher)
+	SetEncrypt(encrypt bool, key []byte, cypher SecretsCypher)
 	SetMarshalling(fMarshal func(any) ([]byte, error), fUnMarshal func([]byte, any) error)
 	GetMarshal() func(any) ([]byte, error)
 	GetUnMarshal() func([]byte, any) error
@@ -22,7 +22,7 @@ type KVStorer interface {
 }
 
 type KVStorerV2 interface {
-	SetEcryptV2(encrypt bool, key []byte, cypher SecretsCypher)
+	SetEncryptV2(encrypt bool, key []byte, cypher SecretsCypher)
 	SetMarshallingV2(fMarshal func(any) ([]byte, error), fUnMarshal func([]byte, any) error)
 	GetMarshalV2() func(any) ([]byte, error)
 	GetUnMarshalV2() func([]byte, any) error

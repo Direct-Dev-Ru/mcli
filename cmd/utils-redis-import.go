@@ -16,6 +16,7 @@ import (
 	mcli_type "mcli/packages/mcli-type"
 	mcli_utils "mcli/packages/mcli-utils"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -30,7 +31,7 @@ var cypher mcli_type.SecretsCypher = mcli_crypto.AesCypher
 var Err mcli_error.CommonError
 var F map[string]func(string) (string, error) = make(map[string]func(string) (string, error), 0)
 
-// input should be blocks of data if yaml input:
+// if struct type of import input should be blocks of data if yaml input:
 // Key:	KeyName1
 // someKey1: SomeValue1
 // someKey2: SomeValue2
@@ -52,33 +53,101 @@ var F map[string]func(string) (string, error) = make(map[string]func(string) (st
 func importToRedis(cmd *cobra.Command, args []string) {
 	var err error
 
-	redisHost, _ := cmd.Flags().GetString("redis-host")
-	// isRedisHostSet := cmd.Flags().Lookup("redis-host").Changed
+	defaultRedisHost, defaultRedisPort := strings.Split(Config.Common.RedisHost, ":")[0], strings.Split(Config.Common.RedisHost, ":")[1]
+	redisHost, _ := GetStringParam("redis-host", cmd, defaultRedisHost)
+	redisPort, _ := GetStringParam("redis-port", cmd, defaultRedisPort)
+	redisDb, _ := GetIntParam("redis-db", cmd, Config.Common.RedisDatabaseNo)
 
 	redisPwd, _ := cmd.Flags().GetString("redis-pwd")
 	isRedisPwdSet := cmd.Flags().Lookup("redis-pwd").Changed
 	if (len(redisPwd) == 0 || redisPwd == "echo ${REDIS_PWD}") && !isRedisPwdSet {
 		redisPwd = os.Getenv("REDIS_PWD")
 	}
+	importType, _ := cmd.Flags().GetString("import-type") // plain or struct
+	keyPrefix, _ := GetStringParam("key-prefix", cmd, "")
+	key, _ := GetStringParam("key", cmd, "")
+	inputFile, _ := GetStringParam("input-file", cmd, "")
+	encrypt, _ := GetBoolParam("encrypt", cmd, false)
 
-	inputFile, _ := cmd.Flags().GetString("input-file")
-	isInputFileSet := cmd.Flags().Lookup("input-file").Changed
+	var kvStore mcli_type.KVStorer
+	resultHostToConnect := fmt.Sprintf("%s:%s", redisHost, redisPort)
+	kvStore, err = mcli_redis.NewRedisStore("redisutils_"+Config.Common.AppName, resultHostToConnect, redisPwd, "", redisDb)
+	if err != nil {
+		Elogger.Fatal().Msg(err.Error())
+	}
+	defer kvStore.Close()
 
-	encrypt, _ := cmd.Flags().GetBool("encrypt")
-	isEncryptSet := cmd.Flags().Lookup("encrypt").Changed
-	if !isEncryptSet {
-		encrypt = false
+	kvStore.SetMarshalling(json.Marshal, json.Unmarshal)
+
+	if encrypt {
+		// getting or generating enc key for encryption records in redis database
+		internalSecretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile, mcli_crypto.AesCypher, nil)
+
+		if err := internalSecretStore.FillStore(Config.Common.InternalVaultPath, Config.Common.InternalKeyFilePath); err != nil {
+			Elogger.Fatal().Msg(err.Error())
+		}
+		secretMap := internalSecretStore.GetSecretPlainMap()
+		redisEncKey := ""
+		redisEncKeySecret, ok := secretMap["RedisEncKey"]
+
+		if ok {
+			redisEncKey = redisEncKeySecret.Secret
+			if err != nil {
+				Elogger.Fatal().Msg(err.Error())
+			}
+			// Ilogger.Trace().Msg(redisEncKey)
+		} else {
+			redisEncKey = string(mcli_secrets.GenKey(64))
+
+			redisSecretKeyEntry, err := internalSecretStore.NewEntry("RedisEncKey", "RedisEncKey", "Key fo redis records encription")
+			if err != nil {
+				Elogger.Fatal().Msgf("RedisEncKey new entry error: %v", err)
+			}
+			redisSecretKeyEntry.SetSecret(fmt.Sprintf("%x", redisEncKey), true, false)
+			Ilogger.Trace().Msg(fmt.Sprintf("%x", redisEncKey))
+
+			internalSecretStore.AddEntry(redisSecretKeyEntry)
+			internalSecretStore.Save(Config.Common.InternalVaultPath, Config.Common.InternalKeyFilePath)
+		}
+		// end getting or generting enc key for encryption records in redis database
+
+		// setup encryption parameters
+		kvStore.SetEncrypt(encrypt, []byte(redisEncKey), cypher)
 	}
 
-	if !IsCommandInPipe() && len(inputFile) > 0 && isInputFileSet {
+	// if simple plain import
+	// expect key and keyprefix. if ommits - it takes filename as key and prefix is empty
+	importType = strings.TrimSpace(strings.ToLower(importType))
+	if importType == "plain" {
+		key = strings.TrimSpace(key)
+		keyPrefix = strings.TrimSpace(keyPrefix)
+
+		if len(key) == 0 {
+			key = filepath.Base(inputFile)
+		}
+
+		content, err := os.ReadFile(inputFile)
+		if err != nil {
+			Elogger.Fatal().Msgf("error reading input file while plain import: %v", err)
+		}
+
+		finalKey := mcli_utils.Iif[string](len(keyPrefix) == 0, key, fmt.Sprintf("%s:%s", keyPrefix, key))
+
+		err = kvStore.SetRecord(finalKey, content)
+		if err != nil {
+			Elogger.Fatal().Msgf("save record error: %s", err.Error())
+		}
+		return
+	}
+
+	//  if structural import
+
+	if !IsCommandInPipe() && len(inputFile) > 0 {
 		exist, _, _ := mcli_utils.IsExistsAndCreate(inputFile, false, false)
 		if !exist {
 			Elogger.Fatal().Msg("noinput provided for command or input file doesn't exists")
 		}
 	}
-	keyPrefix, _ := cmd.Flags().GetString("key-prefix")
-
-	_ = redisHost
 
 	var inData []string
 	if IsCommandInPipe() && len(Input.InputSlice) > 0 {
@@ -184,51 +253,6 @@ func importToRedis(cmd *cobra.Command, args []string) {
 		// fmt.Printf("\nAfter: %v\n", mcli_utils.PrettyPrintMap(inputRecords))
 
 		// ok now we are ready to import records to kv store
-		var kvStore mcli_type.KVStorer
-
-		kvStore, err = mcli_redis.NewRedisStore("redisutils_"+Config.Common.AppName, redisHost, redisPwd, "", 0)
-		if err != nil {
-			Elogger.Fatal().Msg(err.Error())
-		}
-		defer kvStore.Close()
-
-		kvStore.SetMarshalling(json.Marshal, json.Unmarshal)
-
-		if encrypt {
-			// getting or generating enc key for encryption records in redis database
-			internalSecretStore := mcli_secrets.NewSecretsEntries(mcli_fs.GetFile, mcli_fs.SetFile, mcli_crypto.AesCypher, nil)
-
-			if err := internalSecretStore.FillStore(Config.Common.InternalVaultPath, Config.Common.InternalKeyFilePath); err != nil {
-				Elogger.Fatal().Msg(err.Error())
-			}
-			secretMap := internalSecretStore.GetSecretPlainMap()
-			redisEncKey := ""
-			redisEncKeySecret, ok := secretMap["RedisEncKey"]
-
-			if ok {
-				redisEncKey = redisEncKeySecret.Secret
-				if err != nil {
-					Elogger.Fatal().Msg(err.Error())
-				}
-				// Ilogger.Trace().Msg(redisEncKey)
-			} else {
-				redisEncKey = string(mcli_secrets.GenKey(64))
-
-				redisSecretKeyEntry, err := internalSecretStore.NewEntry("RedisEncKey", "RedisEncKey", "Key fo redis records encription")
-				if err != nil {
-					Elogger.Fatal().Msgf("RedisEncKey new entry error: %v", err)
-				}
-				redisSecretKeyEntry.SetSecret(fmt.Sprintf("%x", redisEncKey), true, false)
-				Ilogger.Trace().Msg(fmt.Sprintf("%x", redisEncKey))
-
-				internalSecretStore.AddEntry(redisSecretKeyEntry)
-				internalSecretStore.Save(Config.Common.InternalVaultPath, Config.Common.InternalKeyFilePath)
-			}
-			// end getting or generting enc key for encryption records in redis database
-
-			// setup encryption parameters
-			kvStore.SetEcrypt(encrypt, []byte(redisEncKey), cypher)
-		}
 
 		keyToCheck := ""
 		for key, record := range inputRecords {
@@ -373,10 +397,17 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	redisImportCmd.PersistentFlags().String("redis-host", "localhost:6379", "host:port to connect to REDIS DB")
-	redisImportCmd.PersistentFlags().String("redis-pwd", "echo ${REDIS_PWD}", "Password for REDIS DB")
-	redisImportCmd.PersistentFlags().String("input-file", "", "file with data for import")
-	redisImportCmd.PersistentFlags().String("key-prefix", "", "prefix to add to key then store in redis database")
+	redisImportCmd.PersistentFlags().StringP("import-type", "t", "plain", "type of input data: plain - filename is a key and all its content as value or struct - yaml or json and this is content to value - key is a special field in input file")
+	redisImportCmd.PersistentFlags().StringP("redis-host", "H", "127.0.0.1", "host to connect")
+	redisImportCmd.PersistentFlags().StringP("redis-port", "p", "6379", "port to connect")
+	redisImportCmd.PersistentFlags().IntP("redis-db", "D", 1, "number of redis database to import to")
+	redisImportCmd.PersistentFlags().StringP("redis-pwd", "P", "echo ${REDIS_PWD}", "Password for REDIS")
+
+	// redisImportCmd.PersistentFlags().String("redis-host2", "localhost:6379", "host:port to connect to REDIS DB")
+	// redisImportCmd.PersistentFlags().String("redis-pwd2", "echo ${REDIS_PWD}", "Password for REDIS DB")
+	redisImportCmd.PersistentFlags().StringP("input-file", "i", "", "file with data for import")
+	redisImportCmd.PersistentFlags().StringP("key-prefix", "x", "", "prefix to add to key then store in redis database")
+	redisImportCmd.PersistentFlags().StringP("key", "k", "", "key for plain import (if ommit - key is filename)")
 	redisImportCmd.Flags().BoolP("encrypt", "e", false, "encrypt records")
 	redisImportCmd.PersistentFlags().String("encrypt-key-name", "mcli-redis-enc-name", "prefix to add to key then store in redis database")
 

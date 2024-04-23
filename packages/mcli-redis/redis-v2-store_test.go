@@ -117,7 +117,7 @@ func TestRedisStoreV2(t *testing.T) {
 		KeyPrefix: "testns",
 	}
 	rs.SetMarshalling(json.Marshal, json.Unmarshal)
-	rs.SetEcrypt(false, GenKey(32), cypherV2)
+	rs.SetEncrypt(false, GenKey(32), cypherV2)
 
 	// Test SetRecord
 	valueToTest1 := TestUserStruct{Id: 1, Name: "testuser1", Token: "testpassword1",

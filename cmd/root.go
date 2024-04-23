@@ -245,6 +245,7 @@ func initConfig() {
 
 		if ok {
 			redisEncKey = redisEncKeySecret.Secret
+			_ = redisEncKey
 			// Ilogger.Trace().Msgf("redis encryption key have been retrived from store: %s", fmt.Sprintf("%x", redisEncKey))
 		} else {
 			redisEncKey = string(mcli_secrets.GenKey(64))

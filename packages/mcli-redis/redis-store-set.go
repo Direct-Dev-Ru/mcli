@@ -2,6 +2,7 @@ package mcliredis
 
 import (
 	"fmt"
+	mcli_crypto "mcli/packages/mcli-crypto"
 	"reflect"
 	"strconv"
 	"time"
@@ -60,11 +61,13 @@ func (rs *RedisStore) getValueToStore(value interface{}) (string, error) {
 		return "", fmt.Errorf("preparing value to store error: %w", err)
 	}
 
-	if rs.Encrypt && rs.Cypher != nil {
+	if rs.Encrypt && len(rs.encryptKey) > 0 && rs.Cypher != nil {
 		valueToStore, err = rs.Cypher.Encrypt(rs.encryptKey, valueToStore, true)
 		if err != nil {
 			return "", fmt.Errorf("encryption error: %w", err)
 		}
+		valueToStore = []byte(mcli_crypto.Base64ByteSliceEncode(valueToStore))
+
 	}
 
 	// strValueToStore := mcli_crypto.Base64ByteSliceEncode(valueToStore)

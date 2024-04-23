@@ -5,7 +5,7 @@ package mclistore
 // )
 
 // type KVStorer interface {
-// 	SetEcrypt(encrypt bool, key []byte, cypher mcli_secrets.SecretsCypher)
+// 	SetEncrypt(encrypt bool, key []byte, cypher mcli_secrets.SecretsCypher)
 
 // 	GetRecord(key string, keyPrefixes ...string) (string, error, bool)
 // 	GetRecordEx(key string, keyPrefixes ...string) (string, int, error)

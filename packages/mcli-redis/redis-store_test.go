@@ -90,7 +90,7 @@ func TestRedisStore(t *testing.T) {
 		KeyPrefix: "prefix",
 	}
 	rs.SetMarshalling(json.Marshal, json.Unmarshal)
-	rs.SetEcrypt(true, GenKey(32), cypher)
+	rs.SetEncrypt(true, GenKey(32), cypher)
 
 	// Test SetRecord
 	valueToTest := "testValue"

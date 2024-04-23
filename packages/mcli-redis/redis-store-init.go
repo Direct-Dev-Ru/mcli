@@ -113,7 +113,7 @@ func (r *RedisStore) GetUnMarshal() func([]byte, any) error {
 	return r.Unmarshal
 }
 
-func (r *RedisStore) SetEcrypt(encrypt bool, encryptKey []byte, cypher mcli_type.SecretsCypher) {
+func (r *RedisStore) SetEncrypt(encrypt bool, encryptKey []byte, cypher mcli_type.SecretsCypher) {
 	r.Encrypt = encrypt
 	r.Cypher = cypher
 	r.encryptKey = encryptKey

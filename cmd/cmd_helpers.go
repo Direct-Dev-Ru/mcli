@@ -45,6 +45,16 @@ func GetIntParam(param string, cmd *cobra.Command, fromConfig int) (int, error) 
 	return paramValue, err
 }
 
+func GetBoolParam(param string, cmd *cobra.Command, fromConfig bool) (bool, error) {
+
+	paramValue, err := cmd.Flags().GetBool(param)
+	isParamSet := cmd.Flags().Lookup(param).Changed
+	if !isParamSet {
+		paramValue = fromConfig
+	}
+	return paramValue, err
+}
+
 func IsPathExists(path string) (bool, error) {
 	_, err := os.Stat(path)
 	if err == nil {

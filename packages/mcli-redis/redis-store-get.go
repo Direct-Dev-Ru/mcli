@@ -3,6 +3,7 @@ package mcliredis
 import (
 	"context"
 	"fmt"
+	mcli_crypto "mcli/packages/mcli-crypto"
 	"strings"
 	"time"
 
@@ -17,7 +18,9 @@ func (rs *RedisStore) GetRecord(key string, keyPrefixes ...string) (result []byt
 	resultKey := key
 	if len(keyPrefixes) > 0 {
 		prefix = keyPrefixes[0]
-		resultKey = fmt.Sprintf("%s:%s", prefix, key)
+		if len(prefix) > 0 {
+			resultKey = fmt.Sprintf("%s:%s", prefix, key)
+		}
 	} else if len(rs.KeyPrefix) > 0 {
 		resultKey = fmt.Sprintf("%s:%s", rs.KeyPrefix, key)
 	}
@@ -47,14 +50,14 @@ func (rs *RedisStore) GetRecord(key string, keyPrefixes ...string) (result []byt
 			return nil, err, true
 		}
 
-		// rawValue, err := mcli_crypto.Base64ToByteSliceDecode(strValue)
-		// if err != nil {
-		// 	return nil, err, true
-		// }
-
 		rawValue := redisData
 
 		if rs.Encrypt {
+			rawValue, err = mcli_crypto.Base64ToByteSliceDecode(string(redisData))
+			if err != nil {
+				return nil, err, true
+			}
+
 			if rs.Cypher == nil {
 				return nil, fmt.Errorf("decryption error: %s", "cypher is nil"), false
 			}
@@ -97,7 +100,7 @@ func (rs *RedisStore) GetRecordEx(key string, keyPrefixes ...string) ([]byte, in
 		}
 		return result, remainingTime, nil
 	}
-	return nil, -1, fmt.Errorf("key do not exists")
+	return nil, -1, fmt.Errorf("key not exists")
 }
 
 func (rs *RedisStore) GetRecords(pattern string, keyPrefixes ...string) (map[string][]byte, error) {
@@ -106,7 +109,9 @@ func (rs *RedisStore) GetRecords(pattern string, keyPrefixes ...string) (map[str
 	resultPattern := pattern
 	if len(keyPrefixes) > 0 {
 		prefix = keyPrefixes[0]
-		resultPattern = fmt.Sprintf("%s:%s", prefix, pattern)
+		if len(prefix) > 0 {
+			resultPattern = fmt.Sprintf("%s:%s", prefix, pattern)
+		}
 	} else if len(rs.KeyPrefix) > 0 {
 		resultPattern = fmt.Sprintf("%s:%s", rs.KeyPrefix, pattern)
 	}
@@ -130,25 +135,28 @@ func (rs *RedisStore) GetRecords(pattern string, keyPrefixes ...string) (map[str
 				if rs.Cypher == nil {
 					return nil, fmt.Errorf("decryption error: %s", "cypher is nil")
 				}
+				rawValue, err = mcli_crypto.Base64ToByteSliceDecode(string(rawValue))
+				if err != nil {
+					return nil, err
+				}
 				rawValue, err = rs.Cypher.Decrypt(rs.encryptKey, rawValue, true)
 				if err != nil {
 					return nil, fmt.Errorf("decryption error: %w", err)
 				}
 			}
-			storedData := StoreFormat{}
-			err = rs.Unmarshal(rawValue, &storedData)
+			stucturedData := StoreFormat{}
+			err = rs.Unmarshal(rawValue, &stucturedData)
 			if err != nil {
 				return nil, err
 			}
-			returnValue := storedData.Value
+			returnValue := stucturedData.Value
 
-			switch storedData.ValueType {
+			switch stucturedData.ValueType {
 			case "string":
 				resultMap[key] = returnValue
 			default:
 				resultMap[key] = returnValue
 			}
-
 		}
 
 		if nextCursor == 0 {
@@ -156,7 +164,6 @@ func (rs *RedisStore) GetRecords(pattern string, keyPrefixes ...string) (map[str
 		}
 		cursor = nextCursor
 	}
-
 	return resultMap, nil
 }
 
