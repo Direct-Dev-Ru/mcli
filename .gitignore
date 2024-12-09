@@ -14,3 +14,5 @@ compose.env
 keyfile.txt
 internal-secrets/
 for-upload/
+shell-code/build.env
+shell-code/.env
