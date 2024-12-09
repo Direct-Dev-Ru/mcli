@@ -3,8 +3,8 @@
 # REPO=registry.direct-dev.ru/go-lcg
 REPO=kuznetcovay/swknf
 VERSION=$1
-if [ -z "$VERSION" ]; then
-    VERSION=v1.1.1
+if [ -z "${VERSION}" ]; then
+    VERSION=$(cat VERSION.txt)
 fi
 BRANCH=main
 
@@ -43,7 +43,7 @@ fi
 #         echo "Tests failed. Exiting..."
 #         exit 1
 # fi
-mkdir -p for-upload
+mkdir -p "for-upload"
 
 # Build for linux/amd64
 docker build -f Dockerfiles/LocalCompile/Dockerfile --target bin-linux --output bin-linux-amd64/ --platform linux/amd64 . ||
@@ -52,7 +52,7 @@ docker build -f Dockerfiles/LocalCompile/Dockerfile --target bin-linux --output 
                 exit 1
         }
 
-cp bin-linux-amd64/swknf  "upload/swknf.amd64.${VERSION}"
+cp bin-linux-amd64/swknf  "for-upload/swknf.amd64.${VERSION}"
 
 # Build for linux/arm64
 docker build -f Dockerfiles/LocalCompile/Dockerfile --target bin-linux --output bin-linux-arm64/ --platform linux/arm64 . ||
@@ -61,7 +61,7 @@ docker build -f Dockerfiles/LocalCompile/Dockerfile --target bin-linux --output 
                 exit 1
         }
 
-cp bin-linux-arm64/swknf  "upload/swknf.arm64.${VERSION}"
+cp bin-linux-arm64/swknf  "for-upload/swknf.arm64.${VERSION}"
 
 # Push multi-platform images
 docker buildx build -f Dockerfiles/ImageBuild/Dockerfile --push --platform linux/amd64,linux/arm64 -t ${REPO}:"${VERSION}" . ||
@@ -87,7 +87,7 @@ git tag -a "$VERSION" -m "release $VERSION" ||
                 echo "git tag failed. Exiting with code 1."
                 exit 1
         }
-        
+
 git push -u origin main --tags ||
         {
                 echo "git push failed. Exiting with code 1."
