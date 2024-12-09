@@ -10,7 +10,7 @@ common:
   redis-host: "{{$REDIS_HOST}}:{{$REDIS_PORT}}"
   redis-password: "{{$REDIS_PWD}}"
   redis-database-no: 10
-  redis-require: true
+  redis-require: false
 secrets:
   common:
     use-words: false

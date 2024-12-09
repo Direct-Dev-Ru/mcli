@@ -493,12 +493,11 @@ func ReadConfigFile(configFile string) (err error) {
 				}
 			}
 
-			if err == nil {
-				err = yaml.Unmarshal([]byte(configContentString), &Config)
-				if err != nil {
-					Elogger.Fatal().Msg(err.Error())
-				}
+			err = yaml.Unmarshal([]byte(configContentString), &Config)
+			if err != nil {
+				Elogger.Fatal().Msg(err.Error())
 			}
+
 			// fmt.Println("Configuration content :", string(configContent))
 			if IsVerbose {
 				Ilogger.Trace().Msg(fmt.Sprintf("Configuration struct : %+v", Config))

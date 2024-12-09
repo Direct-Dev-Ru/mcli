@@ -13,3 +13,4 @@ cert
 compose.env
 keyfile.txt
 internal-secrets/
+for-upload/

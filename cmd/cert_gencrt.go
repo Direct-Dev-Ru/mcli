@@ -4,6 +4,7 @@ Copyright © 2024 ANTON K. <info@direct-dev.ru>
 package cmd
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -179,16 +180,19 @@ func genCrtRun(cmd *cobra.Command, args []string) {
 		}
 	} else {
 		err = os.WriteFile(filepath.Join(redisCrtPrefix, redisCrtKey), certCrt, 0644)
+
 		if err != nil {
 			Elogger.Fatal().Msgf("can not save certificate to filesystem %v", err)
 			return
 		}
+		log.Printf("saved certificate to filesystem %v\n", filepath.Join(redisCrtPrefix, redisCrtKey))
 
 		err = os.WriteFile(filepath.Join(redisPKPrefix, redisPKKey), certKey, 0644)
 		if err != nil {
 			Elogger.Fatal().Msgf("can not save certificate's pk to filesystem %v", err)
 			return
 		}
+		log.Printf("saved certificate key to filesystem %v\n", filepath.Join(redisPKPrefix, redisPKKey))
 	}
 
 }

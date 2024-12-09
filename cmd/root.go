@@ -186,6 +186,7 @@ func initConfig() {
 
 	var err error
 	IsRedis, _ = ProcessBoolCommandParameter("is-redis", Config.Common.RedisRequire, rootCmd)
+
 	if IsRedis {
 
 		// RedisHost, _ = ProcessCommandParameter("redis-host", "REDIS_HOST", rootCmd)

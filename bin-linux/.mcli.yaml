@@ -1,26 +1,64 @@
 config-version: v1
 common:
+  app-name: general-applicaton
   output-file: results.json
   output-format: json
+  internal-keyfile-path: "{{$HomeDir$}}/.mcli/root/secrets/rootkey.key"
+  # internal-keyfile-path: "FROM_REDIS:secrets:internal_kay"
+  internal-vault-path: "{{$RootPath$}}/intvault/int.vault"
+  # internal-keyfile-path: "FROM_REDIS:secrets:internal_vault"
+  redis-host: "{{$REDIS_HOST}}:{{$REDIS_PORT}}"
+  redis-password: "{{$REDIS_PWD}}"
+  redis-database-no: 10
+  redis-require: false
 secrets:
   common:
     use-words: false
-    vault-path: "{{$HomeDir$}}/.mcli/secrets/defvault"
-    keyfile-path: "{{$HomeDir$}}/.ssh/id_rsa"
     dict-path: "{{$HomeDir$}}/.mcli/pwdgen/dict.csv"
+    
+    vault-path: "{{$HomeDir$}}/.mcli/secrets/default.vault"
+    keyfile-path: "{{$HomeDir$}}/.ssh/id_rsa"
+    # keyfile-path: "env:VAULT_KEY"
+    # key-envvar: "VAULT_KEY"
     min-lenght: 14
     max-lenght: 32
 http:
   server:
     timeout: 3000
-    port:    
-    base-url: server-1
+    port: 8088    
+    base-url: srv-1
+    cors-filepath: "{{$RootPath$}}/cors.json"
+    root-page: 
+      rootpage-template: ./http-data/internal-templates/root/root.page.html
+      rootpage-title: "Direct-Dev Portal 2023"
+      redirect-unauthorized: true
     auth:
       is-authenticate: true
       signin-route: /signin
+      signin-template: ./http-data/internal-templates/signin/signin.page.html
+      signin-change-route: /changepwd
+      signin-change-template: ./http-data/internal-templates/signin/signin.change.page.html
+      signin-redirect: /
+      
       signup-route: /signup
-      redis-host: localhost:6379      
+      signup-template: ./http-data/internal-templates/signup/signup.page.html
+      signup-confirm-route: /confirm-registration
+      signup-confirm-template: ./http-data/internal-templates/signup/signup.confirm.page.html
+      signup-redirect: /users-profile
+
+      profile-route: /users-profile
+      profile-template: ./http-data/internal-templates/profile/profile.page.html
+
+      auth-ttl: 3600
+      secure-auth-token: true
+      auth-token-name: session-token
+      sessions-redis-prefix: session-list
+
+      redis-host: "{{$REDIS_HOST}}:{{$REDIS_PORT}}"      
       redis-password: "{{$REDIS_PWD}}"
+      redis-database-no: 10
+      redis-use-common: false
+      redis-require: true
     static-path: http-static
     static-prefix: static
     templates:
@@ -41,7 +79,7 @@ http:
   request:
     timeout: 6000
     method: GET
-    base-url: http://localhost:8080/server1
+    base-url: http://localhost:8080/srv-1/
     url: /echo
     headers:
       "Content-Type":

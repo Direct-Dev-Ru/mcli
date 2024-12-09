@@ -8,6 +8,7 @@ import (
 	mcli_fs "mcli/packages/mcli-filesystem"
 	mcli_secrets "mcli/packages/mcli-secrets"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -25,7 +26,7 @@ var gencaCmd = &cobra.Command{
 		- Location
 	`,
 	Run: func(cmd *cobra.Command, args []string) {
-		caStorePath, _ := GetStringParam("crt-store-path", cmd, os.Getenv("MCLI_CA_STORE_PATH"))
+		caStorePath, _ := GetStringParam("ca-store-path", cmd, os.Getenv("MCLI_CA_STORE_PATH"))
 
 		orgName, _ := GetStringParam("org-name", cmd, os.Getenv("MCLI_CA_ORG_NAME"))
 		country, _ := GetStringParam("country", cmd, os.Getenv("MCLI_CA_COUNTRY"))
@@ -68,6 +69,18 @@ var gencaCmd = &cobra.Command{
 				}
 			}
 			CommonRedisStore.SetEncrypt(encrypt, []byte(redisEncKey), cypher)
+		} else {
+			err = os.WriteFile(filepath.Join(caStorePath, "ca.crt"), caCrt, 0600)
+			if err != nil {
+				Elogger.Fatal().Msgf("error save ca.crt to %v: %v", filepath.Join(caStorePath, "ca.crt"), err)
+				return
+			}
+			err = os.WriteFile(filepath.Join(caStorePath, "ca.key"), caKey, 0600)
+			if err != nil {
+				Elogger.Fatal().Msgf("error save ca.key to %v: %v", filepath.Join(caStorePath, "ca.key"), err)
+				return
+			}
+
 		}
 
 	},
