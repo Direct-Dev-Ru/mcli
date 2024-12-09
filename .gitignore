@@ -1,6 +1,7 @@
-
 ./mcli
 mcli
+swknf
+swknf*
 ./mcli.exe
 mcli.exe
 *.pdf
@@ -13,6 +14,6 @@ cert
 compose.env
 keyfile.txt
 internal-secrets/
-for-upload/
+for-upload/*
 shell-code/build.env
 shell-code/.env
