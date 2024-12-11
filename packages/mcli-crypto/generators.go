@@ -2,12 +2,17 @@ package mclicrypto
 
 import (
 	"crypto/rand"
+	_ "embed"
 	"fmt"
 	mcli_fs "mcli/packages/mcli-filesystem"
 	mcli_utils "mcli/packages/mcli-utils"
+	"os"
 	"strings"
 	"unicode"
 )
+
+//go:embed defaultWords.csv
+var embeddedDefaultWordsFile []byte
 
 func GetDictionary(path string) (map[string][]string, error) {
 	filter := func(current []string) bool {
@@ -25,6 +30,29 @@ func GetDictionary(path string) (map[string][]string, error) {
 	return dict, nil
 }
 
+func GetDictionaryFromBytes(fileData []byte) (map[string][]string, error) {
+	if len(fileData) == 0 {
+		fileData = embeddedDefaultWordsFile
+	}
+	content := string(fileData)
+	lines := strings.Split(content, "\n")
+
+	passDict := make(map[string][]string)
+
+	for _, line := range lines {
+		fields := strings.Split(line, "\t")
+		if len(fields) < 2 || strings.Contains(fields[0], "-") {
+			continue
+		}
+
+		key := fields[1]
+		value := fields[0]
+
+		passDict[key] = append(passDict[key], value)
+	}
+	return passDict, nil
+}
+
 type ReplaceEntry struct {
 	OriginRune  rune
 	ReplaceRune rune
@@ -33,20 +61,27 @@ type ReplaceEntry struct {
 
 // Generates passphrase from list of words given on path wordsListPath
 // replaces - slice with replace structs
-func GeneratePassPhrase(wordsListPath string, replaces []ReplaceEntry) (string, error) {
+func GeneratePassPhrase(wordsListPath string, replaces []ReplaceEntry, translit, rutoenQwert bool) (string, error) {
 	if len(wordsListPath) == 0 {
 		wordsListPath = "./pwdgen/freqrnc2011.csv"
 	}
-	passDict, err := GetDictionary(wordsListPath)
-	if err != nil {
-		return "", err
+	var passDict map[string][]string
+	if _, err := os.Stat(wordsListPath); os.IsNotExist(err) {
+		passDict, err = GetDictionaryFromBytes(embeddedDefaultWordsFile)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		passDict, err = GetDictionary(wordsListPath)
+		if err != nil {
+			return "", err
+		}
 	}
 	words := map[string]string{"s": "", "v": "", "adv": "", "a": ""}
 	for t := range words {
 		list, ok := passDict[t]
 
 		if ok && len(list) > 0 {
-
 			words[t] = list[mcli_utils.Random(0, len(list)-1)]
 		}
 	}
@@ -54,13 +89,21 @@ func GeneratePassPhrase(wordsListPath string, replaces []ReplaceEntry) (string, 
 	s := []rune(words["s"])
 	adv := []rune(words["adv"])
 	v := []rune(words["v"])
+	n := mcli_utils.Random(1, len(passDict["a"]))
 
 	phrase := fmt.Sprintf("%s%s%s%s",
 		string(append([]rune{unicode.ToUpper(a[0])}, a[1:]...)),
 		string(append([]rune{unicode.ToUpper(s[0])}, s[1:]...)),
+		string(append([]rune{unicode.ToUpper(v[0])}, v[1:]...)),
 		string(append([]rune{unicode.ToUpper(adv[0])}, adv[1:]...)),
-		string(append([]rune{unicode.ToUpper(v[0])}, v[1:]...)))
-	phrase = mcli_utils.TranslitToLatFromCyr(phrase)
+	)
+	if translit {
+		phrase = mcli_utils.TranslitToLatFromCyr(phrase)
+	}
+	if rutoenQwert {
+		phrase = mcli_utils.RuToEnKeyboardLayout(phrase)
+	}
+	phrase = fmt.Sprintf("%s%v", phrase, n)
 
 	// Process replacements
 	if len(replaces) > 0 {
@@ -68,6 +111,7 @@ func GeneratePassPhrase(wordsListPath string, replaces []ReplaceEntry) (string, 
 			phrase = strings.Replace(phrase, string(r.OriginRune), string(r.ReplaceRune), r.Number)
 		}
 	}
+
 	return phrase, nil
 }
 

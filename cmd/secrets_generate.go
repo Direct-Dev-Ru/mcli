@@ -30,7 +30,7 @@ type InputSecretEntry struct {
 func GenerateSecret(cmd *cobra.Command, args []string) {
 	var LineBreak string = GlobalMap["LineBreak"]
 
-	var useWords, obfuscate bool
+	var useWords, obfuscate, translit, ruToEn bool
 	var dictPath, vaultPath, keyFilePath string
 	var minLength, maxLength int
 
@@ -43,6 +43,16 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 	isObfuscateSet := cmd.Flags().Lookup("obfuscate").Changed
 	if !isObfuscateSet {
 		obfuscate = Config.Secrets.Common.Obfuscate
+	}
+	translit, _ = cmd.Flags().GetBool("translit")
+	isTranslitSet := cmd.Flags().Lookup("translit").Changed
+	if !isTranslitSet {
+		translit = false
+	}
+	ruToEn, _ = cmd.Flags().GetBool("qwerty")
+	isRuToEnSet := cmd.Flags().Lookup("qwerty").Changed
+	if !isRuToEnSet {
+		ruToEn = false
 	}
 
 	dictPath, _ = cmd.Flags().GetString("dict-path")
@@ -101,8 +111,9 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 	// if err := secretStore.FillStore(vaultPath, keyFilePath); err != nil {
 	// 	Elogger.Fatal().Msg(err.Error())
 	// }
-
-	fmt.Println(secretStore.Secrets)
+	if os.Getenv("DEBUG") == "true" {
+		fmt.Println(secretStore.Secrets)
+	}
 
 	if IsCommandInPipe() && len(Input.InputSlice) == 0 {
 		Elogger.Fatal().Msg("input from pipe is empty: provide not empty pipe or run without pipe")
@@ -218,7 +229,7 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 
 				if phrase == "generate" {
 					if useWords {
-						phrase, err = mcli_crypto.GeneratePassPhrase(dictPath, runesReplaces)
+						phrase, err = mcli_crypto.GeneratePassPhrase(dictPath, runesReplaces, translit, ruToEn)
 					} else {
 						phrase, err = mcli_crypto.GeneratePassword(mcli_utils.Random(minLength, maxLength))
 					}
@@ -249,7 +260,8 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 		}
 		return
 
-	} else { // manual entering of secrets parameters
+	} else {
+		// manual enter secret parameters
 		for {
 			fmt.Println(ColorGreen + "-------------------Start Generation------------------------------" + ColorReset)
 			// reading from stdin
@@ -266,12 +278,15 @@ func GenerateSecret(cmd *cobra.Command, args []string) {
 			descr = strings.TrimSuffix(descr, LineBreak)
 
 			if useWords {
-				phrase, err = mcli_crypto.GeneratePassPhrase(dictPath, runesReplaces)
+				phrase, err = mcli_crypto.GeneratePassPhrase(dictPath, runesReplaces, translit, ruToEn)
 			} else {
 				phrase, err = mcli_crypto.GeneratePassword(mcli_utils.Random(minLength, maxLength))
 			}
 			if err != nil {
 				Elogger.Fatal().Msg(err.Error())
+			}
+			if len(phrase) > maxLength && !useWords {
+				phrase = phrase[:maxLength]
 			}
 
 			fmt.Print(ColorYellow + "Is secret " + ColorBlue + phrase + ColorYellow + " is good enougth for you (or enter another if you want): " + ColorReset)
@@ -350,6 +365,8 @@ func init() {
 	generateCmd.Flags().StringP("keyfile-path", "k", "", "path to file to get access key")
 	generateCmd.Flags().BoolP("use-words", "w", false, "generate by russian words toggle")
 	generateCmd.Flags().BoolP("obfuscate", "o", false, "obfuscate phrase by replacing a=@, l=1 and so on")
+	generateCmd.Flags().BoolP("translit", "t", false, "translit password phrase from ru to en")
+	generateCmd.Flags().BoolP("qwerty", "q", false, "translit password phrase from ru layout to en layout (йцук to qwer)")
 	generateCmd.Flags().IntP("min-length", "m", 8, "min length of password (affected then use-words eq false )")
 	generateCmd.Flags().IntP("max-length", "x", 24, "max length of password (affected then use-words eq false )")
 }

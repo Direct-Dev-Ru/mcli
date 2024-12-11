@@ -6,6 +6,7 @@ Copyright © 2022 DIRECT-DEV.RU <INFO@DIRECT-DEV.RU>
 package main
 
 import (
+	_ "embed"
 	"mcli/cmd"
 	"os"
 	"runtime/debug"
@@ -17,6 +18,9 @@ import (
 	// "github.com/rs/zerolog/log"
 )
 
+//go:embed .mcli.yaml
+var embeddedConfigYaml []byte
+
 func main() {
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	iLogger := zerolog.New(os.Stdout).Level(zerolog.InfoLevel).With().Timestamp().Logger()
@@ -25,7 +29,7 @@ func main() {
 	eLogger.Level(zerolog.ErrorLevel)
 
 	ENV_DEBUG := strings.ToLower(os.Getenv("DEBUG"))
-	
+
 	if ENV_DEBUG == "true" {
 		zerolog.SetGlobalLevel(zerolog.TraceLevel)
 		buildInfo, _ := debug.ReadBuildInfo()
@@ -57,5 +61,5 @@ func main() {
 	// 	Msg("something happened!")
 
 	iloggers := []zerolog.Logger{iLogger, eLogger}
-	cmd.Execute(iloggers)
+	cmd.Execute(iloggers, embeddedConfigYaml)
 }

@@ -8,11 +8,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	mcli_crypto "mcli/packages/mcli-crypto"
@@ -33,23 +30,6 @@ func Get(rc chan *SomeData) *SomeData {
 	return <-rc
 }
 
-func monitor(rc chan *SomeData, wc chan *SomeData, db *AccumData) {
-	var someData *SomeData
-	defer fmt.Println("close monitor")
-	for {
-		select {
-		case newData := <-wc:
-			someData = newData
-			db.Lock()
-			db.data[strconv.Itoa(newData.payload)] = *newData
-			db.Unlock()
-			// fmt.Printf("%d \n", someData.payload)
-		case rc <- someData:
-		}
-	}
-
-}
-
 var Config ConfigData = ConfigData{}
 var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	config, _ := cmd.Flags().GetString("config")
@@ -57,69 +37,49 @@ var rootCmdRunFunc runFunc = func(cmd *cobra.Command, args []string) {
 	if len(config) == 0 {
 		config = GlobalMap["DefaultConfigPath"]
 	}
-	Ilogger.Info().Msg("Hello from Multy CLI. Config file = " + config)
+	if _, err := os.Stat(config); os.IsNotExist(err) {
+		Ilogger.Info().Msg("Hello from Multy CLI. Config file = embeded")
+	} else {
+		Ilogger.Info().Msg("Hello from Multy CLI. Config file = " + config)
+	}
 
 	if len(args) == 0 {
 		args = strings.Fields(rootArgs)
 	}
-	n, err := strconv.Atoi("3")
-	if len(args) > 0 {
-		n, err = strconv.Atoi(args[0])
+	_ = args
+
+	if rootArgs == "config" {
+		fmt.Println("Config Common:")
+		fmt.Println(mcli_utils.PrettyJsonEncodeToString(Config.Common))
+		fmt.Println("Config Http:")
+		fmt.Println(mcli_utils.PrettyJsonEncodeToString(Config.Http))
+		fmt.Println("Config Secrets:")
+		fmt.Println(mcli_utils.PrettyJsonEncodeToString(Config.Secrets))
+		fmt.Println("Config Version:")
+		fmt.Println(mcli_utils.PrettyJsonEncodeToString(Config.ConfigVersion))
 	}
 
-	if err != nil {
-		Elogger.Error().Msg("mcli: " + err.Error())
-		n, _ = strconv.Atoi("3")
-	}
-
-	var readData = make(chan *SomeData)
-	var writeData = make(chan *SomeData)
-	var accuData *AccumData = &AccumData{
-		data: make(map[string]SomeData),
-	}
-
-	//rand.Seed(time.Now().UnixNano())
-	go monitor(readData, writeData, accuData)
-
-	var w sync.WaitGroup
-
-	for r := 0; r < n; r++ {
-		w.Add(1)
-		go func() {
-			defer w.Done()
-			Set(&SomeData{payload: rand.Intn(10 * n)}, writeData)
-		}()
-	}
-	w.Wait()
-
-	// Ilogger.Trace().Msg(fmt.Sprintf("mcli: Last value : %v\n", Get(readData).payload))
-	// Ilogger.Trace().Msg(fmt.Sprintf("mcli: data : %v\n", accuData.data))
-
-	// closure variables - danger in gorutines
-	// for i := 1; i < 21; i++ {
-	// 	go func(i int) {
-	// 		fmt.Print(i, " ")
-	// 	}(i)
-	// }
-	// time.Sleep(2 * time.Second)
-	// fmt.Println()
 }
 
 // rootCmd represents the base command when running without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "mcli",
+	Use:   "mcli | swknf",
 	Short: "This is set of cli tool for some operations in Linux and Windows(not tested properly)",
-	Long: `	Yes there is an Unix pattern: one thing one programm
-		    But this is just top level link of other things
-	`,
+	Long: `
+This is set of cli tool for some operations in Linux and Windows(not tested properly)
+	Examples:
+	swknf -a config [prints config data]
+`,
 	Run: rootCmdRunFunc,
 }
 
+var embedConfig []byte
+
 // Execute adds view child commands to the root command and sets flags appropriately.
 // This is cviewed by main.main(). It only needs to happen once to the rootCmd.
-func Execute(loggers []zerolog.Logger) {
+func Execute(loggers []zerolog.Logger, emConfig []byte) {
 	Ilogger, Elogger = loggers[0], loggers[1]
-
+	embedConfig = emConfig
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -142,9 +102,7 @@ func Execute(loggers []zerolog.Logger) {
 }
 
 func initConfig() {
-
 	// Check if piped to StdIn
-
 	info, _ := os.Stdin.Stat()
 	GlobalMap["IS_COMMAND_IN_PIPE"] = "CommandNotInPipe"
 	if ((info.Mode()&os.ModeNamedPipe) == os.ModeNamedPipe || info.Size() > 0) || len(InputDataFromFile) > 0 {
@@ -175,8 +133,13 @@ func initConfig() {
 	}
 
 	configFile, _ := rootCmd.Flags().GetString("config")
-	// read config file
-	ReadConfigFile(configFile)
+
+	// read config
+	if _, err := os.Stat(configFile); os.IsNotExist(err) {
+		ReadEmbedConfigFile(embedConfig)
+	} else {
+		ReadConfigFile(configFile)
+	}
 
 	// now Config var is filled
 

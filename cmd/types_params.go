@@ -64,14 +64,16 @@ type ConfigData struct {
 
 	Secrets struct {
 		Common struct {
-			VaultPath   string `yaml:"vault-path"`
-			KeyFilePath string `yaml:"keyfile-path"`
-			KeyEnvVar   string `yaml:"key-envvar"`
-			DictPath    string `yaml:"dict-path"`
-			UseWords    bool   `yaml:"use-words"`
-			Obfuscate   bool   `yaml:"obfuscate"`
-			MinLength   int    `yaml:"min-lenght"`
-			MaxLength   int    `yaml:"max-lenght"`
+			VaultPath     string `yaml:"vault-path"`
+			KeyFilePath   string `yaml:"keyfile-path"`
+			KeyEnvVar     string `yaml:"key-envvar"`
+			DictPath      string `yaml:"dict-path"`
+			UseWords      bool   `yaml:"use-words"`
+			Obfuscate     bool   `yaml:"obfuscate"`
+			Transliterate bool   `yaml:"transliterate"`
+			Qwertify      bool   `yaml:"qwertyfy"`
+			MinLength     int    `yaml:"min-lenght"`
+			MaxLength     int    `yaml:"max-lenght"`
 		}
 
 		Export struct {

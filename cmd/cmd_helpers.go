@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -510,6 +511,48 @@ func ReadConfigFile(configFile string) (err error) {
 			return err
 		}
 	}
+	return
+}
+func ReadEmbedConfigFile(configData []byte) (err error) {
+
+	if len(configData) == 0 {
+		Elogger.Err(err).Msg("embed config file is empty")
+	}
+	Ilogger.Trace().Msg(fmt.Sprint("parsing embed config data"))
+
+	configContentString := string(configData)
+
+	templateRegExp, err := regexp.Compile(`{{\$.+?}}`)
+	if err != nil {
+		Elogger.Err(err).Msg("Error compile regexp for config template processing")
+		return err
+	}
+	allVarsEntries := mcli_utils.RemoveDuplicatesStr(templateRegExp.FindAllString(configContentString, -1))
+	for _, varEntry := range allVarsEntries {
+		// if template entry end on $}} - we replace it from GlobalMap
+		if strings.HasSuffix(varEntry, "$}}") {
+			mapkey := strings.ReplaceAll(varEntry, "{{$", "")
+			mapkey = strings.ReplaceAll(mapkey, "$}}", "")
+			configContentString = strings.ReplaceAll(configContentString, varEntry, GlobalMap[mapkey])
+		}
+		// if template entry ends on }} - we replace it from env
+		if strings.HasSuffix(varEntry, "}}") && !strings.HasSuffix(varEntry, "$}}") {
+			osEnv := strings.ReplaceAll(varEntry, "{{$", "")
+			osEnv = strings.ReplaceAll(osEnv, "}}", "")
+			configContentString = strings.ReplaceAll(configContentString, varEntry, os.Getenv(osEnv))
+		}
+	}
+
+	err = yaml.Unmarshal([]byte(configContentString), &Config)
+	if err != nil {
+		Elogger.Fatal().Msg(fmt.Sprint("yaml parsing error while embed config data:", err.Error()))
+	}
+
+	// fmt.Println("Configuration content :", string(configContent))
+	if IsVerbose {
+		Ilogger.Trace().Msg(fmt.Sprintf("Configuration struct : %+v", Config))
+	}
+
 	return
 }
 

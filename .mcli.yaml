@@ -20,7 +20,7 @@ secrets:
     keyfile-path: "{{$HomeDir$}}/.ssh/id_rsa"
     # keyfile-path: "env:VAULT_KEY"
     # key-envvar: "VAULT_KEY"
-    min-lenght: 14
+    min-lenght: 16
     max-lenght: 32
 http:
   server:

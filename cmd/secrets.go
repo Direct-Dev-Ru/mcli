@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	mcli_utils "mcli/packages/mcli-utils"
 )
 
 // secretsCmd represents the secrets command
@@ -16,20 +17,11 @@ var secretsCmd = &cobra.Command{
 	Long: `Top level command for secrets managment.
 	View subcommnds to get more info ([binaryname] secrets --help)`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("top level secrets called")
+		fmt.Println("Secrets config:")
+		fmt.Println(mcli_utils.PrettyJsonEncodeToString(Config.Secrets))
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(secretsCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// secretsCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// secretsCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

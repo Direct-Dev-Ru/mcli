@@ -84,7 +84,7 @@ func (se *SecretEntry) SetSecret(phrase string, isSalted, encode bool) (string, 
 
 func (se *SecretEntry) GetSecret(keyPath string, isSalted bool) (string, error) {
 	secretData := se.Secret
-	if secretData[:4] == "enc:" {
+	if len(secretData) > 5 && secretData[:4] == "enc:" {
 		if len(keyPath) == 0 && se.store != nil {
 			keyPath = se.store.keyPath
 		}
