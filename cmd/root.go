@@ -74,10 +74,13 @@ This is set of cli tool for some operations in Linux and Windows(not tested prop
 }
 
 var embedConfig []byte
+var MainMap = make(map[string]interface{})
 
 // Execute adds view child commands to the root command and sets flags appropriately.
 // This is cviewed by main.main(). It only needs to happen once to the rootCmd.
-func Execute(loggers []zerolog.Logger, emConfig []byte) {
+func Execute(loggers []zerolog.Logger, emConfig []byte, fromMainMap map[string]interface{}) {
+	MainMap = fromMainMap
+
 	Ilogger, Elogger = loggers[0], loggers[1]
 	embedConfig = emConfig
 	err := rootCmd.Execute()

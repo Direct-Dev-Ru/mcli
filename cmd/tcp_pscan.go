@@ -114,7 +114,7 @@ func (sp *scanParams) checkScanParameters() error {
 	return nil
 }
 
-func worker(ports, results chan scanItem, timeout int64, id int) {
+func tcp_worker(ports, results chan scanItem, timeout int64, id int) {
 
 	for p := range ports {
 		resultItem := scanItem{host: p.host, port: p.port, result: false}
@@ -184,7 +184,7 @@ var pscanCmd = &cobra.Command{
 
 		// opening workers for testing ports
 		for i := 0; i < workerCount; i++ {
-			go worker(ports, results, timeout, i)
+			go tcp_worker(ports, results, timeout, i)
 		}
 
 		// iteration through map of hosts

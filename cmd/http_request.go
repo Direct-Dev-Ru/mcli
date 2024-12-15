@@ -60,7 +60,7 @@ func httpRequestDo(ctx context.Context, method, url string, opts *httpRequestOpt
 	req, err = http.NewRequestWithContext(ctx, method, url, io.NopCloser(strings.NewReader(builder.String())))
 
 	if err == nil {
-		req.Header["User-Agent"] = []string{"mcli v." + Version}
+		req.Header["User-Agent"] = []string{fmt.Sprintf("mcli %v", MainMap["VERSION"])}
 		for k, v := range mapHeaders {
 			req.Header[k] = v
 		}

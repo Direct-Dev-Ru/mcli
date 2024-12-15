@@ -36,7 +36,6 @@ var Notify chan interface{} = make(chan interface{})
 var GlobalMap map[string]string = make(map[string]string)
 var GlobalCache mcli_utils.CCache
 
-var Version string = "0.5.0"
 var Input InputData = InputData{InputSlice: []string{},
 	InputMap:   make(map[string][]string),
 	InputTable: make([]map[string]string, 0),

@@ -21,6 +21,9 @@ import (
 //go:embed .mcli.yaml
 var embeddedConfigYaml []byte
 
+//go:embed VERSION.txt
+var Version string
+
 func main() {
 	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
 	iLogger := zerolog.New(os.Stdout).Level(zerolog.InfoLevel).With().Timestamp().Logger()
@@ -59,7 +62,8 @@ func main() {
 	// 	Stack().
 	// 	Err(errors.New("file open failed!")).
 	// 	Msg("something happened!")
-
+	mainMap := make(map[string]interface{}, 0)
+	mainMap["VERSION"] = Version
 	iloggers := []zerolog.Logger{iLogger, eLogger}
-	cmd.Execute(iloggers, embeddedConfigYaml)
+	cmd.Execute(iloggers, embeddedConfigYaml, mainMap)
 }
