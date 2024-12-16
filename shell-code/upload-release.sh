@@ -7,11 +7,11 @@ GITHUB_TOKEN="${GITHUB_TOKEN}"  # Replace with your GitHub token
 
 REPO="direct-dev-ru/binaries"  # Replace with your GitHub username/repo
 
-TAG=lcg.$(cat "$VERSION_FILE")
+TAG=swknf.$(cat "$VERSION_FILE")
 
 echo TAG: $TAG
 
-RELEASE_DIR="/home/su/projects/golang/linux-command-gpt/binaries-for-upload"  
+RELEASE_DIR="/home/su/projects/golang/cobra-cli-example/for-upload"  
 
 body="{\"tag_name\":\"${TAG}\", \"target_commitish\":\"main\", \"name\":\"${TAG}\", \
   \"body\":\"${TAG}\", \"draft\":false, \"prerelease\":false, \"generate_release_notes\":false}"
